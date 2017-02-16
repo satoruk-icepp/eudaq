@@ -1,5 +1,6 @@
-#include "Event.hh"
-#include "BufferSerializer.hh"
+#include "eudaq/Event.hh"
+#include "eudaq/BufferSerializer.hh"
+#include "eudaq/Logger.hh"
 
 namespace eudaq {
   
@@ -10,31 +11,17 @@ namespace eudaq {
   template DLLEXPORT
   std::map<uint32_t, typename Factory<Event>::UP_BASE (*)()>&
   Factory<Event>::Instance<>();
-  template DLLEXPORT
-  std::map<uint32_t, typename Factory<Event>::UP_BASE (*)
-	   (const uint32_t&, const uint32_t&, const uint32_t&)>&
-  Factory<Event>::Instance<const uint32_t&, const uint32_t&, const uint32_t&>();
-  template DLLEXPORT
-  std::map<uint32_t, typename Factory<Event>::UP_BASE (*)
-	   (const std::string&, const uint32_t&, const uint32_t&, const uint32_t&)>&
-  Factory<Event>::Instance<const std::string&, const uint32_t&, const uint32_t&, const uint32_t&>();
-  //RawDataEvent
-  
-  namespace{
-    auto dummy0 = Factory<Event>::Register<Event, Deserializer&>(cstr2hash("BASE"));
-    auto dummy1 = Factory<Event>::Register<Event, const uint32_t&, const uint32_t&, const uint32_t&>(cstr2hash("BASE"));
-    auto dummy2 = Factory<Event>::Register<Event, Deserializer&>(cstr2hash("TRIGGER"));
-    auto dummy3 = Factory<Event>::Register<Event, const uint32_t&, const uint32_t&, const uint32_t&>(cstr2hash("TRIGGER")); //Trigger
-    auto dummy4 = Factory<Event>::Register<Event, Deserializer&>(cstr2hash("DUMMYDEV"));
-    auto dummy5 = Factory<Event>::Register<Event, const uint32_t&, const uint32_t&, const uint32_t&>(cstr2hash("DUMMYDEV")); //DummyEvent
-    auto dummy6 = Factory<Event>::Register<Event, Deserializer&>(cstr2hash("SYNC"));
-    auto dummy7 = Factory<Event>::Register<Event, const uint32_t&, const uint32_t&, const uint32_t&>(cstr2hash("SYNC"));
+
+  EventUP Event::MakeUnique(const std::string& dspt){
+    EventUP ev = Factory<Event>::MakeUnique<>(cstr2hash("RawDataEvent"));
+    ev->SetType(cstr2hash("RawDataEvent"));
+    ev->SetExtendWord(eudaq::str2hash(dspt));
+    ev->SetDescription(dspt);
+    return ev;
   }
 
-  EventSP Event::MakeShared(Deserializer& des){
-    uint32_t evid;
-    des.PreRead(evid);
-    EventSP ev = Factory<Event>::Create(evid, des);
+  EventSP Event::MakeShared(const std::string& dspt){
+    EventSP ev = MakeUnique(dspt);
     return ev;
   }
   
@@ -59,6 +46,7 @@ namespace eudaq {
     ds.read(m_ts_end);
     ds.read(m_dspt);
     ds.read(m_tags);
+    ds.read(m_blocks);
     uint32_t n_subev;
     for(ds.read(n_subev); n_subev>0; n_subev--){
       uint32_t evid;
@@ -100,6 +88,7 @@ namespace eudaq {
     ser.write(m_ts_end);
     ser.write(m_dspt);
     ser.write(m_tags);
+    ser.write(m_blocks);
     ser.write((uint32_t)m_sub_events.size());
     for(auto &ev: m_sub_events){
       ser.write(*ev);
@@ -113,29 +102,49 @@ namespace eudaq {
     ser.PreRead(id);
     return Factory<Event>::Create<Deserializer&>(id, ser);
   }
+
+  const std::vector<uint8_t>& Event::GetBlock(uint32_t i) const{
+    auto it = m_blocks.find(i);
+    if(it == m_blocks.end()){
+      EUDAQ_WARN(std::string("RAWDATAEVENT:: no bolck with ID ") + std::to_string(i) + " exists");
+    }
+    return it->second;
+  }
+
+  std::vector<uint32_t> Event::GetBlockNumList() const {
+    std::vector<uint32_t> vnum;
+    for(auto &e : m_blocks){
+      vnum.push_back(e.first);
+    }
+    return vnum;
+  }
+
   
   void Event::Print(std::ostream & os, size_t offset) const{
     os << std::string(offset, ' ') << "<Event>\n";
-    os << std::string(offset + 2, ' ') << "<Type> " << m_type <<" </Type>\n";
-    os << std::string(offset + 2, ' ') << "<Flag> 0x" << to_hex(m_flags, 8)<< " </Flag>\n";
-    os << std::string(offset + 2, ' ') << "<RunN> " << m_run_n << " </RunN>\n";
-    os << std::string(offset + 2, ' ') << "<StreamN> " << m_stm_n << " </StreamN>\n";
-    os << std::string(offset + 2, ' ') << "<EventN> " << m_ev_n << " </EventN>\n";
-    os << std::string(offset + 2, ' ') << "<TriggerN> " << m_tg_n << " </TriggerN>\n";
-    os << std::string(offset + 2, ' ') << "<Timestamp> 0x" << to_hex(m_ts_begin, 16)
-       <<"  ->  0x"<< to_hex(m_ts_end, 16) << " </Timestamp>\n";
-    os << std::string(offset + 2, ' ') << "<Timestamp> " << m_ts_begin
+    os << std::string(offset + 2, ' ') << "<Type>" << m_type <<"</Type>\n";
+    os << std::string(offset + 2, ' ') << "<SubType>"<< GetExtendWord() <<"</SubType>\n";
+    os << std::string(offset + 2, ' ') << "<Flag>0x" << to_hex(m_flags, 8)<< "</Flag>\n";
+    os << std::string(offset + 2, ' ') << "<RunN>" << m_run_n << "</RunN>\n";
+    os << std::string(offset + 2, ' ') << "<StreamN>" << m_stm_n << "</StreamN>\n";
+    os << std::string(offset + 2, ' ') << "<EventN>" << m_ev_n << "</EventN>\n";
+    os << std::string(offset + 2, ' ') << "<TriggerN> " << m_tg_n << "</TriggerN>\n";
+    os << std::string(offset + 2, ' ') << "<Timestamp>0x" << to_hex(m_ts_begin, 16)
+       <<"  ->  0x"<< to_hex(m_ts_end, 16) << "</Timestamp>\n";
+    os << std::string(offset + 2, ' ') << "<Timestamp>" << m_ts_begin
        <<"  ->  "<< m_ts_end << " </Timestamp>\n";
     if(!m_tags.empty()){
       os << std::string(offset + 2, ' ') << "<Tags> \n";
       for (auto &tag: m_tags){
-	os << std::string(offset+4, ' ') << "<Tag> "<< tag.first << "=" << tag.second << " </Tag>\n";
+	os << std::string(offset+4, ' ') << "<Tag>"<< tag.first << "=" << tag.second << " </Tag>\n";
       }
       os << std::string(offset + 2, ' ') << "</Tags> \n";
     }
+    os << std::string(offset + 2, ' ')<<"<Block_Size>"<<m_blocks.size()<<"</Block_Size>\n";
+
     if(!m_sub_events.empty()){
       os << std::string(offset + 2, ' ') << "<SubEvents>\n";
-      os << std::string(offset + 4, ' ') << "<Size> " << m_sub_events.size()<< " </Size>\n";
+      os << std::string(offset + 4, ' ') << "<Size>" << m_sub_events.size()<< "</Size>\n";
       for(auto &subev: m_sub_events){
 	subev->Print(os, offset+4);
       }

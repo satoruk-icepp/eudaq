@@ -22,23 +22,18 @@ namespace eudaq {
 
   class ConnectionInfoTCP : public ConnectionInfo {
   public:
+    ConnectionInfoTCP() = delete;
+    ConnectionInfoTCP(const ConnectionInfoTCP&) = delete;
+    ConnectionInfoTCP& operator = (const ConnectionInfoTCP&) = delete;   
     ConnectionInfoTCP(SOCKET fd, const std::string &host = "")
-        : m_fd(fd), m_host(host), m_len(0), m_buf("") {}
+      : m_fd(fd), m_host(host), m_len(0), m_buf(""), ConnectionInfo("") {}
     void append(size_t length, const char *data);
     bool havepacket() const;
     std::string getpacket();
     SOCKET GetFd() const { return m_fd; }
-    void Disable() {
-      m_state = -1;
-      m_len = 0;
-      m_buf = "";
-    }
-    virtual bool Matches(const ConnectionInfo &other) const;
-    virtual void Print(std::ostream &) const;
-    virtual std::string GetRemote() const { return m_host; }
-    virtual ConnectionInfo *Clone() const {
-      return new ConnectionInfoTCP(*this);
-    }
+    bool Matches(const ConnectionInfo &other) const override;
+    void Print(std::ostream &) const override;
+    std::string GetRemote() const override { return m_host; }
 
   private:
     void update_length(bool = false);
@@ -51,18 +46,20 @@ namespace eudaq {
   class TCPServer : public TransportServer {
   public:
     TCPServer(const std::string &param);
-    virtual ~TCPServer();
-
-    virtual void Close(const ConnectionInfo &id);
-    virtual void SendPacket(const unsigned char *data, size_t len,
-                            const ConnectionInfo &id = ConnectionInfo::ALL,
-                            bool duringconnect = false);
-    virtual void ProcessEvents(int timeout);
-
-    virtual std::string ConnectionString() const;
+    ~TCPServer() override;
+    void Close(const ConnectionInfo &id) override;
+    void SendPacket(const unsigned char *data, size_t len,
+		    const ConnectionInfo &id = ConnectionInfo::ALL,
+		    bool duringconnect = false) override;
+    void ProcessEvents(int timeout) override;
+    std::string ConnectionString() const override;
+    std::vector<ConnectionSPC> GetConnections() const  override;
     static const std::string name;
 
   private:
+    std::vector<std::shared_ptr<ConnectionInfoTCP>> m_conn;
+    std::mutex m_mtx_conn;
+    
     int m_port;
     SOCKET m_srvsock;
     SOCKET m_maxfd;

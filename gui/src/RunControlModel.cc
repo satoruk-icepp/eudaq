@@ -10,8 +10,8 @@ namespace {
                                           "connection"};
 }
 
-RunControlConnection::RunControlConnection(const eudaq::ConnectionInfo &id)
-    : m_id(id.Clone()) {}
+RunControlConnection::RunControlConnection(eudaq::ConnectionSPC id)
+    : m_id(id) {}
 
 QString RunControlConnection::operator[](int i) const {
   switch (i) {
@@ -20,7 +20,7 @@ QString RunControlConnection::operator[](int i) const {
   case 1:
     return m_id->GetName().c_str();
   case 2:
-    return m_id->IsEnabled() ? to_string(m_status).c_str() : "DEAD";
+    return to_string(m_status).c_str();
   case 3:
     return m_id->GetRemote().c_str();
   default:
@@ -42,9 +42,9 @@ const char *RunControlConnection::ColumnName(int i) {
 RunControlModel::RunControlModel(QObject *parent)
     : QAbstractListModel(parent), m_sorter(&m_data) {}
 
-void RunControlModel::newconnection(const eudaq::ConnectionInfo &id) {
+void RunControlModel::newconnection(eudaq::ConnectionSPC id) {
   for (size_t i = 0; i < m_data.size(); ++i) {
-    if (!m_data[i].IsConnected() && id.Matches(m_data[i].GetId())) {
+    if (!m_data[i].IsConnected() && id == m_data[i].GetId()) {
       m_data[i] = RunControlConnection(id);
       UpdateDisplayed();
       return;
@@ -60,20 +60,21 @@ void RunControlModel::newconnection(const eudaq::ConnectionInfo &id) {
   endInsertRows();
 }
 
-void RunControlModel::disconnected(const eudaq::ConnectionInfo &id) {
+void RunControlModel::disconnected(eudaq::ConnectionSPC id) {
   for (size_t i = 0; i < m_data.size(); ++i) {
-    if (id.Matches(m_data[i].GetId())) {
-      m_data[i].SetConnected(false);
+    if (id == m_data[i].GetId()){
+      // m_data[i].SetConnected(false);
+      //TODO: yiliu urgent
       break;
     }
   }
   UpdateDisplayed();
 }
 
-void RunControlModel::SetStatus(const eudaq::ConnectionInfo &id,
+void RunControlModel::SetStatus(eudaq::ConnectionSPC id,
                                 eudaq::Status status) {
   for (size_t i = 0; i < m_data.size(); ++i) {
-    if (id.Matches(m_data[i].GetId())) {
+    if (id == m_data[i].GetId()) {
       m_data[i].SetStatus(status);
       break;
     }

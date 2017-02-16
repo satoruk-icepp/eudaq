@@ -8,7 +8,6 @@
 #include "eudaq/Configuration.hh"
 #include "eudaq/Utils.hh"
 #include "eudaq/Platform.hh"
-#include "eudaq/Processor.hh"
 #include "eudaq/Factory.hh"
 
 #include <string>
@@ -48,13 +47,9 @@ namespace eudaq {
     virtual void DoTerminate(){};
 
     //running in dataserver thread
-    // virtual void DoConnect(std::shared_ptr<const ConnectionInfo> id) {}
-    // virtual void DoDisconnect(std::shared_ptr<const ConnectionInfo> id) {}
-    // virtual void DoReceive(std::shared_ptr<const ConnectionInfo> id, EventUP ev) = 0;
-
-    virtual void DoConnect(uint32_t id) {}
-    virtual void DoDisconnect(uint32_t id) {}
-    virtual void DoReceive(uint32_t id, EventUP ev) = 0;
+    virtual void DoConnect(ConnectionSPC id) {}
+    virtual void DoDisconnect(ConnectionSPC id) {}
+    virtual void DoReceive(ConnectionSPC id, EventUP ev) = 0;
     
     void WriteEvent(EventUP ev);
     void StartDataCollector();
@@ -69,6 +64,8 @@ namespace eudaq {
     bool m_exit;
     std::unique_ptr<TransportServer> m_dataserver;
     FileWriterUP m_writer;
+    std::string m_fwpatt;
+    std::string m_fwtype;
     std::vector<std::shared_ptr<ConnectionInfo>> m_info_pdc;
     uint32_t m_dct_n;
     uint32_t m_evt_c;

@@ -24,15 +24,7 @@ namespace eudaq {
   Factory<Event>::Instance<Deserializer&>();
   extern template DLLEXPORT
   std::map<uint32_t, typename Factory<Event>::UP_BASE (*)()>&
-  Factory<Event>::Instance<>();
-  extern template DLLEXPORT
-  std::map<uint32_t, typename Factory<Event>::UP_BASE (*)(const uint32_t&, const uint32_t&, const uint32_t&)>&
-  Factory<Event>::Instance<const uint32_t&, const uint32_t&, const uint32_t&>();
-
-  extern template DLLEXPORT
-  std::map<uint32_t, typename Factory<Event>::UP_BASE (*)(const std::string&, const uint32_t&, const uint32_t&, const uint32_t&)>&
-  Factory<Event>::Instance<const std::string&, const uint32_t&, const uint32_t&, const uint32_t&>();
-  
+  Factory<Event>::Instance<>();  
 #endif
 
   using EventUP = Factory<Event>::UP_BASE; 
@@ -55,9 +47,10 @@ namespace eudaq {
     Event(Deserializer & ds);
     virtual void Serialize(Serializer &) const;   
     EventUP Clone() const;
-
+    
     virtual void Print(std::ostream & os, size_t offset = 0) const;
 
+    
     bool HasTag(const std::string &name) const {return m_tags.find(name) != m_tags.end();}
     void SetTag(const std::string &name, const std::string &val) {m_tags[name] = val;}
     const std::map<std::string, std::string>& GetTags() const {return m_tags;}
@@ -94,6 +87,7 @@ namespace eudaq {
     uint32_t GetNumSubEvent() const {return m_sub_events.size();}
     EventSPC GetSubEvent(uint32_t i) const {return m_sub_events.at(i);}
     
+    void SetType(uint32_t id){m_type = id;}
     void SetEventID(uint32_t id){m_type = id;}
     void SetVersion(uint32_t v){m_version = v;}
     void SetFlag(uint32_t f) {m_flags = f;}
@@ -119,7 +113,8 @@ namespace eudaq {
     uint64_t GetTimestampEnd() const {return m_ts_end;}
     std::string GetDescription() const {return m_dspt;}
 
-    static EventSP MakeShared(Deserializer&);
+    static EventUP MakeUnique(const std::string& dspt);
+    static EventSP MakeShared(const std::string& dspt);    
 
     //TODO: the meanning of "stream" is not so clear
     void SetStreamN(uint32_t n){m_stm_n = n;}
@@ -128,6 +123,55 @@ namespace eudaq {
     uint32_t GetEventNumber()const {return m_ev_n;}
     uint32_t GetRunNumber()const {return m_run_n;}
 
+    //from RawdataEvent
+    const std::vector<uint8_t>& GetBlock(uint32_t i) const;
+    size_t NumBlocks() const { return m_blocks.size(); }
+    
+    std::vector<uint32_t> GetBlockNumList() const;
+    
+    /// Add a data block as std::vector
+    template <typename T>
+    size_t AddBlock(uint32_t id, const std::vector<T> &data){
+      m_blocks[id]=make_vector(data);
+      return m_blocks.size();
+    }
+
+    /// Add a data block as array with given size
+    template <typename T>
+    size_t AddBlock(uint32_t id, const T *data, size_t bytes){
+      m_blocks[id]=make_vector(data, bytes);
+      return m_blocks.size();
+    }
+
+    /// Append data to a block as std::vector
+    template <typename T>
+    void AppendBlock(size_t index, const std::vector<T> &data) {
+      auto &&src = make_vector(data);
+      auto &&dst = m_blocks[index];
+      dst.insert(dst.end(), src.begin(), src.end());
+    }
+
+    /// Append data to a block as array with given size
+    template <typename T>
+    void AppendBlock(size_t index, const T *data, size_t bytes) {
+      auto &&src = make_vector(data, bytes);
+      auto &&dst = m_blocks[index];
+      dst.insert(dst.end(), src.begin(), src.end());
+    }
+    
+  private:
+    template <typename T>
+      static std::vector<uint8_t> make_vector(const T *data, size_t bytes) {
+      const uint8_t *ptr = reinterpret_cast<const uint8_t *>(data);
+      return std::vector<uint8_t>(ptr, ptr + bytes);
+    }
+
+    template <typename T>
+    static std::vector<uint8_t> make_vector(const std::vector<T> &data) {
+      const uint8_t *ptr = reinterpret_cast<const uint8_t *>(&data[0]);
+      return std::vector<uint8_t>(ptr, ptr + data.size() * sizeof(T));
+    }
+    
   private:
     uint32_t m_type;
     uint32_t m_version;
@@ -141,6 +185,7 @@ namespace eudaq {
     uint64_t m_ts_end;
     std::string m_dspt;
     std::map<std::string, std::string> m_tags;
+    std::map<uint32_t, std::vector<uint8_t>> m_blocks;
     std::vector<EventSPC> m_sub_events; //TODO::  std::set
   };
 }

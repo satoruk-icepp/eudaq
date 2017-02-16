@@ -18,9 +18,13 @@ namespace eudaq {
 
   void NULLServer::ProcessEvents(int timeout) { mSleep(timeout); }
 
+  std::vector<ConnectionSPC> NULLServer::GetConnections() const{
+    return std::vector<ConnectionSPC>();
+  }
+  
   std::string NULLServer::ConnectionString() const { return "null://"; }
 
-  NULLClient::NULLClient(const std::string & /*param*/) {}
+  NULLClient::NULLClient(const std::string & /*param*/):m_buf("") {}
 
   void NULLClient::SendPacket(const unsigned char *, size_t,
                               const ConnectionInfo &, bool) {}

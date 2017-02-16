@@ -21,6 +21,10 @@ namespace eudaq {
    */
   class ConnectionInfo {
   public:
+    ConnectionInfo() = delete;
+    ConnectionInfo(const ConnectionInfo&) = delete;
+    ConnectionInfo& operator = (const ConnectionInfo&) = delete;   
+
     explicit ConnectionInfo(const std::string &name = "")
         : m_state(0), m_name(name) {}
     virtual ~ConnectionInfo() {}
@@ -37,19 +41,19 @@ namespace eudaq {
  
     static const ConnectionInfo ALL;
 
-    virtual ConnectionInfo *Clone() const { return new ConnectionInfo(*this); }
+    // virtual ConnectionInfo *Clone() const { return new ConnectionInfo(*this); }
 
   protected:
     int m_state;
+    uint32_t m_id;
     std::string m_type;
     std::string m_name;
-    /*
-       public:
-       virtual bool operator = (const ClientID & other) = 0;
-       virtual std::string Name() const = 0;
-     */
   };
 
+  using ConnectionWP = std::weak_ptr<ConnectionInfo>;
+  using ConnectionSP = std::shared_ptr<ConnectionInfo>;
+  using ConnectionSPC = std::shared_ptr<const ConnectionInfo>;
+  
   inline std::ostream &operator<<(std::ostream &os, const ConnectionInfo &id) {
     id.Print(os);
     return os;
