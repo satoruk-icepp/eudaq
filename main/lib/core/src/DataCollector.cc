@@ -37,11 +37,9 @@ namespace eudaq {
       SetStatus(Status::STATE_ERROR, msg);
     }
   }
-
   
   void DataCollector::OnConfigure(){
     auto conf = GetConfiguration();
-    std::cout << "Configuring (" << conf->Name() << ")..." << std::endl;
     try {
       m_fwtype = conf->Get("FileType", "native");
       m_fwpatt = conf->Get("FilePattern", "run$6R$X");
@@ -54,8 +52,7 @@ namespace eudaq {
       ss<<time_buff<<"_"<<GetName()<<"_"<<m_fwpatt;
       m_fwpatt = ss.str();
       DoConfigure();
-      std::cout << "...Configured (" << conf->Name() << ")" << std::endl;
-      SetStatus(Status::STATE_CONF, "Configured (" + conf->Name() + ")");
+      SetStatus(Status::STATE_CONF, "Configured");
     }catch (const Exception &e) {
       std::string msg = "Error when configuring by " + conf->Name() + ": " + e.what();
       EUDAQ_ERROR(msg);
@@ -244,8 +241,7 @@ namespace eudaq {
     m_exit = true;
     if(m_thd_server.joinable()){
       m_thd_server.join();
-    }
-    
+    } 
   }
   
   void DataCollector::Exec(){
