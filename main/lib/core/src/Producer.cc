@@ -62,6 +62,7 @@ namespace eudaq {
 	EUDAQ_THROW("OnStartRun can not be called unless in STATE_CONF");
       EUDAQ_INFO("Start Run: "+ std::to_string(GetRunNumber()));
       m_evt_c = 0;
+      std::this_thread::sleep_for(std::chrono::seconds(2));
       DoStartRun();
       SetStatus(Status::STATE_RUNNING, "Started");
     }catch (const std::exception &e) {
