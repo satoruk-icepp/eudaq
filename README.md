@@ -16,7 +16,7 @@ Contributing:
  * Checkout *tb2017* branch 
  * Create your own branch from it (e.g. `git branch dev-username`), develop in that branch
  * Commit/push all the changes into your branch
- * Make pull reguest to *HGCDAQ/tb2017* from your developement branch 
+ * Make pull request to *HGCDAQ/tb2017* from your development branch 
 
 
 eudaq
