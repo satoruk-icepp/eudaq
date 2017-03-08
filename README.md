@@ -1,4 +1,25 @@
-eudaq [![Build Status](https://travis-ci.org/eudaq/eudaq.svg?branch=v1.4-dev)](https://travis-ci.org/eudaq/eudaq)
+
+Intoroduction 
+=============
+
+In order to start with HGCDAQ part of this code one has to follow the main compilation/installation procedures for eudaq (see below).
+
+At the time of writing, stable version of eudaq is 1.6.0, hence we took this tag as a starting point for our fork. A branch called **tb2107** is created from **1.6.0 tag** and it is made the default branch here (instead of *master*).
+
+An installation of eudaq is available on daq PC in the lab at b27. One can also install it relatevey easily on Ubuntu and probably other systems.
+
+Quick commands (for details follow eudaq instructions below):
+ * To create make file: from *build* directory: `cmake -D BUILD_sandbox=ON -D BUILD_onlinemon=ON ..`
+ * To compile `make install` in the build directory
+
+Contributing:
+ * Checkout *tb2017* branch 
+ * Create your own branch from it (e.g. `git branch dev-username`), develop in that branch
+ * Commit/push all the changes into your branch
+ * Make pull reguest to *HGCDAQ/tb2017* from your developement branch 
+
+
+eudaq
 =====
 
 A Generic Multi-platform Data Acquisition Framework
