@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
   #get reply and print
   m=0
-  while m<10:
+  while m<5:
     print recv_timeout(s, 0.5)
     m+=1
 
