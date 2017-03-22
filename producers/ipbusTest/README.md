@@ -21,7 +21,7 @@ To build and compile the code:
 
 Run this ipbus example:
 
- -Start an ipbus hardware emulation, fill it with crap data : see [myIpbusTest](https://github.com/asteencern/ipbus-test) 
+ -Start an ipbus skiroc emulation, fill it with crap data : see [myIpbusTest](https://github.com/asteencern/ipbus-test) 
 
  `$ ./STARTRUN ipbustest`
 
