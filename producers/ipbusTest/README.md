@@ -8,12 +8,15 @@ To build and compile the code:
  -Then 
 
   `$ export LD_LIBRARY_PATH=/opt/cactus/lib:$HOME/root/lib:$LD_LIBRARY_PATH`
+
   `$ export PATH=/opt/cactus/bin:$HOME/root/bin:$PATH`
 
  -From eudaq root dir:
 
   `$ cd build`
+
   `$ cmake -DBUILD_ipbusTest=ON ../`
+
   `$ make instal -j4`
 
 Run this ipbus example:
