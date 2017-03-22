@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
-<connections>
-
-  <connection id="controlhub2" uri="chtcp-2.0://localhost:10203?target=localhost:60001"	address_table="file://myaddress.xml" />
-
-</connections>
-
