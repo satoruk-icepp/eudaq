@@ -35,7 +35,7 @@ def recv_timeout(the_socket,timeout=2):
             data = the_socket.recv(8192)
             if data:
                 total_data.append(data)
-		print 'Recieved: ', data
+		print 'Recieved: ', data[:10], data[:10].encode('hex')
                 #change the beginning time for measurement
                 begin=time.time()
             else:
@@ -100,7 +100,7 @@ if __name__ == "__main__":
   #get reply and print
   m=0
   while m<5:
-    print recv_timeout(s, 0.5)
+    print recv_timeout(s, 0.5)[:20]
     m+=1
 
   #s.close()

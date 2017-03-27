@@ -14,19 +14,40 @@ PORT = 55511
 t1_stop = threading.Event()
 #t1 = threading.Thread(target=sendFakeData, args=(1, t1_stop))
 
+                                                                
 def sendFakeData(conn, stop_event):
-  m = 0
-  print 'This is conn=', conn
+  print 'This is conn:', conn
+
+  # Here read the file with some raw data from HexaBoard
+  fname = 'RUN_170317_0912.raw' # This file is not on github, get it elsewhere
+  rawData = None
+  try:
+    with open(fname, "rb") as f:
+      rawData = f.read()
+  except EnvironmentError:
+    print "Can't open file?", fname
+    
+  ev=0
+  RAW_EV_SIZE = 30787
+  
   while (not stop_event.is_set()):
-    print 'submitting data', m
+    evmod = ev%500 # There are only 500 events in that file...
+
+    if rawData!=None:
+      d = rawData[evmod*RAW_EV_SIZE:(evmod+1)*RAW_EV_SIZE]
+      # d = rawData[evmod*RAW_EV_SIZE] # this should give ff always
+    else:
+      d = 'Hello World'
+    print 'submitting data', ev, evmod, len(d)
+
     try:
-        conn.sendall('-->>>  Here is your data <<< --')
+        conn.sendall(d)
+        #conn.sendall('-->>>  Here is your data <<< --')
     except socket.error:
         print 'The client socket is probably closed. We stop sending data.'
         break
-    stop_event.wait(0.5)
-    #time.sleep(0.5)
-    m+=1
+    stop_event.wait(1.5)
+    ev+=1
     
 
 def clientthread(conn):

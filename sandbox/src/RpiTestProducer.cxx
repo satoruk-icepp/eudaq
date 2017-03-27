@@ -17,6 +17,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+#define RAW_EV_SIZE 30787
 
 // A name to identify the raw data format of the events generated
 // Modify this to something appropriate for your producer.
@@ -90,6 +91,12 @@ class RpiTestProducer : public eudaq::Producer {
 	  return;
 	}
       }
+
+      // Let's open a file for raw data:
+      char rawFilename[256];
+      sprintf(rawFilename, "../data/HexaData_Run%04d.raw", m_run); // The path is relative to eudaq/bin
+      m_rawFile.open(rawFilename, std::ios::binary);
+      
       // If we're here, then the Run was started on the Hardware side (TCP server will send data)
       
       // It must send a BORE to the Data Collector
@@ -151,6 +158,7 @@ class RpiTestProducer : public eudaq::Producer {
 	}
       }
 
+      m_rawFile.close();
       // If we were running, send signal to stop:
       //m_running=false;
 
@@ -193,7 +201,7 @@ class RpiTestProducer : public eudaq::Producer {
         if (m_sockfd <= 0) {
 	  EUDAQ_DEBUG("Not Running; but sleeping");
 	  SetStatus(eudaq::Status::LVL_USER, "No Socket yet in Readout Loop");
-	  eudaq::mSleep(200);
+	  eudaq::mSleep(100);
 	  continue;
 	}
 
@@ -204,8 +212,8 @@ class RpiTestProducer : public eudaq::Producer {
 	SetStatus(eudaq::Status::LVL_DEBUG, "Running");
 	EUDAQ_DEBUG("Running again");
 
-	const int bufsize = 4096;
-	char buffer[bufsize];
+	const int bufsize = RAW_EV_SIZE;
+	unsigned char buffer[bufsize];
 	bzero(buffer, bufsize);
 
 	int n = recv(m_sockfd, buffer, bufsize, 0);
@@ -223,7 +231,7 @@ class RpiTestProducer : public eudaq::Producer {
 	      EUDAQ_WARN("Sockets: No data for too long..");
 	    }
 
-	  eudaq::mSleep(500);
+	  eudaq::mSleep(200);
 
 	  }
 	  else {
@@ -236,12 +244,12 @@ class RpiTestProducer : public eudaq::Producer {
 
 	// We are here if there is data and it's size is > 0
 
-	std::cout<<" After recv. n="<<n<<std::endl;
-	std::cout<<"In ReadoutLoop.  Here is the message from Server: \n"<<buffer<<std::endl;
+	std::cout<<" After recv. Size of message recieved: n="<<n<<std::endl;
+	//std::cout<<"In ReadoutLoop.  Here is the message from Server: \n"<<buffer<<std::endl;
 
 	if (m_stopping){
 	  // We have sent STOP_RUN command, let's see if we receive a confirmation:
-	  if (strncmp("STOPPED_OK",buffer,10)==0){
+	  if (strncmp("STOPPED_OK",(char*)buffer,10)==0){
 	    
 	    EUDAQ_EXTRA("Received Confirmation.. Stopping from readout loop");
 
@@ -258,17 +266,24 @@ class RpiTestProducer : public eudaq::Producer {
 
 	// If we get here, there must be data to read out
 	m_last_readout_time = std::time(NULL);
-	std::cout <<"size = "<<n<< "  m_last_readout_time:"<< m_last_readout_time
-		  <<" buf = "<<buffer<<std::endl;
+	std::cout <<"size = "<<n<< "  m_last_readout_time:"<< m_last_readout_time<<std::endl;
+	std::cout<<"First byte of the RAW event: "<<eudaq::to_hex(buffer[0])<<std::endl;
+	std::cout<<"Last two bytes of the event: "<<eudaq::to_hex(buffer[RAW_EV_SIZE-2],6)<<std::endl;
 
+	if (n!=(int)RAW_EV_SIZE){
+	  EUDAQ_WARN("The event size is not right! n="+eudaq::to_string(n));
+	  SetStatus(eudaq::Status::LVL_WARN, "Wrong event size.");
+	}
+	if (buffer[0]!=0xff){
+	  EUDAQ_WARN("First byte is not FF. It is: "+eudaq::to_hex(buffer[0]));
+	  SetStatus(eudaq::Status::LVL_WARN, "Corrupted Data");
+	}
+	
 	// Create a RawDataEvent to contain the event data to be sent
 	eudaq::RawDataEvent ev(EVENT_TYPE, m_run, m_ev);
 
-	//n = write(m_sockfd,"Test",4);
-	//if (n < 0) EUDAQ_ERROR("Sockets: ERROR writing to socket");
-	//else EUDAQ_EXTRA("Sent confirmation to client");
 
-	eudaq::mSleep(1000);
+	eudaq::mSleep(30);
 
 	//if (_writeRaw && _rawFile.is_open()) _rawFile.write(buf, size);
 	// C array to vector
@@ -374,6 +389,8 @@ class RpiTestProducer : public eudaq::Producer {
     int m_port;
 
     std::time_t m_last_readout_time;
+
+    std::ofstream m_rawFile;
 };
 
 // The main function that will create a Producer instance and run it
