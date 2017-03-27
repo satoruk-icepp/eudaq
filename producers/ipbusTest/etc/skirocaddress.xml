@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<node> 
+  <node id="SKI0">
+    <node id="FIFO" address="0x0000" size="962" permission="rw" mode="incremental"/>
+    <node id="CRC" address="0x1000" permission="rw"/>
+    <node id="NBYTES" address="0x1001" permission="rw"/>
+    <node id="WRITEENABLE" address="0x1002" permission="rw"/>
+    <node id="READENABLE" address="0x1003" permission="rw"/>
+  </node>
+</node>
