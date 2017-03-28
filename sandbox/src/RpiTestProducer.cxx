@@ -17,7 +17,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
-#define RAW_EV_SIZE 30787
+const size_t RAW_EV_SIZE=30787;
 
 // A name to identify the raw data format of the events generated
 // Modify this to something appropriate for your producer.
@@ -213,7 +213,7 @@ class RpiTestProducer : public eudaq::Producer {
 	EUDAQ_DEBUG("Running again");
 
 	const int bufsize = RAW_EV_SIZE;
-	unsigned char buffer[bufsize];
+	char buffer[bufsize];
 	bzero(buffer, bufsize);
 
 	int n = recv(m_sockfd, buffer, bufsize, 0);
@@ -268,46 +268,43 @@ class RpiTestProducer : public eudaq::Producer {
 	m_last_readout_time = std::time(NULL);
 	std::cout <<"size = "<<n<< "  m_last_readout_time:"<< m_last_readout_time<<std::endl;
 	std::cout<<"First byte of the RAW event: "<<eudaq::to_hex(buffer[0])<<std::endl;
-	std::cout<<"Last two bytes of the event: "<<eudaq::to_hex(buffer[RAW_EV_SIZE-2],6)<<std::endl;
+	std::cout<<"Last two bytes of the event: "<<eudaq::to_hex(buffer[RAW_EV_SIZE-2])
+		 <<" "<<eudaq::to_hex(buffer[RAW_EV_SIZE-1])<<std::endl;
+	
+	if (n==(int)RAW_EV_SIZE && (unsigned char)buffer[0]==0xff){
+	  // This is good data (at first sight)
 
-	if (n!=(int)RAW_EV_SIZE){
-	  EUDAQ_WARN("The event size is not right! n="+eudaq::to_string(n));
-	  SetStatus(eudaq::Status::LVL_WARN, "Wrong event size.");
+	  // Write it into raw file: 
+	  m_rawFile.write(buffer, RAW_EV_SIZE);
+
+	  	
+	  // Create a RawDataEvent to contain the event data to be sent
+
+	  //string s = "HGCDAQv1";
+	  //ev->AddBlock(0,s.c_str(), s.length());
+	  //ev->AddBlock(1, vector<int>()); // dummy block
+
+	  eudaq::RawDataEvent ev(EVENT_TYPE, m_run, m_ev);
+	  
+
+	  
+	  SendEvent(ev);
+
 	}
-	if (buffer[0]!=0xff){
-	  EUDAQ_WARN("First byte is not FF. It is: "+eudaq::to_hex(buffer[0]));
-	  SetStatus(eudaq::Status::LVL_WARN, "Corrupted Data");
+	else {
+	  if (n!=(int)RAW_EV_SIZE){
+	    
+	    EUDAQ_WARN("The event size is not right! n="+eudaq::to_string(n));
+	    SetStatus(eudaq::Status::LVL_WARN, "Wrong event size.");
+	  }
+	  if (buffer[0]!=0xff){
+	    EUDAQ_WARN("First byte is not FF. It is: "+eudaq::to_hex(buffer[0]));
+	    SetStatus(eudaq::Status::LVL_WARN, "Corrupted Data");
+	  }
 	}
 	
-	// Create a RawDataEvent to contain the event data to be sent
-	eudaq::RawDataEvent ev(EVENT_TYPE, m_run, m_ev);
-
-
-	eudaq::mSleep(30);
-
-	//if (_writeRaw && _rawFile.is_open()) _rawFile.write(buf, size);
-	// C array to vector
-	//copy(buf, buf + sk_size, back_inserter(bufRead));
-
-	//string s = "HGCDAQv1";
-	//ev->AddBlock(0,s.c_str(), s.length());
-	//ev->AddBlock(1, vector<int>()); // dummy block
-
-	SendEvent(ev);
 	m_ev++;
-
 	continue;
-
-
-	/*
-		if (sk_size == -1)
-		std::cout << "Error on read: " << errno << " Disconnect and going to the waiting mode." << std::endl;
-		else
-		std::cout << "Socket disconnected. going to the waiting mode." << std::endl;
-		close(m_sockfd);
-		m_sockfd = -1;
-		m_stopping = 1;
-	*/
 
       }// end of while(done) loop
 
