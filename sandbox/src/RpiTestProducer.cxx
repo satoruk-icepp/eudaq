@@ -97,6 +97,8 @@ class RpiTestProducer : public eudaq::Producer {
       sprintf(rawFilename, "../data/HexaData_Run%04d.raw", m_run); // The path is relative to eudaq/bin
       m_rawFile.open(rawFilename, std::ios::binary);
       
+      fout = fopen("myOUT.txt", "w");
+      fprintf(fout,"Total number of events: NN \n");
       // If we're here, then the Run was started on the Hardware side (TCP server will send data)
       
       // It must send a BORE to the Data Collector
@@ -161,7 +163,8 @@ class RpiTestProducer : public eudaq::Producer {
       m_rawFile.close();
       // If we were running, send signal to stop:
       //m_running=false;
-
+      fclose(fout);
+      
       // wait until all events have been read out from the hardware
       while (m_stopping) {
         eudaq::mSleep(20);
@@ -279,15 +282,46 @@ class RpiTestProducer : public eudaq::Producer {
 
 	  	
 	  // Create a RawDataEvent to contain the event data to be sent
-
-	  //string s = "HGCDAQv1";
-	  //ev->AddBlock(0,s.c_str(), s.length());
-	  //ev->AddBlock(1, vector<int>()); // dummy block
-
 	  eudaq::RawDataEvent ev(EVENT_TYPE, m_run, m_ev);
 	  
 
+	  std::array<std::array<unsigned int, 1924>,4> decoded = decode_raw((unsigned char*)buffer);
+
+	  unsigned int dati[4][128][13];
+	  std::vector<unsigned int> dataBlockZS;
+	  for (int ski = 0; ski < 4; ski++ ){
+	    fprintf(fout, "Event %d Chip %d RollMask %x \n", m_ev, ski, decoded[ski][1920]);	    
+	    int mainFrame = 2; // Let's assume we can somehow determine the main frame
+	    int ped = 200;
+	    for (int ch = 0; ch < 128; ch++ ){
+
+	      int charge = decoded[ski][mainFrame*128+ch] & 0x0FFF;
+	      // ZeroSuppress:
+	      if (charge-ped < 0) continue;
+	      
+	      dataBlockZS.push_back(ski*100+ch);
+
+	      // APZ Work end HERE. 29 Mar
+	      // Continue with:
+	      // - Determine correct TS from the roll mask
+	      // - Propagate data to Converter; double check it there
+	      // - Commit the code, start on IPbus
+	      
+	      for (int ts = 0 ; ts < 13 ; ts++){
+		int mod13 = ((mainFrame - ts) % 13) + ((mainFrame >= ts) ? 0 : 13);
+		std::cout<<"ts="<<ts<<"  mod13="<<mod13<<std::endl;
+		if (mod13 > 2) continue; // only add +/-2 time slices 
+		// ((x - y) % 13) + ((x >= y) ? 0 : 13) //modulo n sunstruction
+		dati[ski][ch][ts] = decoded[ski][ts*128+ch] & 0x0FFF;
+		fprintf(fout, "%d  ", dati[ski][ch][ts]);
+
+		dataBlockZS.push_back(dati[ski][ch][ts]);
+
+	      } // end of ts
+	    } // end of ch
+	  } //end of ski
 	  
+	  ev.AddBlock(0, dataBlockZS);
 	  SendEvent(ev);
 
 	}
@@ -374,7 +408,71 @@ class RpiTestProducer : public eudaq::Producer {
 	  std::cout << bytesWritten << " out of " << size << " bytes is  written to the TCP socket" << std::endl;
       }
     }
+
+    // Methods for raw data conversion
+
+
+    unsigned int gray_to_brady(unsigned int gray)
+    {
+      // Code from:
+      //https://github.com/CMS-HGCAL/TestBeam/blob/826083b3bbc0d9d78b7d706198a9aee6b9711210/RawToDigi/plugins/HGCalTBRawToDigi.cc#L154-L170
+      unsigned int result = gray & (1 << 11);
+      result |= (gray ^ (result >> 1)) & (1 << 10);
+      result |= (gray ^ (result >> 1)) & (1 << 9);
+      result |= (gray ^ (result >> 1)) & (1 << 8);
+      result |= (gray ^ (result >> 1)) & (1 << 7);
+      result |= (gray ^ (result >> 1)) & (1 << 6);
+      result |= (gray ^ (result >> 1)) & (1 << 5);
+      result |= (gray ^ (result >> 1)) & (1 << 4);
+      result |= (gray ^ (result >> 1)) & (1 << 3);
+      result |= (gray ^ (result >> 1)) & (1 << 2);
+      result |= (gray ^ (result >> 1)) & (1 << 1);
+      result |= (gray ^ (result >> 1)) & (1 << 0);
+      return result;
+    }
+
+
+
+    std::array<std::array<unsigned int,1924>,4> decode_raw(unsigned char * raw){
       
+      //unsigned int ev[4][1924];
+      std::array<std::array<unsigned int, 1924>,4> ev;
+      
+      unsigned char x;
+      for(int i = 0; i < 1924; i = i+1){
+	for (int k = 0; k < 4; k = k + 1){
+	  ev[k][i] = 0;
+	}
+      }
+      
+      for(int  i = 0; i < 1924; i = i+1){
+	for (int j=0; j < 16; j = j+1){
+	  x = raw[1 + i*16 + j];
+	  x = x & 15; // <-- APZ: Not sure why this is needed.
+	  for (int k = 0; k < 4; k = k + 1){
+	    ev[k][i] = ev[k][i] | (unsigned int) (((x >> (3 - k) ) & 1) << (15 - j));
+	  }
+	}
+      }
+
+      unsigned int t, bith;
+      for(int k = 0; k < 4 ; k = k +1 ){
+	for(int i = 0; i < 128*13; i = i + 1){
+	  bith = ev[k][i] & 0x8000;
+
+	  t = gray_to_brady(ev[k][i] & 0x7fff);
+	  ev[k][i] =  bith | t;
+	}
+      }
+    
+      return ev;
+    }
+
+
+    
+    
+
+    
   private:
     unsigned m_run, m_ev, m_exampleparam;
     unsigned m_ski;
@@ -388,6 +486,10 @@ class RpiTestProducer : public eudaq::Producer {
     std::time_t m_last_readout_time;
 
     std::ofstream m_rawFile;
+
+
+    FILE *fout;
+    
 };
 
 // The main function that will create a Producer instance and run it

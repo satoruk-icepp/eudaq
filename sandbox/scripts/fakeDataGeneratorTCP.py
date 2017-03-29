@@ -12,9 +12,11 @@ PORT = 55511
 
 
 t1_stop = threading.Event()
-#t1 = threading.Thread(target=sendFakeData, args=(1, t1_stop))
 
-                                                                
+EventRate = 5 # Events per spill
+SpillTime = 5   # Duration of the spill in seconds
+InterSpill = 10 # Time between spills in seconds
+
 def sendFakeData(conn, stop_event):
   print 'This is conn:', conn
 
@@ -33,6 +35,9 @@ def sendFakeData(conn, stop_event):
   while (not stop_event.is_set()):
     evmod = ev%500 # There are only 500 events in that file...
 
+    if ev%EventRate==0:
+      stop_event.wait(InterSpill)
+      
     if rawData!=None:
       d = rawData[evmod*RAW_EV_SIZE:(evmod+1)*RAW_EV_SIZE]
       # d = rawData[evmod*RAW_EV_SIZE] # this should give ff always
@@ -46,7 +51,8 @@ def sendFakeData(conn, stop_event):
     except socket.error:
         print 'The client socket is probably closed. We stop sending data.'
         break
-    stop_event.wait(1.5)
+    time.sleep(SpillTime/EventRate)
+    # stop_event.wait(SpillTime/EventRate)
     ev+=1
     
 
