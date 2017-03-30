@@ -13,7 +13,7 @@ PORT = 55511
 
 t1_stop = threading.Event()
 
-EventRate = 5 # Events per spill
+EventRate = 50 # Events per spill
 SpillTime = 5   # Duration of the spill in seconds
 InterSpill = 10 # Time between spills in seconds
 

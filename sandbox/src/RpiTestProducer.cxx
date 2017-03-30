@@ -289,35 +289,124 @@ class RpiTestProducer : public eudaq::Producer {
 
 	  unsigned int dati[4][128][13];
 	  std::vector<unsigned int> dataBlockZS;
+	  
 	  for (int ski = 0; ski < 4; ski++ ){
 	    fprintf(fout, "Event %d Chip %d RollMask %x \n", m_ev, ski, decoded[ski][1920]);	    
-	    int mainFrame = 2; // Let's assume we can somehow determine the main frame
-	    int ped = 200;
-	    for (int ch = 0; ch < 128; ch++ ){
 
-	      int charge = decoded[ski][mainFrame*128+ch] & 0x0FFF;
+	    
+	    int ped = 190;  // pedestal
+	    int noi = 20;   // noise
+
+
+	    // ----------
+	    // -- Based on the rollmask, lets determine which time-slices (frames) to add
+	    //
+	    unsigned int r = decoded[ski][1920];
+	    //printf("Roll mask = %d \n", r);
+	    int k1 = -1, k2 = -1;
+	    for (int p=0; p<13; p++){
+	      //printf("pos = %d, %d \n", p, r & (1<<12-p));
+	      if (r & (1<<12-p)) {
+		if (k1==-1)
+		  k1 = p;
+		else if (k2==-1)
+		  k2 = p;
+		else
+		  printf("Error: more than two positions in roll mask! %x \n",r);
+	      }
+	    }
+
+	    //printf("k1 = %d, k2 = %d \n", k1, k2);
+	      
+	    // Check that k1 and k2 are consecutive
+	    char last = -1;
+	    if (k1==0 && k2==12) { last = 0;}
+	    else if (abs(k1-k2)>1)
+	      EUDAQ_WARN("The k1 and k2 are not consecutive! abs(k1-k2) = "+ eudaq::to_string(abs(k1-k2)));
+	    //printf("The k1 and k2 are not consecutive! abs(k1-k2) = %d\n", abs(k1-k2));
+	    else
+	      last = k2;
+
+	    //printf("last = %d\n", last);
+	    // k2+1 it the begin TS
+	    
+	    // Let's assume we can somehow determine the main frame
+	    char mainFrameOffset = 5; // offset of the pulse wrt trigger (k2 rollmask)
+	    char mainFrame = (last+mainFrameOffset)%13;
+
+
+	    int tsm2 = (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13;
+	    int tsm1 = (((mainFrame - 1) % 13) + ((mainFrame >= 1) ? 0 : 13))%13;
+	    int ts0  = mainFrame;
+	    int ts1  = (mainFrame+1)%13;
+	    int ts2  = (mainFrame+2)%13;
+
+	    //printf("TS 0 to be saved: %d\n", tsm2);
+	    //printf("TS 1 to be saved: %d\n", tsm1);
+	    //printf("TS 2 to be saved: %d\n", ts0);
+	    //printf("TS 3 to be saved: %d\n", ts1);
+	    //printf("TS 4 to be saved: %d\n", ts2);
+
+	    // -- End of main frame determination
+	    
+
+	    
+	    for (int ch = 0; ch < 64; ch+=2){
+
+	      int chArrPos = 63-ch; // position of the hit in array
+	      //int chargeLG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
+	      int chargeHG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
 	      // ZeroSuppress:
-	      if (charge-ped < 0) continue;
+	      if (chargeHG - (ped+noi) < 0) continue;
 	      
 	      dataBlockZS.push_back(ski*100+ch);
 
 	      // APZ Work end HERE. 29 Mar
 	      // Continue with:
-	      // - Determine correct TS from the roll mask
 	      // - Propagate data to Converter; double check it there
 	      // - Commit the code, start on IPbus
+
+	      // Low gain (save 5 time-slices total):
+	      dataBlockZS.push_back(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][tsm1*128 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts0*128 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts1*128 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts2*128 + chArrPos] & 0x0FFF);
+
+	      // High gain:
+	      dataBlockZS.push_back(decoded[ski][tsm2*128 + 64 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][tsm1*128 + 64 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts0*128 + 64 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts1*128 + 64 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts2*128 + 64 + chArrPos] & 0x0FFF);
+
+
+	      // Filling TOA (stop falling clock)
+	      dataBlockZS.push_back(decoded[ski][1664 + chArrPos] & 0x0FFF);
+
+	      // Filling TOA (stop rising clock)
+	      dataBlockZS.push_back(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF);
+
+	      // Filling TOT (slow)
+	      dataBlockZS.push_back(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF);
+
+	      // Filling TOT (fast)
+	      dataBlockZS.push_back(decoded[ski][1664 + 3*64 + chArrPos] & 0x0FFF);
+
+	      // Global TS 14 MSB (it's gray encoded?). Not decoded here!
+	      dataBlockZS.push_back(decoded[ski][1921]);
 	      
-	      for (int ts = 0 ; ts < 13 ; ts++){
-		int mod13 = ((mainFrame - ts) % 13) + ((mainFrame >= ts) ? 0 : 13);
-		std::cout<<"ts="<<ts<<"  mod13="<<mod13<<std::endl;
-		if (mod13 > 2) continue; // only add +/-2 time slices 
-		// ((x - y) % 13) + ((x >= y) ? 0 : 13) //modulo n sunstruction
-		dati[ski][ch][ts] = decoded[ski][ts*128+ch] & 0x0FFF;
-		fprintf(fout, "%d  ", dati[ski][ch][ts]);
+	      // Global TS 12 LSB + 1 extra bit (binary encoded)
+	      dataBlockZS.push_back(decoded[ski][1922]);
 
-		dataBlockZS.push_back(dati[ski][ch][ts]);
 
-	      } // end of ts
+	      
+	      //for (int ts = 0 ; ts < 13 ; ts++){
+	      //dati[ski][ch][ts] = decoded[ski][ts*128+ch] & 0x0FFF;
+	      //fprintf(fout, "%d  ", dati[ski][ch][ts]);
+	      //} // end of ts
+
+	      
 	    } // end of ch
 	  } //end of ski
 	  
@@ -434,7 +523,8 @@ class RpiTestProducer : public eudaq::Producer {
 
 
     std::array<std::array<unsigned int,1924>,4> decode_raw(unsigned char * raw){
-      
+
+      // Code from Sandro with minor modifications
       //unsigned int ev[4][1924];
       std::array<std::array<unsigned int, 1924>,4> ev;
       

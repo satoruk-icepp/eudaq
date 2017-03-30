@@ -109,6 +109,47 @@ int format_channels(){
   return(0);
 }
 
+void rollMaskPrint(unsigned int r){
+  printf("Roll mask = %d \n", r);
+
+  int k1 = -1, k2 = -1;
+  for (int p=0; p<13; p++){
+    printf("pos = %d, %d \n", p, r & (1<<12-p));
+    if (r & (1<<12-p)) {
+      if (k1==-1)
+	k1 = p; 
+      else if (k2==-1)
+	k2 = p;
+      else
+	printf("Error: more than two positions in roll mask! %x \n",r);
+    }
+  }
+
+  printf("k1 = %d, k2 = %d \n", k1, k2);
+
+  // Check that k1 and k2 are consecutive
+  char last = -1;
+  if (k1==0 && k2==12) { last = 0;}
+  else if (abs(k1-k2)>1)
+    printf("The k1 and k2 are not consecutive! abs(k1-k2) = %d\n", abs(k1-k2));
+  else
+    last = k2;
+  
+  printf("last = %d\n", last);
+  // k2+1 it the begin TS
+
+  char mainFrameOffset = 5; // offset of the pulse wrt trigger (k2 rollmask) 
+  char mainFrame = (last+mainFrameOffset)%13;
+
+  
+  printf("TS 0 to be saved: %d\n", (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13);
+  printf("TS 1 to be saved: %d\n", (((mainFrame - 1) % 13) + ((mainFrame >= 1) ? 0 : 13))%13);
+  printf("TS 2 to be saved: %d\n", mainFrame);
+  printf("TS 3 to be saved: %d\n", (mainFrame+1)%13);
+  printf("TS 4 to be saved: %d\n", (mainFrame+2)%13);
+  
+
+}
 
 ////////////////////////////
 int main( int argc, char *argv[] )
@@ -172,6 +213,8 @@ int main( int argc, char *argv[] )
       if(ev[chip][1923] != 0xc099){
 	printf("Wrong Trailer is %x \n",ev[chip][1923]);
       }
+      
+      rollMaskPrint(ev[chip][1920]);
 
 
       if (convertTxt){
@@ -187,6 +230,7 @@ int main( int argc, char *argv[] )
 	/*****************************************************/
 	for(chip = 0; chip < 4; chip = chip + 1){
 	  fprintf(fout, "Event %d Chip %d RollMask %x \n",i, chip, ev[chip][1920]);
+	  
 	  for(ch =0; ch < 128; ch = ch +1){
 	    for (sample=0; sample < 13; sample = sample +1){
 	      fprintf(fout, "%d  ", dati[chip][ch][sample]);
@@ -206,5 +250,12 @@ int main( int argc, char *argv[] )
   fclose(fout);
   fclose(fraw);
 
+
+  // Play with roll-mask
+
+  unsigned int r = 0b000000000110000;
+
+  rollMaskPrint(r);
+  
   return(0);     
 }
