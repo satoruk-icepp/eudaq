@@ -86,25 +86,71 @@ namespace eudaq {
 	StandardPlane plane(2*pl+1, EVENT_TYPE, sensortype);
 
 	if (data.size()%17!=0){
-	  EUDAQ_WARN("There is something wrong with the data. Not factorized by 17 entris per channel "+eudaq::to_string(data.size()));
+	  EUDAQ_WARN("There is something wrong with the data. Not factorized by 17 entries per channel: "+eudaq::to_string(data.size()));
 	}
-	
-	unsigned nhits  = data.size()/17;
+
+
+       	const unsigned nhits  = data.size()/17;
 	plane.SetSizeZS(4, 64, nhits, 17);
 
 	for (int ind=0; ind<nhits; ind++){
-	  
-	  unsigned  ski = data[17*ind]/100;
-	  if (ski > 3)
-	    EUDAQ_WARN("There is another error with encoding. ski="+eudaq::to_string(ski));
 
+	  // APZ DBG. Test the monitoring:
+	  //for (int ts=0; ts<16; ts++)
+	  //plane.SetPixel(ind, 2, 32+ind, 500-10*ind, false, ts);
+	  
+	
+	  const unsigned ski = data[17*ind]/100;
+	  if (ski > 3){
+	    std::cout<<" EROOR in ski. It is "<<ski<<std::endl;
+	    EUDAQ_WARN("There is another error with encoding. ski="+eudaq::to_string(ski));
+	  }
 	  else {
-	    unsigned pix = data[17*ind]-ski*100;
-	    for (int ts=0; ts<16; ts++)
+	    const unsigned pix = data[17*ind]-ski*100;
+
+	    //if (ski==0 && pix==0)
+	    //std::cout<<" Zero-Zero problem. ind = "<<ind<<"  ID:"<<data[17*ind]<<std::endl;
+	    
+	    for (int ts=0; ts<17; ts++)
 	      plane.SetPixel(ind, ski, pix, data[17*ind+1 + ts], false, ts);
 	  }
-	  
+	
 	}
+
+
+
+
+	/* APZ DBG
+	// These are just to test the planes in onlinemonitor:
+	if (bl.size()>3000){
+	  plane.SetSizeZS(4, 64, 5, 2);
+
+	  plane.SetPixel(0, 2, 32, 500, false, 0);
+	  plane.SetPixel(1, 2, 33, 400, false, 0);
+	  plane.SetPixel(2, 2, 31, 400, false, 0);
+	  plane.SetPixel(3, 1, 32, 400, false, 0);
+	  plane.SetPixel(4, 3, 32, 400, false, 0);
+
+
+	  plane.SetPixel(0, 2, 32, 300, false, 1);
+	  plane.SetPixel(1, 2, 33, 100, false, 1);
+	  plane.SetPixel(2, 2, 31, 100, false, 1);
+	  plane.SetPixel(3, 1, 32, 100, false, 1);
+	  plane.SetPixel(4, 3, 32, 100, false, 1);
+	}
+	else {
+	  plane.SetSizeZS(4, 64, 3, 2);
+
+	  plane.SetPixel(0, 1, 15, 500, false, 0);
+	  plane.SetPixel(1, 1, 16, 400, false, 0);
+	  plane.SetPixel(2, 1, 14, 400, false, 0);
+
+
+	  plane.SetPixel(0, 1, 15, 300, false, 1);
+	  plane.SetPixel(1, 1, 16, 100, false, 1);
+	  plane.SetPixel(2, 1, 14, 100, false, 1);
+	}
+	*/
 
 	// Set the trigger ID
 	plane.SetTLUEvent(GetTriggerID(ev));

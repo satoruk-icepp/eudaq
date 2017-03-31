@@ -97,8 +97,9 @@ class RpiTestProducer : public eudaq::Producer {
       sprintf(rawFilename, "../data/HexaData_Run%04d.raw", m_run); // The path is relative to eudaq/bin
       m_rawFile.open(rawFilename, std::ios::binary);
       
-      fout = fopen("myOUT.txt", "w");
-      fprintf(fout,"Total number of events: NN \n");
+      //fout = fopen("myOUT.txt", "w");
+      //fprintf(fout,"Total number of events: NN \n");
+      
       // If we're here, then the Run was started on the Hardware side (TCP server will send data)
       
       // It must send a BORE to the Data Collector
@@ -163,7 +164,7 @@ class RpiTestProducer : public eudaq::Producer {
       m_rawFile.close();
       // If we were running, send signal to stop:
       //m_running=false;
-      fclose(fout);
+      //fclose(fout);
       
       // wait until all events have been read out from the hardware
       while (m_stopping) {
@@ -286,17 +287,16 @@ class RpiTestProducer : public eudaq::Producer {
 	  
 
 	  std::array<std::array<unsigned int, 1924>,4> decoded = decode_raw((unsigned char*)buffer);
-
-	  unsigned int dati[4][128][13];
-	  std::vector<unsigned int> dataBlockZS;
+	  //unsigned int dati[4][128][13];
+	  
+	  std::vector<unsigned short> dataBlockZS;
 	  
 	  for (int ski = 0; ski < 4; ski++ ){
-	    fprintf(fout, "Event %d Chip %d RollMask %x \n", m_ev, ski, decoded[ski][1920]);	    
-
 	    
-	    int ped = 190;  // pedestal
-	    int noi = 20;   // noise
-
+	    //fprintf(fout, "Event %d Chip %d RollMask %x \n", m_ev, ski, decoded[ski][1920]);	    
+	    
+	    const int ped = 190;  // pedestal
+	    const int noi = 20;   // noise
 
 	    // ----------
 	    // -- Based on the rollmask, lets determine which time-slices (frames) to add
@@ -331,15 +331,15 @@ class RpiTestProducer : public eudaq::Producer {
 	    // k2+1 it the begin TS
 	    
 	    // Let's assume we can somehow determine the main frame
-	    char mainFrameOffset = 5; // offset of the pulse wrt trigger (k2 rollmask)
-	    char mainFrame = (last+mainFrameOffset)%13;
+	    const char mainFrameOffset = 5; // offset of the pulse wrt trigger (k2 rollmask)
+	    const char mainFrame = (last+mainFrameOffset)%13;
 
 
-	    int tsm2 = (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13;
-	    int tsm1 = (((mainFrame - 1) % 13) + ((mainFrame >= 1) ? 0 : 13))%13;
-	    int ts0  = mainFrame;
-	    int ts1  = (mainFrame+1)%13;
-	    int ts2  = (mainFrame+2)%13;
+	    const int tsm2 = (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13;
+	    const int tsm1 = (((mainFrame - 1) % 13) + ((mainFrame >= 1) ? 0 : 13))%13;
+	    const int ts0  = mainFrame;
+	    const int ts1  = (mainFrame+1)%13;
+	    const int ts2  = (mainFrame+2)%13;
 
 	    //printf("TS 0 to be saved: %d\n", tsm2);
 	    //printf("TS 1 to be saved: %d\n", tsm1);
@@ -353,18 +353,13 @@ class RpiTestProducer : public eudaq::Producer {
 	    
 	    for (int ch = 0; ch < 64; ch+=2){
 
-	      int chArrPos = 63-ch; // position of the hit in array
+	      const int chArrPos = 63-ch; // position of the hit in array
 	      //int chargeLG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
-	      int chargeHG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
+	      const int chargeHG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
 	      // ZeroSuppress:
 	      if (chargeHG - (ped+noi) < 0) continue;
 	      
 	      dataBlockZS.push_back(ski*100+ch);
-
-	      // APZ Work end HERE. 29 Mar
-	      // Continue with:
-	      // - Propagate data to Converter; double check it there
-	      // - Commit the code, start on IPbus
 
 	      // Low gain (save 5 time-slices total):
 	      dataBlockZS.push_back(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF);
@@ -398,7 +393,6 @@ class RpiTestProducer : public eudaq::Producer {
 	      
 	      // Global TS 12 LSB + 1 extra bit (binary encoded)
 	      dataBlockZS.push_back(decoded[ski][1922]);
-
 
 	      
 	      //for (int ts = 0 ; ts < 13 ; ts++){
@@ -578,7 +572,7 @@ class RpiTestProducer : public eudaq::Producer {
     std::ofstream m_rawFile;
 
 
-    FILE *fout;
+    //FILE *fout;
     
 };
 
