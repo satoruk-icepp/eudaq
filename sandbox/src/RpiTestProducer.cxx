@@ -17,6 +17,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+const size_t RAW_EV_SIZE=30787;
 
 // A name to identify the raw data format of the events generated
 // Modify this to something appropriate for your producer.
@@ -90,6 +91,15 @@ class RpiTestProducer : public eudaq::Producer {
 	  return;
 	}
       }
+
+      // Let's open a file for raw data:
+      char rawFilename[256];
+      sprintf(rawFilename, "../data/HexaData_Run%04d.raw", m_run); // The path is relative to eudaq/bin
+      m_rawFile.open(rawFilename, std::ios::binary);
+      
+      //fout = fopen("myOUT.txt", "w");
+      //fprintf(fout,"Total number of events: NN \n");
+      
       // If we're here, then the Run was started on the Hardware side (TCP server will send data)
       
       // It must send a BORE to the Data Collector
@@ -151,9 +161,11 @@ class RpiTestProducer : public eudaq::Producer {
 	}
       }
 
+      m_rawFile.close();
       // If we were running, send signal to stop:
       //m_running=false;
-
+      //fclose(fout);
+      
       // wait until all events have been read out from the hardware
       while (m_stopping) {
         eudaq::mSleep(20);
@@ -193,7 +205,7 @@ class RpiTestProducer : public eudaq::Producer {
         if (m_sockfd <= 0) {
 	  EUDAQ_DEBUG("Not Running; but sleeping");
 	  SetStatus(eudaq::Status::LVL_USER, "No Socket yet in Readout Loop");
-	  eudaq::mSleep(200);
+	  eudaq::mSleep(100);
 	  continue;
 	}
 
@@ -204,7 +216,7 @@ class RpiTestProducer : public eudaq::Producer {
 	SetStatus(eudaq::Status::LVL_DEBUG, "Running");
 	EUDAQ_DEBUG("Running again");
 
-	const int bufsize = 4096;
+	const int bufsize = RAW_EV_SIZE;
 	char buffer[bufsize];
 	bzero(buffer, bufsize);
 
@@ -223,7 +235,7 @@ class RpiTestProducer : public eudaq::Producer {
 	      EUDAQ_WARN("Sockets: No data for too long..");
 	    }
 
-	  eudaq::mSleep(500);
+	  eudaq::mSleep(200);
 
 	  }
 	  else {
@@ -236,12 +248,12 @@ class RpiTestProducer : public eudaq::Producer {
 
 	// We are here if there is data and it's size is > 0
 
-	std::cout<<" After recv. n="<<n<<std::endl;
-	std::cout<<"In ReadoutLoop.  Here is the message from Server: \n"<<buffer<<std::endl;
+	std::cout<<" After recv. Size of message recieved: n="<<n<<std::endl;
+	//std::cout<<"In ReadoutLoop.  Here is the message from Server: \n"<<buffer<<std::endl;
 
 	if (m_stopping){
 	  // We have sent STOP_RUN command, let's see if we receive a confirmation:
-	  if (strncmp("STOPPED_OK",buffer,10)==0){
+	  if (strncmp("STOPPED_OK",(char*)buffer,10)==0){
 	    
 	    EUDAQ_EXTRA("Received Confirmation.. Stopping from readout loop");
 
@@ -258,41 +270,158 @@ class RpiTestProducer : public eudaq::Producer {
 
 	// If we get here, there must be data to read out
 	m_last_readout_time = std::time(NULL);
-	std::cout <<"size = "<<n<< "  m_last_readout_time:"<< m_last_readout_time
-		  <<" buf = "<<buffer<<std::endl;
+	std::cout <<"size = "<<n<< "  m_last_readout_time:"<< m_last_readout_time<<std::endl;
+	std::cout<<"First byte of the RAW event: "<<eudaq::to_hex(buffer[0])<<std::endl;
+	std::cout<<"Last two bytes of the event: "<<eudaq::to_hex(buffer[RAW_EV_SIZE-2])
+		 <<" "<<eudaq::to_hex(buffer[RAW_EV_SIZE-1])<<std::endl;
+	
+	if (n==(int)RAW_EV_SIZE && (unsigned char)buffer[0]==0xff){
+	  // This is good data (at first sight)
 
-	// Create a RawDataEvent to contain the event data to be sent
-	eudaq::RawDataEvent ev(EVENT_TYPE, m_run, m_ev);
+	  // Write it into raw file: 
+	  m_rawFile.write(buffer, RAW_EV_SIZE);
 
-	//n = write(m_sockfd,"Test",4);
-	//if (n < 0) EUDAQ_ERROR("Sockets: ERROR writing to socket");
-	//else EUDAQ_EXTRA("Sent confirmation to client");
+	  	
+	  // Create a RawDataEvent to contain the event data to be sent
+	  eudaq::RawDataEvent ev(EVENT_TYPE, m_run, m_ev);
+	  
 
-	eudaq::mSleep(1000);
+	  std::array<std::array<unsigned int, 1924>,4> decoded = decode_raw((unsigned char*)buffer);
+	  //unsigned int dati[4][128][13];
+	  
+	  std::vector<unsigned short> dataBlockZS;
+	  
+	  for (int ski = 0; ski < 4; ski++ ){
+	    
+	    //fprintf(fout, "Event %d Chip %d RollMask %x \n", m_ev, ski, decoded[ski][1920]);	    
+	    
+	    const int ped = 190;  // pedestal
+	    const int noi = 20;   // noise
 
-	//if (_writeRaw && _rawFile.is_open()) _rawFile.write(buf, size);
-	// C array to vector
-	//copy(buf, buf + sk_size, back_inserter(bufRead));
-
-	//string s = "HGCDAQv1";
-	//ev->AddBlock(0,s.c_str(), s.length());
-	//ev->AddBlock(1, vector<int>()); // dummy block
-
-	SendEvent(ev);
-	m_ev++;
-
-	continue;
-
-
-	/*
-		if (sk_size == -1)
-		std::cout << "Error on read: " << errno << " Disconnect and going to the waiting mode." << std::endl;
+	    // ----------
+	    // -- Based on the rollmask, lets determine which time-slices (frames) to add
+	    //
+	    unsigned int r = decoded[ski][1920];
+	    //printf("Roll mask = %d \n", r);
+	    int k1 = -1, k2 = -1;
+	    for (int p=0; p<13; p++){
+	      //printf("pos = %d, %d \n", p, r & (1<<12-p));
+	      if (r & (1<<12-p)) {
+		if (k1==-1)
+		  k1 = p;
+		else if (k2==-1)
+		  k2 = p;
 		else
-		std::cout << "Socket disconnected. going to the waiting mode." << std::endl;
-		close(m_sockfd);
-		m_sockfd = -1;
-		m_stopping = 1;
-	*/
+		  printf("Error: more than two positions in roll mask! %x \n",r);
+	      }
+	    }
+
+	    //printf("k1 = %d, k2 = %d \n", k1, k2);
+	      
+	    // Check that k1 and k2 are consecutive
+	    char last = -1;
+	    if (k1==0 && k2==12) { last = 0;}
+	    else if (abs(k1-k2)>1)
+	      EUDAQ_WARN("The k1 and k2 are not consecutive! abs(k1-k2) = "+ eudaq::to_string(abs(k1-k2)));
+	    //printf("The k1 and k2 are not consecutive! abs(k1-k2) = %d\n", abs(k1-k2));
+	    else
+	      last = k2;
+
+	    //printf("last = %d\n", last);
+	    // k2+1 it the begin TS
+	    
+	    // Let's assume we can somehow determine the main frame
+	    const char mainFrameOffset = 5; // offset of the pulse wrt trigger (k2 rollmask)
+	    const char mainFrame = (last+mainFrameOffset)%13;
+
+
+	    const int tsm2 = (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13;
+	    const int tsm1 = (((mainFrame - 1) % 13) + ((mainFrame >= 1) ? 0 : 13))%13;
+	    const int ts0  = mainFrame;
+	    const int ts1  = (mainFrame+1)%13;
+	    const int ts2  = (mainFrame+2)%13;
+
+	    //printf("TS 0 to be saved: %d\n", tsm2);
+	    //printf("TS 1 to be saved: %d\n", tsm1);
+	    //printf("TS 2 to be saved: %d\n", ts0);
+	    //printf("TS 3 to be saved: %d\n", ts1);
+	    //printf("TS 4 to be saved: %d\n", ts2);
+
+	    // -- End of main frame determination
+	    
+
+	    
+	    for (int ch = 0; ch < 64; ch+=2){
+
+	      const int chArrPos = 63-ch; // position of the hit in array
+	      //int chargeLG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
+	      const int chargeHG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
+	      // ZeroSuppress:
+	      if (chargeHG - (ped+noi) < 0) continue;
+	      
+	      dataBlockZS.push_back(ski*100+ch);
+
+	      // Low gain (save 5 time-slices total):
+	      dataBlockZS.push_back(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][tsm1*128 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts0*128 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts1*128 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts2*128 + chArrPos] & 0x0FFF);
+
+	      // High gain:
+	      dataBlockZS.push_back(decoded[ski][tsm2*128 + 64 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][tsm1*128 + 64 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts0*128 + 64 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts1*128 + 64 + chArrPos] & 0x0FFF);
+	      dataBlockZS.push_back(decoded[ski][ts2*128 + 64 + chArrPos] & 0x0FFF);
+
+
+	      // Filling TOA (stop falling clock)
+	      dataBlockZS.push_back(decoded[ski][1664 + chArrPos] & 0x0FFF);
+
+	      // Filling TOA (stop rising clock)
+	      dataBlockZS.push_back(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF);
+
+	      // Filling TOT (slow)
+	      dataBlockZS.push_back(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF);
+
+	      // Filling TOT (fast)
+	      dataBlockZS.push_back(decoded[ski][1664 + 3*64 + chArrPos] & 0x0FFF);
+
+	      // Global TS 14 MSB (it's gray encoded?). Not decoded here!
+	      dataBlockZS.push_back(decoded[ski][1921]);
+	      
+	      // Global TS 12 LSB + 1 extra bit (binary encoded)
+	      dataBlockZS.push_back(decoded[ski][1922]);
+
+	      
+	      //for (int ts = 0 ; ts < 13 ; ts++){
+	      //dati[ski][ch][ts] = decoded[ski][ts*128+ch] & 0x0FFF;
+	      //fprintf(fout, "%d  ", dati[ski][ch][ts]);
+	      //} // end of ts
+
+	      
+	    } // end of ch
+	  } //end of ski
+	  
+	  ev.AddBlock(0, dataBlockZS);
+	  SendEvent(ev);
+
+	}
+	else {
+	  if (n!=(int)RAW_EV_SIZE){
+	    
+	    EUDAQ_WARN("The event size is not right! n="+eudaq::to_string(n));
+	    SetStatus(eudaq::Status::LVL_WARN, "Wrong event size.");
+	  }
+	  if (buffer[0]!=0xff){
+	    EUDAQ_WARN("First byte is not FF. It is: "+eudaq::to_hex(buffer[0]));
+	    SetStatus(eudaq::Status::LVL_WARN, "Corrupted Data");
+	  }
+	}
+	
+	m_ev++;
+	continue;
 
       }// end of while(done) loop
 
@@ -362,7 +491,72 @@ class RpiTestProducer : public eudaq::Producer {
 	  std::cout << bytesWritten << " out of " << size << " bytes is  written to the TCP socket" << std::endl;
       }
     }
+
+    // Methods for raw data conversion
+
+
+    unsigned int gray_to_brady(unsigned int gray)
+    {
+      // Code from:
+      //https://github.com/CMS-HGCAL/TestBeam/blob/826083b3bbc0d9d78b7d706198a9aee6b9711210/RawToDigi/plugins/HGCalTBRawToDigi.cc#L154-L170
+      unsigned int result = gray & (1 << 11);
+      result |= (gray ^ (result >> 1)) & (1 << 10);
+      result |= (gray ^ (result >> 1)) & (1 << 9);
+      result |= (gray ^ (result >> 1)) & (1 << 8);
+      result |= (gray ^ (result >> 1)) & (1 << 7);
+      result |= (gray ^ (result >> 1)) & (1 << 6);
+      result |= (gray ^ (result >> 1)) & (1 << 5);
+      result |= (gray ^ (result >> 1)) & (1 << 4);
+      result |= (gray ^ (result >> 1)) & (1 << 3);
+      result |= (gray ^ (result >> 1)) & (1 << 2);
+      result |= (gray ^ (result >> 1)) & (1 << 1);
+      result |= (gray ^ (result >> 1)) & (1 << 0);
+      return result;
+    }
+
+
+
+    std::array<std::array<unsigned int,1924>,4> decode_raw(unsigned char * raw){
+
+      // Code from Sandro with minor modifications
+      //unsigned int ev[4][1924];
+      std::array<std::array<unsigned int, 1924>,4> ev;
       
+      unsigned char x;
+      for(int i = 0; i < 1924; i = i+1){
+	for (int k = 0; k < 4; k = k + 1){
+	  ev[k][i] = 0;
+	}
+      }
+      
+      for(int  i = 0; i < 1924; i = i+1){
+	for (int j=0; j < 16; j = j+1){
+	  x = raw[1 + i*16 + j];
+	  x = x & 15; // <-- APZ: Not sure why this is needed.
+	  for (int k = 0; k < 4; k = k + 1){
+	    ev[k][i] = ev[k][i] | (unsigned int) (((x >> (3 - k) ) & 1) << (15 - j));
+	  }
+	}
+      }
+
+      unsigned int t, bith;
+      for(int k = 0; k < 4 ; k = k +1 ){
+	for(int i = 0; i < 128*13; i = i + 1){
+	  bith = ev[k][i] & 0x8000;
+
+	  t = gray_to_brady(ev[k][i] & 0x7fff);
+	  ev[k][i] =  bith | t;
+	}
+      }
+    
+      return ev;
+    }
+
+
+    
+    
+
+    
   private:
     unsigned m_run, m_ev, m_exampleparam;
     unsigned m_ski;
@@ -374,6 +568,12 @@ class RpiTestProducer : public eudaq::Producer {
     int m_port;
 
     std::time_t m_last_readout_time;
+
+    std::ofstream m_rawFile;
+
+
+    //FILE *fout;
+    
 };
 
 // The main function that will create a Producer instance and run it
