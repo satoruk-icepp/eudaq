@@ -13,9 +13,9 @@ PORT = 55511
 
 t1_stop = threading.Event()
 
-EventRate = 50 # Events per spill
+EventRate = 100 # Events per spill
 SpillTime = 5   # Duration of the spill in seconds
-InterSpill = 10 # Time between spills in seconds
+InterSpill = 5 # Time between spills in seconds
 
 def sendFakeData(conn, stop_event):
   print 'This is conn:', conn
