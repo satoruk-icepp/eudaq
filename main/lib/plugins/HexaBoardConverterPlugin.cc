@@ -60,14 +60,14 @@ namespace eudaq {
                                      const Event &ev) const {
       // If the event type is used for different sensors
       // they can be differentiated here
-      std::string sensortype = "HexaBoard";
+      const std::string sensortype = "HexaBoard";
 
 
       const RawDataEvent * rev = dynamic_cast<const RawDataEvent *> ( &ev );
 
       //rev->Print(std::cout);
 
-      unsigned nPlanes = rev->NumBlocks();
+      const unsigned nPlanes = rev->NumBlocks();
       std::cout<<"Number of Raw Data Blocks (=Planes): "<<nPlanes<<std::endl;
 
       for (unsigned pl=0; pl<nPlanes; pl++){
@@ -90,10 +90,10 @@ namespace eudaq {
 	}
 
 
-       	const unsigned nhits  = data.size()/17;
-	plane.SetSizeZS(4, 64, nhits, 17);
+       	const unsigned nHits  = data.size()/17;
+	plane.SetSizeZS(4, 64, nHits, 16);
 
-	for (int ind=0; ind<nhits; ind++){
+	for (int ind=0; ind<nHits; ind++){
 
 	  // APZ DBG. Test the monitoring:
 	  //for (int ts=0; ts<16; ts++)
@@ -111,7 +111,7 @@ namespace eudaq {
 	    //if (ski==0 && pix==0)
 	    //std::cout<<" Zero-Zero problem. ind = "<<ind<<"  ID:"<<data[17*ind]<<std::endl;
 	    
-	    for (int ts=0; ts<17; ts++)
+	    for (int ts=0; ts<16; ts++)
 	      plane.SetPixel(ind, ski, pix, data[17*ind+1 + ts], false, ts);
 	  }
 	

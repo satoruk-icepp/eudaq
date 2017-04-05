@@ -86,14 +86,14 @@ namespace eudaq {
 	data.resize(bl.size() / sizeof(short));
 	std::memcpy(&data[0], &bl[0], bl.size());
 
-	  if (bl.size()<8){
-	    EUDAQ_ERROR("This data must be corrupt.  Block size=" + to_string(bl.size()));
-	  }
+	if (bl.size()<8){
+	  EUDAQ_ERROR("This data must be corrupt.  Block size=" + to_string(bl.size()));
+	}
 
-	int nROCs = data[0];
-	int nPixels = data[1];
-	int trigID = data[2];
-	int nHits = data[3];
+	const unsigned short nROCs = data[0];
+	const unsigned short nPixels = data[1];
+	const unsigned short trigID = data[2];
+	const unsigned short nHits = data[3];
 
 	std::cout<<" Size of data = "<<data.size()<<"  trig ID:"<<trigID
 		 <<"  nHits = "<<nHits<<" (If zero: it's non-ZS data!) \n"
@@ -122,7 +122,7 @@ namespace eudaq {
 	  int ind=0;
 	  for (unsigned roc = 0; roc < nROCs; ++roc) {
 	    for (unsigned px = 0; px < nPixels; ++px) {
-	      unsigned charge = data[4+roc+px*nROCs];
+	      const unsigned charge = data[4+roc+px*nROCs];
 	      //for (unsigned fr=0; fr < 3; fr++)
 	      plane.SetPixel(ind, roc, px, 0.25*charge, false, 0);
 	      plane.SetPixel(ind, roc, px,      charge, false, 1);
@@ -152,11 +152,11 @@ namespace eudaq {
 	  //std::cout<<" data at "<<n<<"  is: "<<data[n]<<std::endl;
 
 	  int ind = 0;
-	  for (size_t hit = 4; hit < data.size()-4; hit+=3) {
+	  for (int hit = 4; hit < data.size(); hit+=3) {
 
-	    unsigned short roc = data[hit];
-	    unsigned short px  = data[hit+1];
-	    unsigned short charge = data[hit+2];
+	    const unsigned short roc = data[hit];
+	    const unsigned short px  = data[hit+1];
+	    const unsigned short charge = data[hit+2];
 
 	    //std::cout<<" roc="<<roc<<" px="<<px<<" charge: "<<charge<<std::endl;
 	    
@@ -180,6 +180,8 @@ namespace eudaq {
 
 	    ind++;
 	  }
+	  if (nHits != ind)
+	    EUDAQ_THROW("nHist does not match to expectation! ind:"+to_string(ind)+"  nHist:"+to_string(nHits));
 	}
 
 
