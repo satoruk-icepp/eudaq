@@ -17,7 +17,7 @@ make install -j4
 ```
 
 * Run this ipbus example:
-  * Start an ipbus skiroc emulation, fill it with random data (see [myIpbusTest](https://github.com/asteencern/ipbus-test)):  
-`./STARTRUN ipbustest`
+  * Start an ipbus skiroc emulation, (see [myIpbusTest](https://github.com/asteencern/ipbus-test)). It will produce random data. 
+  * Then start the euDAQ with command `./STARTRUN ipbustest` from the root directory
   * Modify the config file in *eudaq/producers/ipbusTest/conf/IpbusTestConfig.conf* to add the location of the **ConnectionFile**      
-    * The start the run. It will readout the data and store them in file.
+    * Now you can start the run. It will readout the data and store them in file.
