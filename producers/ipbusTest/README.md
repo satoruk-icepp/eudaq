@@ -13,7 +13,7 @@ To build and compile the code:
 ```
 cd build
 cmake -DBUILD_ipbusTest=ON ../
-make instal -j4
+make install -j4
 ```
 
   * Run this ipbus example:
