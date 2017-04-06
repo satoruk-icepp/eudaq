@@ -9,6 +9,7 @@ At the time of writing, stable version of eudaq is 1.6.0, hence we took this tag
 An installation of eudaq is available on daq PC in the lab at b27. One can also install it relatevey easily on Ubuntu and probably other systems.
 
 Quick commands (for details follow eudaq instructions below):
+ * On SLC6 machines with AFS setup, run `source setup_eudaq_cmshgcal.sh` in order to link **CMake** and **Qt** libraries.
  * To create make file: from *build* directory: `cmake -D BUILD_sandbox=ON -D BUILD_onlinemon=ON ..`
  * To compile `make install` in the build directory
 
