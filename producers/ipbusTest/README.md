@@ -16,9 +16,8 @@ cmake -DBUILD_ipbusTest=ON ../
 make install -j4
 ```
 
-  * Run this ipbus example:
-
-    * Start an ipbus skiroc emulation, fill it with random data (see [myIpbusTest](https://github.com/asteencern/ipbus-test)):  
- `./STARTRUN ipbustest`
-
-    * Load config file in *eudaq/producers/ipbusTest/conf/IpbusTestConfig.conf*, and start the run. It will readout the data and store them in file.
+* Run this ipbus example:
+  * Start an ipbus skiroc emulation, fill it with random data (see [myIpbusTest](https://github.com/asteencern/ipbus-test)):  
+`./STARTRUN ipbustest`
+  * Modify the config file in *eudaq/producers/ipbusTest/conf/IpbusTestConfig.conf* to add the location of the **ConnectionFile**      
+    * The start the run. It will readout the data and store them in file.
