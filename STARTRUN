@@ -10,6 +10,8 @@ elif [[ $1 == "rpi" ]]; then
     script=./sandbox/STARTRUN
 elif [[ $1 == "ipbustest" ]]; then
     script=./producers/ipbusTest/STARTRUN
+elif [[ $1 == "hgcal" ]]; then
+    script=./producers/cmshgcal/STARTRUN
 else
     # default
     script=./sandbox/STARTRUN

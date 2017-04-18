@@ -8,7 +8,8 @@ import time
 
 # HOST = '128.141.89.137'
 HOST = '127.0.0.1'
-PORT = 55511
+PORTTCP = 55511
+PORTUDP = 55512
 
 
 t1_stop = threading.Event()
@@ -17,8 +18,7 @@ EventRate = 100 # Events per spill
 SpillTime = 5   # Duration of the spill in seconds
 InterSpill = 5 # Time between spills in seconds
 
-def sendFakeData(conn, stop_event):
-  print 'This is conn:', conn
+def sendFakeData(sudp, stop_event):
 
   # Here read the file with some raw data from HexaBoard
   fname = 'RUN_170317_0912.raw' # This file is not on github, get it elsewhere
@@ -46,7 +46,7 @@ def sendFakeData(conn, stop_event):
     print 'submitting data', ev, evmod, len(d)
 
     try:
-        conn.sendall(d)
+        sudp.sendto(d, (HOST,PORTUDP))
         #conn.sendall('-->>>  Here is your data <<< --')
     except socket.error:
         print 'The client socket is probably closed. We stop sending data.'
@@ -56,10 +56,10 @@ def sendFakeData(conn, stop_event):
     ev+=1
     
 
-def clientthread(conn):
+def clientthread(conn, sudp):
     #Sending message to connected client
     #conn.send('Welcome to the server. Receving Data...\n')
-    
+
     #infinite loop so that function do not terminate and thread do not end.
 
     while True:
@@ -78,16 +78,20 @@ def clientthread(conn):
         if str(data)=='START_RUN':
             t1_stop.clear()
             conn.sendall('GOOD_START\n')
+            #sudp.sendto('GOOD_START\n', (HOST,PORTUDP))
             time.sleep(0.2)
-            start_new_thread(sendFakeData, (conn,t1_stop))
+            start_new_thread(sendFakeData, (sudp,t1_stop))
+            print 'Sent GOOD_START confirmation'
 
         elif str(data)=='STOP_RUN':
             t1_stop.set()
             time.sleep(2)
             conn.sendall('STOPPED_OK')
+            #sudp.sendto('STOPPED_OK', (HOST,PORTUDP))
             print 'Sent STOPPED_OK confirmation'
         else:
             conn.sendall('Message Received at the server: %s\n' % str(data))
+            #sudp.sendto('Message Received at the server: %s\n' % str(data), (HOST,PORTUDP))
 
 
     conn.close()
@@ -95,35 +99,43 @@ def clientthread(conn):
 
 if __name__ == "__main__":
 
-  # blink is only for RPI tests
-  # from blink import *
-
-  #Blink(8, 3,0.1)
-
-  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  # This socket is to be used for communication:
+  sTcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   
-  print 'Socket created:', s
+  print 'Socket created:', sTcp
 
   try:
-    s.bind((HOST, PORT))
+    sTcp.bind((HOST, PORTTCP))
   except socket.error , msg:
     print 'Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
     sys.exit()
 
   print 'Socket bind complete'
 
-  s.listen(3)
+  sTcp.listen(3)
   print 'Socket now listening'
 
+  # This one is to be used for sending the data
+  sUdp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  
+  print 'Socket created:', sUdp
 
+  '''
+  try:
+    sUdp.bind((HOST, PORTUDP))
+  except socket.error , msg:
+    print 'Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
+    sys.exit()
+  '''
+  
   try:
     while True:
       # wait to accept a connection
-      conn, addr = s.accept()
+      conn, addr = sTcp.accept()
       print 'Connected with ' + addr[0] + ':' + str(addr[1])
 
       #start new thread
-      start_new_thread(clientthread ,(conn,))
+      start_new_thread(clientthread ,(conn,sUdp,))
 
   finally:
     s.close()

@@ -16,8 +16,8 @@ namespace eudaq {
 
   // The event type for which this converter plugin will be registered
   // Modify this to match your actual event type (from the Producer)
-  static const char *EVENT_TYPE = "RPI";
-  //static const char *EVENT_TYPE = "HexaBoard";
+  //static const char *EVENT_TYPE = "RPI";
+  static const char *EVENT_TYPE = "HexaBoard";
 
   // Declare a new class that inherits from DataConverterPlugin
   class HexaBoardConverterPlugin : public DataConverterPlugin {

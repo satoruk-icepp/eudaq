@@ -12,6 +12,7 @@
 #include <mutex>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #include <unistd.h>
 #include <sys/time.h>
@@ -26,24 +27,24 @@ static const std::string EVENT_TYPE = "RPI";
 // Declare a new class that inherits from eudaq::Producer
 class RpiTestProducer : public eudaq::Producer {
   public:
-
     // The constructor must call the eudaq::Producer constructor with the name
     // and the runcontrol connection string, and initialize any member variables.
     RpiTestProducer(const std::string & name, const std::string & runcontrol)
       : eudaq::Producer(name, runcontrol),
-	m_run(0), m_ev(0), m_stopping(false), m_done(false),
-	m_sockfd(0), m_running(false), m_configured(false){}
-
+      m_run(0), m_ev(0), m_stopping(false), m_done(false),
+      m_sockfd1(0), m_sockfd2(0), m_running(false), m_configured(false){}
+    
     // This gets called whenever the DAQ is configured
     virtual void OnConfigure(const eudaq::Configuration & config) {
       std::cout << "Configuring: " << config.Name() << std::endl;
-
+      
       // Do any configuration of the hardware here
       // Configuration file values are accessible as config.Get(name, default)
       m_exampleparam = config.Get("Parameter", 0);
       m_ski = config.Get("Ski", 0);
 
-      m_port = config.Get("port", 55511);
+      m_portTCP = config.Get("portTCP", 55511);
+      m_portUDP = config.Get("portUDP", 55512);
       m_rpi_1_ip = config.Get("RPI_1_IP", "127.0.0.1");
 
       std::cout << "Example Parameter = " << m_exampleparam << std::endl;
@@ -76,7 +77,7 @@ class RpiTestProducer : public eudaq::Producer {
 
       char answer[20];
       bzero(answer, 20);
-      int n = recv(m_sockfd, answer, 20, 0);
+      int n = recv(m_sockfd1, answer, 20, 0);
       if (n <= 0) {
 	std::cout<<n<<" Something is wrong with socket, we can't start the run..."<<std::endl;
 	SetStatus(eudaq::Status::LVL_ERROR, "Can't Start Run on Hardware side.");
@@ -116,6 +117,7 @@ class RpiTestProducer : public eudaq::Producer {
 
       // At the end, set the status that will be displayed in the Run Control.
       SetStatus(eudaq::Status::LVL_OK, "Running");
+      std::cout<<"Started it!"<<std::endl;
     }
 
     // This gets called whenever a run is stopped
@@ -133,31 +135,27 @@ class RpiTestProducer : public eudaq::Producer {
 
       m_stopping = true;
 
-      if (!m_running){
-	// If we're not running, then we need to catch the confirmation here
-	// Otherwise it will be caught in the ReadOut loop (hopefully...)
-
-	while (!m_stopped){
-	  char answer[20];
-	  bzero(answer, 20);
-	  int n = recv(m_sockfd, answer, 20, 0);
-	  if (n <= 0) {
-	    SetStatus(eudaq::Status::LVL_ERROR, "Can't Stop Run on Hardware side.");
+      while (!m_stopped){
+	char answer[20];
+	bzero(answer, 20);
+	int n = recv(m_sockfd1, answer, 20, 0);
+	if (n <= 0) {
+	  SetStatus(eudaq::Status::LVL_ERROR, "Can't Stop Run on Hardware side.");
+	  return;
+	}
+	else {
+	  std::cout<<"Answer to STOP_RUN: "<<answer<<std::endl;
+	  if (strncmp(answer,"STOPPED_OK",10)!=0) {
+	    std::cout<<"Something is wrong, we can't stop the run..."<<std::endl;
+	    SetStatus(eudaq::Status::LVL_ERROR, "Can't Start Run on Hardware side.");
 	    return;
 	  }
-	  else {
-	    std::cout<<"Answer to STOP_RUN: "<<answer<<std::endl;
-	    if (strncmp(answer,"STOPPED_OK",10)!=0) {
-	      std::cout<<"Something is wrong, we can't stop the run..."<<std::endl;
-	      SetStatus(eudaq::Status::LVL_ERROR, "Can't Start Run on Hardware side.");
-	      return;
-	    }
-
-	    CloseConnection();
-	    m_stopping = false;
-	    m_running  = false;
-	    m_stopped=true;
-	  }
+	  
+	  CloseConnection();
+	  m_stopping = false;
+	  m_running  = false;
+	  m_stopped  = true;
+	  
 	}
       }
 
@@ -202,9 +200,11 @@ class RpiTestProducer : public eudaq::Producer {
 	    continue;
 	  }
 
-        if (m_sockfd <= 0) {
-	  EUDAQ_DEBUG("Not Running; but sleeping");
-	  SetStatus(eudaq::Status::LVL_USER, "No Socket yet in Readout Loop");
+        //if (m_sockfd1 <= 0) {
+	if (m_sockfd1 <= 0 || m_sockfd2 <= 0) {
+	  EUDAQ_DEBUG("No sockets. Not Running; but sleeping");
+	  SetStatus(eudaq::Status::LVL_USER, "No Sockets yet in Readout Loop.  sfd1="+
+		    eudaq::to_string(m_sockfd1)+" sfd2="+eudaq::to_string(m_sockfd2));
 	  eudaq::mSleep(100);
 	  continue;
 	}
@@ -216,11 +216,14 @@ class RpiTestProducer : public eudaq::Producer {
 	SetStatus(eudaq::Status::LVL_DEBUG, "Running");
 	EUDAQ_DEBUG("Running again");
 
-	const int bufsize = RAW_EV_SIZE;
+	const int bufsize = 10;
 	char buffer[bufsize];
 	bzero(buffer, bufsize);
 
-	int n = recv(m_sockfd, buffer, bufsize, 0);
+	// TCP version: int n = recv(m_sockfd1, buffer, bufsize, 0);
+	std::cout<<"Before recvfrom. Are you blocking us?  sockLen="<<sockLen<<std::endl;
+	int n = recvfrom(m_sockfd2, buffer, 10, 0, (struct sockaddr *)&dst_addr, &sockLen);
+	std::cout<<"After recvfrom. Un-blocked..."<<std::endl;
 	if (n <= 0) {
 	  if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
 	    std::cout<<"n = "<<n<<" Socket timed out. Errno="<<errno<<std::endl;
@@ -251,6 +254,7 @@ class RpiTestProducer : public eudaq::Producer {
 	std::cout<<" After recv. Size of message recieved: n="<<n<<std::endl;
 	//std::cout<<"In ReadoutLoop.  Here is the message from Server: \n"<<buffer<<std::endl;
 
+	/*
 	if (m_stopping){
 	  // We have sent STOP_RUN command, let's see if we receive a confirmation:
 	  if (strncmp("STOPPED_OK",(char*)buffer,10)==0){
@@ -265,8 +269,9 @@ class RpiTestProducer : public eudaq::Producer {
 	    continue;
 	  }
 	  // If not, then it's probably the data continuing to come, let's save it.
+	  
 	}
-
+	*/
 
 	// If we get here, there must be data to read out
 	m_last_readout_time = std::time(NULL);
@@ -274,7 +279,7 @@ class RpiTestProducer : public eudaq::Producer {
 	std::cout<<"First byte of the RAW event: "<<eudaq::to_hex(buffer[0])<<std::endl;
 	std::cout<<"Last two bytes of the event: "<<eudaq::to_hex(buffer[RAW_EV_SIZE-2])
 		 <<" "<<eudaq::to_hex(buffer[RAW_EV_SIZE-1])<<std::endl;
-	
+
 	if (n==(int)RAW_EV_SIZE && (unsigned char)buffer[0]==0xff){
 	  // This is good data (at first sight)
 
@@ -434,36 +439,67 @@ class RpiTestProducer : public eudaq::Producer {
       // Using this tutorial as guidence: http://www.linuxhowtos.org/C_C++/socket.htm
       // and code from:
       // https://github.com/EUDAQforLC/eudaq/blob/ahcal_telescope_december2016_v1.6/producers/calice/AHCAL/src/AHCALProducer.cc
-
-      m_sockfd = socket(AF_INET, SOCK_STREAM, 0);
-      if (m_sockfd<0) {
-	EUDAQ_ERROR("Can't open socket: m_sockfd="+eudaq::to_string(m_sockfd));
+      // TCP socket is to be used for messaging only (START, STOP, and confirmations)
+      
+      m_sockfd1 = socket(AF_INET, SOCK_STREAM, 0);
+      if (m_sockfd1<0) {
+	EUDAQ_ERROR("Can't open TCP socket: m_sockfd="+eudaq::to_string(m_sockfd1));
 	return 0;
       }
-
-      struct sockaddr_in dst_addr;
+      
+      //struct sockaddr_in dst_addr;
       bzero((char *) &dst_addr, sizeof(dst_addr));
       dst_addr.sin_family = AF_INET;
       dst_addr.sin_addr.s_addr = inet_addr(m_rpi_1_ip.c_str());
-      dst_addr.sin_port = htons(m_port);
-
-      int ret = connect(m_sockfd, (struct sockaddr *) &dst_addr, sizeof(dst_addr));
+      dst_addr.sin_port = htons(m_portTCP);
+ 
+      int ret = connect(m_sockfd1, (struct sockaddr *) &dst_addr, sizeof(dst_addr));
       if (ret != 0) {
 	SetStatus(eudaq::Status::LVL_WARN, "No Socket.");
-	EUDAQ_WARN("Can't connect() to socket: ret="+eudaq::to_string(ret)+"  sockfd="+eudaq::to_string(m_sockfd));
+	EUDAQ_WARN("Can't connect() to socket: ret="+eudaq::to_string(ret)+"  sockfd="+eudaq::to_string(m_sockfd1));
 	return 0;
       }
+
+      // -----
+      // And here is an UDP socket.
+      // It is to be used for receiving data
+
+      m_sockfd2 = socket(AF_INET, SOCK_DGRAM, 0);
+      if (m_sockfd2<0) {
+        EUDAQ_ERROR("Can't open UDP socket: m_sockfd="+eudaq::to_string(m_sockfd2));
+        return 0;
+      }
+
+      // Re-using the same dst_addr
+      bzero((char *) &dst_addr, sizeof(dst_addr));
+      dst_addr.sin_family = AF_INET;
+      //dst_addr.sin_addr.s_addr = inet_addr(m_rpi_1_ip.c_str());
+      dst_addr.sin_port = htons(m_portUDP);
+
+      struct hostent *server = gethostbyname("localhost");
+      bcopy((char *)server->h_addr, 
+	    (char *)&dst_addr.sin_addr.s_addr, server->h_length);
+
+      std::cout<<"dst_addr: "<<dst_addr.sin_addr.s_addr<<std::endl;
+
+      sockLen = sizeof(dst_addr);
+
+      bind(m_sockfd2, (struct sockaddr *)&dst_addr, sizeof(dst_addr));
+	
+      //char buffer[]="HELLO";
+      //int n = sendto(m_sockfd2, buffer, strlen(buffer), 0, (const struct sockaddr *)&dst_addr, sizeof(struct sockaddr_in));
 
       // ***********************
       // This makes the recv() command non-blocking.
       // After the timeout, it will get an error which we can catch and continue the loops
+
       struct timeval timeout;
       timeout.tv_sec = 20;
       timeout.tv_usec = 0;
-      setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+      setsockopt(m_sockfd2, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
       //****************
 
-      std::cout << "  Opened TCP socket: "<<m_sockfd << std::endl;
+      std::cout << "  Opened TCP socket: "<<m_sockfd1 << std::endl;
       return 1;
     }
 
@@ -471,9 +507,12 @@ class RpiTestProducer : public eudaq::Producer {
     void CloseConnection()
     {
       //std::unique_lock<std::mutex> myLock(m_mufd);
-      close(m_sockfd);
-      std::cout << "  Closed TCP socket: "<<m_sockfd << std::endl;
-      m_sockfd = -1;
+      close(m_sockfd1);
+      std::cout << "  Closed TCP socket: "<<m_sockfd1 << std::endl;
+      m_sockfd1 = -1;
+      close(m_sockfd2);
+      std::cout << "  Closed UDP socket: "<<m_sockfd2 << std::endl;
+      m_sockfd2 = -1;
 
     }
 
@@ -481,10 +520,10 @@ class RpiTestProducer : public eudaq::Producer {
       
       if (size == 0) size = strlen(command);
       
-      if (m_sockfd <= 0)
+      if (m_sockfd1 <= 0)
 	std::cout << "SendCommand(): cannot send command because connection is not open." << std::endl;
       else {
-	size_t bytesWritten = write(m_sockfd, command, size);
+	size_t bytesWritten = write(m_sockfd1, command, size);
 	if (bytesWritten < 0)
 	  std::cout << "There was an error writing to the TCP socket" << std::endl;
 	else
@@ -561,18 +600,20 @@ class RpiTestProducer : public eudaq::Producer {
     unsigned m_run, m_ev, m_exampleparam;
     unsigned m_ski;
     bool m_stopping, m_stopped, m_done, m_started, m_running, m_configured;
-    int m_sockfd, m_cli_sockfd; //TCP socket connection file descriptors (fd)
+    int m_sockfd1, m_sockfd2; //TCP and UDP socket connection file descriptors (fd)
     //std::mutex m_mufd;
 
     std::string m_rpi_1_ip;
-    int m_port;
+    int m_portTCP, m_portUDP;
 
     std::time_t m_last_readout_time;
 
     std::ofstream m_rawFile;
 
-
+    unsigned sockLen;
     //FILE *fout;
+
+    struct sockaddr_in dst_addr;
     
 };
 

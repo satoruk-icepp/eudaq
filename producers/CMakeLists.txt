@@ -1,3 +1,4 @@
+
 macro(optional_add_subdirectory dir)
   option(BUILD_${dir} "Build producer in directory ${dir}?" OFF)
   if(BUILD_${dir} OR BUILD_allproducer)
@@ -12,6 +13,10 @@ option(BUILD_allproducer "Build all producers?" OFF)
 # some producers do not e.g. run under Windows or have missing includes/dependencies
 # with this option set to "ON" they are built anyway
 option(IGNORE_KNOWN_ISSUES "Ignore known compilation issues of producer executables and configure them anyway?" OFF)
+
+
+optional_add_subdirectory(ipbusTest)
+optional_add_subdirectory(cmshgcal)
 
 optional_add_subdirectory(altro)
 optional_add_subdirectory(altroUSB)
