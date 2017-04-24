@@ -22,7 +22,7 @@ const size_t RAW_EV_SIZE=30787;
 
 // A name to identify the raw data format of the events generated
 // Modify this to something appropriate for your producer.
-static const std::string EVENT_TYPE = "RPI";
+static const std::string EVENT_TYPE = "HexaBoard";
 
 // Declare a new class that inherits from eudaq::Producer
 class RpiTestProducer : public eudaq::Producer {
@@ -220,10 +220,11 @@ class RpiTestProducer : public eudaq::Producer {
 	char buffer[bufsize];
 	bzero(buffer, bufsize);
 
-	// TCP version: int n = recv(m_sockfd1, buffer, bufsize, 0);
-	std::cout<<"Before recvfrom. Are you blocking us?  sockLen="<<sockLen<<std::endl;
-	int n = recvfrom(m_sockfd2, buffer, RAW_EV_SIZE, 0, (struct sockaddr *)&dst_addr, &sockLen);
-	std::cout<<"After recvfrom. Un-blocked..."<<std::endl;
+	struct sockaddr_in their_addr;
+	socklen_t addr_len = sizeof(their_addr);	
+	//std::cout<<"Before recvfrom. Are you blocking us?  addr_len="<<addr_len<<std::endl;
+	int n = recvfrom(m_sockfd2, buffer, RAW_EV_SIZE, 0, (struct sockaddr *)&their_addr, &addr_len);
+	//std::cout<<"After recvfrom. Un-blocked..."<<std::endl;
 	if (n <= 0) {
 	  if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
 	    std::cout<<"n = "<<n<<" Socket timed out. Errno="<<errno<<std::endl;
@@ -253,7 +254,7 @@ class RpiTestProducer : public eudaq::Producer {
 
 	std::cout<<" After recv. Size of message recieved: n="<<n<<std::endl;
 	//std::cout<<"In ReadoutLoop.  Here is the message from Server: \n"<<buffer<<std::endl;
-
+	
 	/*
 	if (m_stopping){
 	  // We have sent STOP_RUN command, let's see if we receive a confirmation:
@@ -289,7 +290,11 @@ class RpiTestProducer : public eudaq::Producer {
 	  	
 	  // Create a RawDataEvent to contain the event data to be sent
 	  eudaq::RawDataEvent ev(EVENT_TYPE, m_run, m_ev);
+
+	  ev.AddBlock(0, buffer, RAW_EV_SIZE);
+	  SendEvent(ev);
 	  
+	  /*
 
 	  std::array<std::array<unsigned int, 1924>,4> decoded = decode_raw((unsigned char*)buffer);
 	  //unsigned int dati[4][128][13];
@@ -408,9 +413,10 @@ class RpiTestProducer : public eudaq::Producer {
 	      
 	    } // end of ch
 	  } //end of ski
+	  */
 	  
-	  ev.AddBlock(0, dataBlockZS);
-	  SendEvent(ev);
+	  //ev.AddBlock(0, dataBlockZS);
+	  //SendEvent(ev);
 
 	}
 	else {
@@ -447,13 +453,13 @@ class RpiTestProducer : public eudaq::Producer {
 	return 0;
       }
       
-      //struct sockaddr_in dst_addr;
-      bzero((char *) &dst_addr, sizeof(dst_addr));
-      dst_addr.sin_family = AF_INET;
-      dst_addr.sin_addr.s_addr = inet_addr(m_rpi_1_ip.c_str());
-      dst_addr.sin_port = htons(m_portTCP);
+      struct sockaddr_in tcp_addr;
+      bzero((char *) &tcp_addr, sizeof(tcp_addr));
+      tcp_addr.sin_family = AF_INET;
+      tcp_addr.sin_addr.s_addr = inet_addr(m_rpi_1_ip.c_str());
+      tcp_addr.sin_port = htons(m_portTCP);
  
-      int ret = connect(m_sockfd1, (struct sockaddr *) &dst_addr, sizeof(dst_addr));
+      int ret = connect(m_sockfd1, (struct sockaddr *) &tcp_addr, sizeof(tcp_addr));
       if (ret != 0) {
 	SetStatus(eudaq::Status::LVL_WARN, "No Socket.");
 	EUDAQ_WARN("Can't connect() to socket: ret="+eudaq::to_string(ret)+"  sockfd="+eudaq::to_string(m_sockfd1));
@@ -470,24 +476,17 @@ class RpiTestProducer : public eudaq::Producer {
         return 0;
       }
 
-      // Re-using the same dst_addr
-      bzero((char *) &dst_addr, sizeof(dst_addr));
-      dst_addr.sin_family = AF_INET;
-      //dst_addr.sin_addr.s_addr = inet_addr(m_rpi_1_ip.c_str());
-      dst_addr.sin_port = htons(m_portUDP);
+      struct sockaddr_in udp_addr;
+      bzero((char *) &udp_addr, sizeof(udp_addr));
+      udp_addr.sin_family = AF_INET;
+      udp_addr.sin_addr.s_addr = INADDR_ANY;
+      udp_addr.sin_port = htons(m_portUDP);
 
-      struct hostent *server = gethostbyname("localhost");
-      bcopy((char *)server->h_addr, 
-	    (char *)&dst_addr.sin_addr.s_addr, server->h_length);
-
-      std::cout<<"dst_addr: "<<dst_addr.sin_addr.s_addr<<std::endl;
-
-      sockLen = sizeof(dst_addr);
-
-      bind(m_sockfd2, (struct sockaddr *)&dst_addr, sizeof(dst_addr));
+      if ( bind(m_sockfd2, (struct sockaddr *)&udp_addr, sizeof(udp_addr)) < 0)
+	std::cout<<"Can't bind the UDP socket "<<m_sockfd2<<std::endl;
 	
       //char buffer[]="HELLO";
-      //int n = sendto(m_sockfd2, buffer, strlen(buffer), 0, (const struct sockaddr *)&dst_addr, sizeof(struct sockaddr_in));
+      //int n = sendto(m_sockfd2, buffer, strlen(buffer), 0, (const struct sockaddr *)&udp_addr, sizeof(struct sockaddr_in));
 
       // ***********************
       // This makes the recv() command non-blocking.
@@ -531,9 +530,10 @@ class RpiTestProducer : public eudaq::Producer {
       }
     }
 
+
+    /* // Moving these to ConverterPlugin
     // Methods for raw data conversion
-
-
+    
     unsigned int gray_to_brady(unsigned int gray)
     {
       // Code from:
@@ -592,7 +592,7 @@ class RpiTestProducer : public eudaq::Producer {
     }
 
 
-    
+    */    
     
 
     
@@ -610,11 +610,9 @@ class RpiTestProducer : public eudaq::Producer {
 
     std::ofstream m_rawFile;
 
-    unsigned sockLen;
+    //unsigned sockLen;
     //FILE *fout;
 
-    struct sockaddr_in dst_addr;
-    
 };
 
 // The main function that will create a Producer instance and run it

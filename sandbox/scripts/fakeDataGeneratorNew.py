@@ -6,9 +6,11 @@ from thread import *
 import threading
 import time
 
-# HOST = '128.141.89.137'
-HOST = '127.0.0.1'
+#HOSTTCP = '127.0.0.1'
+HOSTTCP = '128.141.196.126'
 PORTTCP = 55511
+#HOSTUDP = '128.141.196.126'
+HOSTUDP = '128.141.196.154'
 PORTUDP = 55512
 
 
@@ -46,7 +48,7 @@ def sendFakeData(sudp, stop_event):
     print 'submitting data', ev, evmod, len(d)
 
     try:
-        sudp.sendto(d, (HOST,PORTUDP))
+        sudp.sendto(d, (HOSTUDP,PORTUDP))
         #conn.sendall('-->>>  Here is your data <<< --')
     except socket.error:
         print 'The client socket is probably closed. We stop sending data.'
@@ -105,7 +107,7 @@ if __name__ == "__main__":
   print 'Socket created:', sTcp
 
   try:
-    sTcp.bind((HOST, PORTTCP))
+    sTcp.bind((HOSTTCP, PORTTCP))
   except socket.error , msg:
     print 'Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
     sys.exit()
@@ -122,7 +124,7 @@ if __name__ == "__main__":
 
   '''
   try:
-    sUdp.bind((HOST, PORTUDP))
+    sUdp.bind((HOSTUDP, PORTUDP))
   except socket.error , msg:
     print 'Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
     sys.exit()
@@ -138,6 +140,5 @@ if __name__ == "__main__":
       start_new_thread(clientthread ,(conn,sUdp,))
 
   finally:
-    s.close()
-    
-    #Blink(8, 3,1)
+    sTcp.close()
+    sUdp.close()
