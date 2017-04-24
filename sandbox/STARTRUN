@@ -81,7 +81,7 @@ sleep 2
 # RPI Test Producer
 ###############
 printf '\033[22;33m\t RPI Producer \033[0m \n'
-xterm -sb -sl 1000 -geom 80x10-280-900 -fn fixed -T "RPI Producer" -e './RpiTestProducer.exe -r tcp://$HOSTIP:$RCPORT' &
+xterm -sb -sl 1000 -geom 80x60-280-900 -fn fixed -T "RPI Producer" -e './RpiTestProducer.exe -r tcp://$HOSTIP:$RCPORT' &
 #nohup ./RpiTestProducer.exe -r tcp://$HOSTIP:$RCPORT > ../logs/RpiTestProducer_Run$NEWRUNNUM_$dt.log 2>&1 &
 sleep 1
 

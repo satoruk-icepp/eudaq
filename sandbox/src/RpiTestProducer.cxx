@@ -216,13 +216,13 @@ class RpiTestProducer : public eudaq::Producer {
 	SetStatus(eudaq::Status::LVL_DEBUG, "Running");
 	EUDAQ_DEBUG("Running again");
 
-	const int bufsize = 10;
+	const int bufsize = RAW_EV_SIZE;
 	char buffer[bufsize];
 	bzero(buffer, bufsize);
 
 	// TCP version: int n = recv(m_sockfd1, buffer, bufsize, 0);
 	std::cout<<"Before recvfrom. Are you blocking us?  sockLen="<<sockLen<<std::endl;
-	int n = recvfrom(m_sockfd2, buffer, 10, 0, (struct sockaddr *)&dst_addr, &sockLen);
+	int n = recvfrom(m_sockfd2, buffer, RAW_EV_SIZE, 0, (struct sockaddr *)&dst_addr, &sockLen);
 	std::cout<<"After recvfrom. Un-blocked..."<<std::endl;
 	if (n <= 0) {
 	  if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
