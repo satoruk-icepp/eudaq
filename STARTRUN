@@ -8,10 +8,6 @@ if [[ $1 == "example" ]]; then
     script=./etc/scripts/STARTRUN.example
 elif [[ $1 == "rpi" ]]; then
     script=./sandbox/STARTRUN
-elif [[ $1 == "ipbustest" ]]; then
-    script=./producers/ipbusTest/STARTRUN
-elif [[ $1 == "hexaboard" ]]; then
-    script=./producers/ipbusTest/STARTHEXARUN
 elif [[ $1 == "cmshgcal" ]]; then
     script=./producers/cmshgcal/STARTRUN
 

@@ -145,11 +145,6 @@ IF(BUILD_sandbox)
   add_subdirectory(sandbox)
 ENDIF()
 
-option(BUILD_ipbusTest "Build my ipbusTest producer rep, please.." OFF)
-IF(BUILD_ipbusTest)
-  add_subdirectory(producers/ipbusTest)
-ENDIF()
-
 
 # build EUDAQ python exe bindings
 option(BUILD_python "Compile Python EUDAQ binding library?" OFF)
