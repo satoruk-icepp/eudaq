@@ -17,7 +17,7 @@ To build and compile the code:
 
   `$ cmake -DBUILD_cmshgcal=ON ../`
 
-  `$ make instal -j4`
+  `$ make install -j4`
 
 Run this ipbus example:
 
