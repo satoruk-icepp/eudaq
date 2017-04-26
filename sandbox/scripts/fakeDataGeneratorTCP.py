@@ -101,7 +101,8 @@ if __name__ == "__main__":
   #Blink(8, 3,0.1)
 
   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  print 'Socket created'
+  
+  print 'Socket created:', s
 
   try:
     s.bind((HOST, PORT))
