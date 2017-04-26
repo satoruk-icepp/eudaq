@@ -3,6 +3,9 @@
 #include "eudaq/Utils.hh"
 #include "eudaq/Logger.hh"
 
+#include <bitset>         // std::bitset
+#include <algorithm>  // std::copy_n
+
 // All LCIO-specific parts are put in conditional compilation blocks
 // so that the other parts may still be used if LCIO is not available.
 #if USE_LCIO
@@ -12,7 +15,9 @@
 #include "lcio.h"
 #endif
 
-const size_t RAW_EV_SIZE=30787;
+const size_t RAW_EV_SIZE_8  = 30787;
+const size_t RAW_EV_SIZE_32 = 123141;
+const size_t nSki=4;
 
 namespace eudaq {
   
@@ -80,135 +85,40 @@ namespace eudaq {
 	std::cout<<"size of block: "<<bl.size()<<std::endl;
 
 
-	std::vector<unsigned char> rawData;
-	rawData.resize(bl.size() / sizeof(unsigned char));
-	std::memcpy(&rawData[0], &bl[0], bl.size());
-
-
 	StandardPlane plane(2*pl+1, EVENT_TYPE, sensortype);
 
-	if (rawData.size()!=RAW_EV_SIZE){
-	  EUDAQ_WARN("There is something wrong with the data. Size= "+eudaq::to_string(rawData.size()));
+	bool is32bit = false;
+       	if (bl.size()==RAW_EV_SIZE_8) {;}
+	else if (bl.size()==RAW_EV_SIZE_32)
+	  is32bit=true;
+       	else {
+	  EUDAQ_WARN("There is something wrong with the data. Size= "+eudaq::to_string(bl.size()));
+	  return true;
 	}
 
-	//if (data.size()%17!=0){
-	//EUDAQ_WARN("There is something wrong with the data. Not factorized by 17 entries per channel: "+eudaq::to_string(data.size()));
-	//}
+
+	std::vector<uint32_t> rawData32;	
+	std::vector<unsigned char> rawData8;
 	
-
-	const std::array<std::array<unsigned int, 1924>,4> decoded = decode_raw(rawData);
-		
-	std::vector<unsigned short> dataBlockZS;
+	std::vector<std::array<unsigned int,1924>> decoded;
 	
-	for (int ski = 0; ski < 4; ski++ ){
-	  
-	  //fprintf(fout, "Event %d Chip %d RollMask %x \n", m_ev, ski, decoded[ski][1920]);
-	  
-	  const int ped = 190;  // pedestal
-	  const int noi = 20;   // noise
-	  
-	  // ----------
-	  // -- Based on the rollmask, lets determine which time-slices (frames) to add
-	  //
-	  unsigned int r = decoded[ski][1920];
-	  //printf("Roll mask = %d \n", r);
-	  int k1 = -1, k2 = -1;
-	  for (int p=0; p<13; p++){
-	    //printf("pos = %d, %d \n", p, r & (1<<12-p));
-	    if (r & (1<<12-p)) {
-	      if (k1==-1)
-		k1 = p;
-	      else if (k2==-1)
-		k2 = p;
-	      else
-		printf("Error: more than two positions in roll mask! %x \n",r);
-	    }
-	  }
-
-	  //printf("k1 = %d, k2 = %d \n", k1, k2);
-	  
-	  // Check that k1 and k2 are consecutive
-	  char last = -1;
-	  if (k1==0 && k2==12) { last = 0;}
-	  else if (abs(k1-k2)>1)
-	    EUDAQ_WARN("The k1 and k2 are not consecutive! abs(k1-k2) = "+ eudaq::to_string(abs(k1-k2)));
-	  //printf("The k1 and k2 are not consecutive! abs(k1-k2) = %d\n", abs(k1-k2));
-	  else
-	    last = k2;
-	  
-	  //printf("last = %d\n", last);
-	  // k2+1 it the begin TS
-	  
-	  // Let's assume we can somehow determine the main frame
-	  const char mainFrameOffset = 5; // offset of the pulse wrt trigger (k2 rollmask)
-	  const char mainFrame = (last+mainFrameOffset)%13;
-	  
-	  
-	  const int tsm2 = (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13;
-	  const int tsm1 = (((mainFrame - 1) % 13) + ((mainFrame >= 1) ? 0 : 13))%13;
-	  const int ts0  = mainFrame;
-	  const int ts1  = (mainFrame+1)%13;
-	  const int ts2  = (mainFrame+2)%13;
-	  
-	  //printf("TS 0 to be saved: %d\n", tsm2);
-	  //printf("TS 1 to be saved: %d\n", tsm1);
-	  //printf("TS 2 to be saved: %d\n", ts0);
-	  //printf("TS 3 to be saved: %d\n", ts1);
-	  //printf("TS 4 to be saved: %d\n", ts2);
-	  
-	  // -- End of main frame determination
-
-	    
-	  for (int ch = 0; ch < 64; ch+=2){
-	    
-	    const int chArrPos = 63-ch; // position of the hit in array
-	    //int chargeLG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
-	    const int chargeHG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
-	    // ZeroSuppress:
-	    if (chargeHG - (ped+noi) < 0) continue;
-	    
-	    dataBlockZS.push_back(ski*100+ch);
-
-
-	    // Low gain (save 5 time-slices total):
-	    dataBlockZS.push_back(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF);
-	    dataBlockZS.push_back(decoded[ski][tsm1*128 + chArrPos] & 0x0FFF);
-	    dataBlockZS.push_back(decoded[ski][ts0*128 + chArrPos] & 0x0FFF);
-	    dataBlockZS.push_back(decoded[ski][ts1*128 + chArrPos] & 0x0FFF);
-	    dataBlockZS.push_back(decoded[ski][ts2*128 + chArrPos] & 0x0FFF);
-	    
-	      // High gain:
-	    dataBlockZS.push_back(decoded[ski][tsm2*128 + 64 + chArrPos] & 0x0FFF);
-	    dataBlockZS.push_back(decoded[ski][tsm1*128 + 64 + chArrPos] & 0x0FFF);
-	    dataBlockZS.push_back(decoded[ski][ts0*128 + 64 + chArrPos] & 0x0FFF);
-	    dataBlockZS.push_back(decoded[ski][ts1*128 + 64 + chArrPos] & 0x0FFF);
-	    dataBlockZS.push_back(decoded[ski][ts2*128 + 64 + chArrPos] & 0x0FFF);
-	    
-	    
-	    // Filling TOA (stop falling clock)
-	    dataBlockZS.push_back(decoded[ski][1664 + chArrPos] & 0x0FFF);
-	    
-	    // Filling TOA (stop rising clock)
-	    dataBlockZS.push_back(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF);
-	    
-	    // Filling TOT (slow)
-	    dataBlockZS.push_back(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF);
-	    
-	    // Filling TOT (fast)
-	    dataBlockZS.push_back(decoded[ski][1664 + 3*64 + chArrPos] & 0x0FFF);
-	    
-	    // Global TS 14 MSB (it's gray encoded?). Not decoded here!
-	    dataBlockZS.push_back(decoded[ski][1921]);
-	    
-	    // Global TS 12 LSB + 1 extra bit (binary encoded)
-	    dataBlockZS.push_back(decoded[ski][1922]);
-	    	    
-	  }
-
-	  
-	  
+	if (is32bit){
+	  rawData32.resize(bl.size() / sizeof(uint32_t));
+	  std::memcpy(&rawData32[0], &bl[0], bl.size());
+	  decoded = decode_raw_32bit(rawData32, 0xF0000000);
 	}
-	
+	else {
+	  rawData8.resize(bl.size() / sizeof(unsigned char));
+	  std::memcpy(&rawData8[0], &bl[0], bl.size());
+	  decoded = decode_raw_8bit(rawData8);
+
+	}
+	// Here we parse the data per ski roc and anly leave meaningful data (Zero suppress and finding main frame):
+	const std::vector<unsigned short> dataBlockZS = GetZSdata(decoded);
+
+	// -------------
+	// Now we can use the data to fill the euDAQ Planes
+	// -------------
 	const unsigned nHits  = dataBlockZS.size()/17;
 	plane.SetSizeZS(4, 64, nHits, 16);
 
@@ -303,12 +213,71 @@ namespace eudaq {
       result |= (gray ^ (result >> 1)) & (1 << 0);
       return result;
     }
+
+    
+    std::vector<std::array<unsigned int,1924>> decode_raw_32bit(std::vector<uint32_t>& raw, const uint32_t ch_mask) const{
       
-    std::array<std::array<unsigned int,1924>,4> decode_raw(std::vector<unsigned char>& raw) const{
+
+      std::cout<<"In decoder"<<std::endl;
+      printf("raw[0] = %x,  raw[1] = %x \n", raw[0], raw[1]);
+      
+      // First, we need to determine how many skiRoc data is presnt
+      
+      const std::bitset<32> ski_mask(ch_mask);
+      //std::cout<<"ski mask: "<<ski_mask<<std::endl;
+
+      const int mask_count = ski_mask.count();
+      if (mask_count!= nSki) {
+	EUDAQ_WARN("The mask does not agree with expected number of SkiRocs. Mask count:"+ eudaq::to_string(mask_count));
+      }
+      
+
+      std::vector<std::array<unsigned int, 1924>> ev(mask_count);
+
+      for(int i = 0; i < 1924; i++){
+	for (int k = 0; k < mask_count; k++){
+	  ev[k][i] = 0;
+	}
+      }
+
+      uint32_t x;
+      int offset = 2; // Due to FF or other things in data head
+      for(int  i = 0; i < 1924; i++){
+	for (int j = 0; j < 16; j++){
+	  x = raw[offset + i*16 + j];
+	  x = x & 15; // <-- APZ: Not sure why this is needed.
+	  int k = 0;
+	  for (int fifo = 0; fifo < 32; fifo++){
+	    if (ch_mask & (1<<fifo)){
+	      ev[k][i] = ev[k][i] | (unsigned int) (((x >> (31 - fifo) ) & 1) << (15 - j));
+	      k++;
+	    }
+	  }
+	}
+      }
+     
+      
+      unsigned int t, bith;
+      for(int k = 0; k < mask_count; k++ ){
+        for(int i = 0; i < 128*13; i++){
+          bith = ev[k][i] & 0x8000;
+
+          t = gray_to_brady(ev[k][i] & 0x7fff);
+          ev[k][i] =  bith | t;
+        }
+      }
+
+      
+      return ev;
+
+    }
+
+    
+    std::vector<std::array<unsigned int,1924>> decode_raw_8bit(const std::vector<unsigned char>& raw) const{
       
       // Code from Sandro with minor modifications
       //unsigned int ev[4][1924];
-      std::array<std::array<unsigned int, 1924>,4> ev;
+      std::vector<std::array<unsigned int, 1924>> ev(4);
       
       unsigned char x;
       for(int i = 0; i < 1924; i = i+1){
@@ -339,9 +308,130 @@ namespace eudaq {
     
       return ev;
     }
-
-
+       
+    char GetMainFrame(const unsigned int r) const {
+      //printf("Roll mask = %d \n", r);
+      int k1 = -1, k2 = -1;
+      for (int p=0; p<13; p++){
+	//printf("pos = %d, %d \n", p, r & (1<<12-p));
+	if (r & (1<<12-p)) {
+	  if (k1==-1)
+	    k1 = p;
+	  else if (k2==-1)
+	    k2 = p;
+	  else
+	    printf("Error: more than two positions in roll mask! %x \n",r);
+	}
+      }
       
+      //printf("k1 = %d, k2 = %d \n", k1, k2);
+      
+      // Check that k1 and k2 are consecutive
+      char last = -1;
+      if (k1==0 && k2==12) { last = 0;}
+      else if (abs(k1-k2)>1)
+	EUDAQ_WARN("The k1 and k2 are not consecutive! abs(k1-k2) = "+ eudaq::to_string(abs(k1-k2)));
+      //printf("The k1 and k2 are not consecutive! abs(k1-k2) = %d\n", abs(k1-k2));
+      else
+	last = k2;
+      
+      //printf("last = %d\n", last);
+      // k2+1 it the begin TS
+      
+      // Let's assume we can somehow determine the main frame
+      const char mainFrameOffset = 5; // offset of the pulse wrt trigger (k2 rollmask)
+      const char mainFrame = (last+mainFrameOffset)%13;
+      
+      return mainFrame;
+    }
+	  
+
+
+
+    std::vector<unsigned short> GetZSdata(const std::vector<std::array<unsigned int,1924>> &decoded) const{
+      
+      std::vector<unsigned short> dataBlockZS;
+      
+      for (int ski = 0; ski < decoded.size(); ski++ ){
+	
+	//fprintf(fout, "Event %d Chip %d RollMask %x \n", m_ev, ski, decoded[ski][1920]);
+	
+	const int ped = 190;  // pedestal
+	const int noi = 20;   // noise
+	
+	// ----------
+	// -- Based on the rollmask, lets determine which time-slices (frames) to add
+	//
+	const unsigned int r = decoded[ski][1920];
+	
+	const char mainFrame = GetMainFrame(r);
+	
+	const int tsm2 = (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13;
+	const int tsm1 = (((mainFrame - 1) % 13) + ((mainFrame >= 1) ? 0 : 13))%13;
+	const int ts0  = mainFrame;
+	const int ts1  = (mainFrame+1)%13;
+	const int ts2  = (mainFrame+2)%13;
+	
+	//printf("TS 0 to be saved: %d\n", tsm2);
+	//printf("TS 1 to be saved: %d\n", tsm1);
+	//printf("TS 2 to be saved: %d\n", ts0);
+	//printf("TS 3 to be saved: %d\n", ts1);
+	//printf("TS 4 to be saved: %d\n", ts2);
+	  
+	// -- End of main frame determination
+	
+	
+	for (int ch = 0; ch < 64; ch+=2){
+	  
+	  const int chArrPos = 63-ch; // position of the hit in array
+	  //int chargeLG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
+	  const int chargeHG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
+	  // ZeroSuppress:
+	  if (chargeHG - (ped+noi) < 0) continue;
+	  
+	  dataBlockZS.push_back(ski*100+ch);
+	  
+	    
+	  // Low gain (save 5 time-slices total):
+	  dataBlockZS.push_back(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF);
+	  dataBlockZS.push_back(decoded[ski][tsm1*128 + chArrPos] & 0x0FFF);
+	  dataBlockZS.push_back(decoded[ski][ts0*128 + chArrPos] & 0x0FFF);
+	  dataBlockZS.push_back(decoded[ski][ts1*128 + chArrPos] & 0x0FFF);
+	  dataBlockZS.push_back(decoded[ski][ts2*128 + chArrPos] & 0x0FFF);
+	  
+	  // High gain:
+	  dataBlockZS.push_back(decoded[ski][tsm2*128 + 64 + chArrPos] & 0x0FFF);
+	  dataBlockZS.push_back(decoded[ski][tsm1*128 + 64 + chArrPos] & 0x0FFF);
+	  dataBlockZS.push_back(decoded[ski][ts0*128 + 64 + chArrPos] & 0x0FFF);
+	  dataBlockZS.push_back(decoded[ski][ts1*128 + 64 + chArrPos] & 0x0FFF);
+	  dataBlockZS.push_back(decoded[ski][ts2*128 + 64 + chArrPos] & 0x0FFF);
+	  
+	  
+	  // Filling TOA (stop falling clock)
+	  dataBlockZS.push_back(decoded[ski][1664 + chArrPos] & 0x0FFF);
+	  
+	  // Filling TOA (stop rising clock)
+	  dataBlockZS.push_back(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF);
+	  
+	  // Filling TOT (slow)
+	  dataBlockZS.push_back(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF);
+	    
+	  // Filling TOT (fast)
+	  dataBlockZS.push_back(decoded[ski][1664 + 3*64 + chArrPos] & 0x0FFF);
+	  
+	  // Global TS 14 MSB (it's gray encoded?). Not decoded here!
+	  dataBlockZS.push_back(decoded[ski][1921]);
+	  
+	  // Global TS 12 LSB + 1 extra bit (binary encoded)
+	  dataBlockZS.push_back(decoded[ski][1922]);
+	  
+	}
+	
+      }
+      return dataBlockZS;
+      
+    }
+    
 #if USE_LCIO
     // This is where the conversion to LCIO is done
     virtual lcio::LCEvent *GetLCIOEvent(const Event * /*ev*/) const {
@@ -359,12 +449,12 @@ namespace eudaq {
 
     // Information extracted in Initialize() can be stored here:
     unsigned m_exampleparam;
-
+    
     // The single instance of this converter plugin
     static HexaBoardConverterPlugin m_instance;
-  }; // class HexaBoardConverterPlugin
-
-  // Instantiate the converter plugin instance
-  HexaBoardConverterPlugin HexaBoardConverterPlugin::m_instance;
-
-} // namespace eudaq
+    }; // class HexaBoardConverterPlugin
+    
+    // Instantiate the converter plugin instance
+    HexaBoardConverterPlugin HexaBoardConverterPlugin::m_instance;
+    
+  } // namespace eudaq
