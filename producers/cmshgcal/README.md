@@ -7,9 +7,9 @@ To build and compile the code:
 
  -Then 
 
-  `$ export LD_LIBRARY_PATH=/opt/cactus/lib:$HOME/root/lib:$LD_LIBRARY_PATH`
+  `$ export LD_LIBRARY_PATH=/opt/cactus/lib:$LD_LIBRARY_PATH`
 
-  `$ export PATH=/opt/cactus/bin:$HOME/root/bin:$PATH`
+  `$ export PATH=/opt/cactus/bin:$PATH`
 
  -From eudaq root dir:
 
@@ -19,11 +19,9 @@ To build and compile the code:
 
   `$ make install -j4`
 
-Run this ipbus example:
-
- -Start an ipbus orm emulation, fill it with crap data : see [myIpbusTest](https://github.com/asteencern/ipbus-test) 
-
+Run This producer:
  `$ ./STARTRUN cmshgcal`
-
- - Load config file in eudaq/producers/cmshgcal/conf/hgcal.conf, and start the run. It will readout the data and store them in file.
+  
+  - Load config file in eudaq/producers/cmshgcal/conf/hgcal.conf, and start the run. It will readout the data and store them in file.
+  - Start orm emulation: see [myIpbusTest](https://github.com/asteencern/ipbus-test/tree/hgcal-test)
 
