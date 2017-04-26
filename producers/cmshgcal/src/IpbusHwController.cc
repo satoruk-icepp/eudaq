@@ -1,19 +1,19 @@
-#include "IpbusTestController.h"
+#include "IpbusHwController.h"
 
 namespace ipbus{
 
-  IpbusTestController::IpbusTestController( const std::string &connectionFile, const std::string &deviceName ){
+  IpbusHwController::IpbusHwController( const std::string &connectionFile, const std::string &deviceName ){
     uhal::ConnectionManager manager( connectionFile );
     m_hw = new uhal::HwInterface( manager.getDevice( deviceName ) );
   }
 
-// ~IpbusTestController::IpbusTestController()
-//   {
-//     m_data.clear();
-//     delete m_hw;
-//   }
-
-  uint32_t IpbusTestController::ReadRegister( const std::string &name )
+  IpbusHwController::~IpbusHwController()
+  {
+    m_data.clear();
+    delete m_hw;
+  }
+  
+  uint32_t IpbusHwController::ReadRegister( const std::string &name )
   {
     try {
       uhal::ValWord< uint32_t > test = m_hw->getNode(name).read();
@@ -29,7 +29,7 @@ namespace ipbus{
     }
   }
 
-  void IpbusTestController::SetRegister( const std::string &name, uint32_t val )
+  void IpbusHwController::SetRegister( const std::string &name, uint32_t val )
   {
     try {
       m_hw->getNode(name).write( val );
@@ -39,7 +39,7 @@ namespace ipbus{
     }
   }
 
-  void IpbusTestController::ReadDataBlock( const std::string &name, uint32_t blkSize )
+  void IpbusHwController::ReadDataBlock( const std::string &name, uint32_t blkSize )
   {
     try {
       uhal::ValVector<uint32_t> data = m_hw->getNode(name.c_str()).readBlock(blkSize);
@@ -55,7 +55,7 @@ namespace ipbus{
     }
   }
   
-  void IpbusTestController::SetUhalLogLevel(unsigned char lvl){
+  void IpbusHwController::SetUhalLogLevel(unsigned char lvl){
     switch(lvl){
     case 0:
       uhal::disableLogging();
@@ -83,7 +83,7 @@ namespace ipbus{
     }
   }
   
-void IpbusTestController::CastTheData(const uhal::ValVector<uint32_t> &data)
+void IpbusHwController::CastTheData(const uhal::ValVector<uint32_t> &data)
 {
   for( uhal::ValVector<uint32_t>::const_iterator cit=data.begin(); cit!=data.end(); ++cit )
     m_data.push_back(*cit);
@@ -92,7 +92,7 @@ void IpbusTestController::CastTheData(const uhal::ValVector<uint32_t> &data)
     // m_data should be a vector of this data format class
   }
 
-  void IpbusTestController::ResetTheData()
+  void IpbusHwController::ResetTheData()
   {
     m_data.clear();
     // it might be needed to re-implement this method as soon as the data format is better known

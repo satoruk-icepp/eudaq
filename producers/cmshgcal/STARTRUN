@@ -64,40 +64,11 @@ sleep 2
 
 
 ######################################################################
-# IPbus Test Producer
+# cnshgcal Producer
 ###############
-printf '\033[22;33m\t IpbusTest Producer \033[0m \n'
-xterm -sb -sl 1000 -geom 80x10-280-900 -fn fixed -T "IpbusTest Producer" -e './IpbusTestProducer.exe -r tcp://$HOSTIP:$RCPORT' &
-#./RpiTestProcessor.exe
+printf '\033[22;33m\t cms hgcal Producer \033[0m \n'
+xterm -sb -sl 1000 -geom 80x10-280-900 -fn fixed -T "CMS HGCal Producer" -e './HGCalProducer.exe -r tcp://$HOSTIP:$RCPORT' &
 sleep 2
-
-
-######################################################################
-# TLU producer
-###############
-#if [ -f "TLUProducer.exe" ]
-#then
-#    printf '\033[22;33m\t  TLUProducer  \033[0m \n'
-#    xterm -sb -sl 1000 -geom 80x10-480-500 -T 'TLU Producer' -e './TLUProducer.exe -r tcp://$TLUIP:$RCPORT' &
-#    sleep 1
-#else
-#    printf '\033[22;31m\t  TLUProducer not found! \033[0m \n'
-#    echo 'Configure EUDAQ with the CMake option "-D BUILD_tlu=ON" and re-run "make install" to install.'
-#fi
-#####################################################################
-######################################################################
-# Online Monitor
-###############
-#if [ -f "OnlineMon.exe" ]
-#then
-#    printf '\033[22;33m\t  Online Monitor  \033[0m \n'
-#    ./OnlineMon.exe  -sc 10 -s 0 -tc 0 -r tcp://$HOSTIP:$RCPORT &
-#else
-#    printf '\033[22;31m\t  Online monitor not found! \033[0m \n'
-#    echo 'Configure EUDAQ with the CMake option "-D BUILD_onlinemon=ON" and re-run "make install" to install.'
-#fi
-#####################################################################
-
 
 printf ' \n'
 printf ' \n'

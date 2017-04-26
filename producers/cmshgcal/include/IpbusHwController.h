@@ -9,10 +9,10 @@
 
 namespace ipbus {
 
-  class IpbusTestController{
+  class IpbusHwController{
   public:
-    IpbusTestController(const std::string & connectionFile, const std::string & deviceName);
-    //~IpbusTestController();
+    IpbusHwController(const std::string & connectionFile, const std::string & deviceName);
+    ~IpbusHwController();
   private:
     uhal::HwInterface *m_hw;
     std::vector<uint32_t> m_data;
@@ -22,6 +22,7 @@ namespace ipbus {
     void ReadDataBlock(const std::string & blkName, uint32_t blkSize);
     void SetUhalLogLevel(unsigned char lvl);
     void ResetTheData();
+    uhal::HwInterface *getInterface() const {return m_hw;};
     
     std::vector<uint32_t> const & getData(){return m_data;}
   private:
