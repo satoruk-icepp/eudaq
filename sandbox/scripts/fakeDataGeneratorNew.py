@@ -55,9 +55,9 @@ def sendFakeData_32bit(sudp, stop_event):
       npd32 = npd.astype(np.uint32)
       # print len(npd32), npd32.nbytes, npd32
       half1 = npd32[0:15500]
-      half1 = np.insert(half1, 1, 0x0a0b0c0d) # this is to check endienness
       half2 = npd32[15500:]
-      # print len(half1), half1.nbytes, len(half2), half2.nbytes
+      half2.append(0x0a0b0c0d) # this is to check endienness
+      print len(half1), half1.nbytes, len(half2), half2.nbytes
       # print half1
       
     else:

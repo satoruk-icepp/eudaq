@@ -20,7 +20,7 @@ Contributing:
  * Make pull request to *HGCDAQ/tb2017* from your development branch 
 
 
-For more details, chackout [our wiki pages](https://github.com/HGCDAQ/eudaq/wiki).
+For more details on HGC part of the code, checkout [our wiki pages](https://github.com/HGCDAQ/eudaq/wiki).
 
 eudaq
 =====

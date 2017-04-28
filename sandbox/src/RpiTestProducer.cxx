@@ -238,7 +238,7 @@ class RpiTestProducer : public eudaq::Producer {
 	SetStatus(eudaq::Status::LVL_DEBUG, "Running");
 	EUDAQ_DEBUG("Running again");
 
-	const int bufsize = 62001;
+	const int bufsize = 62000;
 	char buffer[bufsize];
 	bzero(buffer, bufsize);
 

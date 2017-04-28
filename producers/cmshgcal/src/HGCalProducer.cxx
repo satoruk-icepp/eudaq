@@ -17,6 +17,7 @@
 #include <boost/cstdint.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/thread/thread.hpp>
+#include <boost/format.hpp>
 
 #include <TFile.h>
 #include <TH1D.h>
@@ -26,7 +27,7 @@
 
 // A name to identify the raw data format of the events generated
 // Modify this to something appropriate for your producer.
-static const std::string EVENT_TYPE = "HEXABOARD";
+static const std::string EVENT_TYPE = "HexaBoard";
 
 
 void readFIFOThread( ipbus::IpbusHwController* orm, uint32_t *blockSize)
@@ -117,12 +118,21 @@ public:
 	boost::timer::cpu_times times;
 	eudaq::RawDataEvent ev(EVENT_TYPE,m_run,m_ev);
 	boost::thread threadVec[m_rdout_orms.size()];
+	
 	for( int i=0; i<(int)m_rdout_orms.size(); i++)
 	  threadVec[i]=boost::thread(readFIFOThread,m_rdout_orms[i],&m_blockSize);
+	
 	for( int i=0; i<(int)m_rdout_orms.size(); i++){
 	  threadVec[i].join();
 	  checkCRC( "RDOUT.CRC",m_rdout_orms[i]);
-	  ev.AddBlock( i,m_rdout_orms[i]->getData() );
+
+	  std::vector<uint32_t> tmp_data = m_rdout_orms[i]->getData() ;
+
+	  for (int b=0; b<20; b++)
+	    std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % b % tmp_data[b]<<std::endl;
+	  
+	  
+	  ev.AddBlock( i, m_rdout_orms[i]->getData() );
 	}
 	times=timer.elapsed();
 	m_htime->Fill(times.wall/1e9);
