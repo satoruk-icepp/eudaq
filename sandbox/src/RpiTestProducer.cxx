@@ -17,9 +17,13 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <boost/format.hpp>
 
-const size_t RAW_EV_SIZE=30787;
-const size_t RAW_EV_SIZE_32=123141;
+const size_t RAW_EV_SIZE_8  = 30787;
+const size_t RAW_EV_SIZE_32 = 123152;
+
+const size_t split1 = 62000;
+const size_t split2 = 61152;
 
 // A name to identify the raw data format of the events generated
 // Modify this to something appropriate for your producer.
@@ -238,7 +242,7 @@ class RpiTestProducer : public eudaq::Producer {
 	SetStatus(eudaq::Status::LVL_DEBUG, "Running");
 	EUDAQ_DEBUG("Running again");
 
-	const int bufsize = 62001;
+	const int bufsize = split1;
 	char buffer[bufsize];
 	bzero(buffer, bufsize);
 
@@ -286,13 +290,13 @@ class RpiTestProducer : public eudaq::Producer {
 	//	 <<" "<<eudaq::to_hex(buffer[RAW_EV_SIZE-1])<<std::endl;
 
 
-	if (n==bufsize) {// First part of the data
+	if (n==split1) {// First part of the data
 	  m_gotPart1 = true;
-	  memcpy (m_raw32bitData, buffer, bufsize);
+	  memcpy (m_raw32bitData, buffer, split1);
 	  continue;
 	}
-	else if (n==61148) {//Second part
-	  memcpy (m_raw32bitData+bufsize, buffer, 61148);
+	else if (n==split2) {//Second part
+	  memcpy (m_raw32bitData+bufsize, buffer, split2);
 	  m_gotPart2 = true;
 	  if (!m_gotPart1) {
 	    m_gotPart2=false; 
@@ -306,16 +310,21 @@ class RpiTestProducer : public eudaq::Producer {
 	}
 	
 
-	std::cout<<"First 8 bytes of the RAW event:"<<std::endl;
-	for (int b=0; b<8; b++){
+	std::cout<<"First few bytes of the RAW event:"<<std::endl;
+	for (int b=0; b<8; b++)
 	  //printf(" %d byte: %x\n", b, (unsigned char)m_raw32bitData[b]);
 	  std::cout<<b<<" byte = "<<eudaq::to_hex(m_raw32bitData[b])<<std::endl;
-	}
+
+	std::cout<<"First 8 bytes of the RAW event:"<<std::endl;
+	for (int b=1; b<8; b++)
+	  std::cout<<RAW_EV_SIZE_32-b<<" byte = "<<eudaq::to_hex(m_raw32bitData[RAW_EV_SIZE_32-b])<<std::endl;
+
+	
 	
 	if ((unsigned char)m_raw32bitData[0]==0xff && m_gotPart1 && m_gotPart2){
 
        	  // This is good data (at first sight)
-
+      
 	  // Write it into raw file: 
 	  m_rawFile.write(m_raw32bitData, RAW_EV_SIZE_32);
 
