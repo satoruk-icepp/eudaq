@@ -48,7 +48,7 @@ public:
   HGCalProducer(const std::string & name, const std::string & runcontrol)
     : eudaq::Producer(name, runcontrol), m_run(0), m_ev(0), m_uhalLogLevel(5), m_blockSize(963), m_state(STATE_UNCONF), m_sync_orm(nullptr){}
 
-private:
+ private:
   unsigned m_run, m_ev, m_uhalLogLevel, m_blockSize;
   std::vector< ipbus::IpbusHwController* > m_rdout_orms;
   ipbus::IpbusHwController*  m_sync_orm;
@@ -67,6 +67,8 @@ private:
     STATE_GOTOSTOP,
     STATE_GOTOTERM
   } m_state;
+    
+  std::ofstream m_rawFile;
 
 public:
   bool checkCRC( const std::string & crcNodeName, ipbus::IpbusHwController *ptr )
@@ -126,13 +128,17 @@ public:
 	  threadVec[i].join();
 	  checkCRC( "RDOUT.CRC",m_rdout_orms[i]);
 
-	  std::vector<uint32_t> tmp_data = m_rdout_orms[i]->getData() ;
+	  const std::vector<uint32_t> the_data = m_rdout_orms[i]->getData() ;
 
 	  for (int b=0; b<20; b++)
-	    std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % b % tmp_data[b]<<std::endl;
+	    std::cout<< boost::format("Thread: %d;  Word number: %d, data Hex: 0x%08x ") % i % b % the_data[b]<<std::endl;
+
+	  // Write it into raw file:
+          m_rawFile.write(reinterpret_cast<const char*>(&the_data[0]), the_data.size()*sizeof(uint32_t));
 	  
+	  // Send it to euDAQ converter plugins:
+	  ev.AddBlock( i, the_data);
 	  
-	  ev.AddBlock( i, m_rdout_orms[i]->getData() );
 	}
 	times=timer.elapsed();
 	m_htime->Fill(times.wall/1e9);
@@ -181,7 +187,9 @@ private:
     m_sync_orm = new ipbus::IpbusHwController(config.Get("ConnectionFile","file://./etc/connection.xml"),
 					      config.Get("SYNC_ORM_NAME","SYNC_ORM"));
     m_triggerController = new TriggerController(m_rdout_orms,m_sync_orm);
-      
+
+    // <-- Need to catch the errors here. What if there is now hardware connection, etc.
+    
     m_state=STATE_CONFED;
     // At the end, set the status that will be displayed in the Run Control.
     SetStatus(eudaq::Status::LVL_OK, "Configured (" + config.Name() + ")");
@@ -205,8 +213,13 @@ private:
 
     //create root objects
     m_outrootfile = new TFile("../data/time.root","RECREATE");
-    m_htime = new TH1D("rdoutTime","",10000,0,1);
+    m_htime = new TH1D("rdoutTime","",10000,0,1);    
     
+    // Let's open a file for raw data:
+    char rawFilename[256];
+    sprintf(rawFilename, "../data/HexaData_Run%04d.raw", m_run); // The path is relative to eudaq/bin
+    m_rawFile.open(rawFilename, std::ios::binary);
+
     //m_triggerController.startrunning( m_run, m_acqmode );
     m_triggerThread=boost::thread(startTriggerThread,m_triggerController,&m_run,&m_acqmode);
 
@@ -228,6 +241,9 @@ private:
       while (m_state == STATE_GOTOSTOP) {
 	eudaq::mSleep(1000); //waiting for EORE being send
       }
+
+      m_rawFile.close();
+
       SetStatus(eudaq::Status::LVL_OK, "Stopped");
       
     } catch (const std::exception & e) {

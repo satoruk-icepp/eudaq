@@ -15,11 +15,11 @@
 #include "lcio.h"
 #endif
 
-const size_t RAW_EV_SIZE_8  = 30787;
 const size_t RAW_EV_SIZE_32 = 123152;
 
-const size_t nSkiPerBoard=4;
-const uint32_t skiMask = 0x0000000F;
+const size_t nSkiPerBoard=8;
+//const uint32_t skiMask = 0x000000FF;
+const uint32_t skiMask = 0;
 
 const char mainFrameOffset=5;
 
@@ -100,32 +100,18 @@ namespace eudaq {
 
 	std::cout<<"size of block: "<<bl.size()<<std::endl;
 
-	bool is32bit = false;
-       	if (bl.size()==RAW_EV_SIZE_8) {;}
-	else if (bl.size()==RAW_EV_SIZE_32)
-	  is32bit=true;
-       	else {
+       	if (bl.size()!=RAW_EV_SIZE_32) {
 	  EUDAQ_WARN("There is something wrong with the data. Size= "+eudaq::to_string(bl.size()));
 	  return true;
 	}
-
+	
 
 	std::vector<uint32_t> rawData32;
-	std::vector<unsigned char> rawData8;
+	rawData32.resize(bl.size() / sizeof(uint32_t));
+	std::memcpy(&rawData32[0], &bl[0], bl.size());
 
-	std::vector<std::array<unsigned int,1924>> decoded;
+	const std::vector<std::array<unsigned int,1924>> decoded = decode_raw_32bit(rawData32, skiMask);
 
-	if (is32bit){
-	  rawData32.resize(bl.size() / sizeof(uint32_t));
-	  std::memcpy(&rawData32[0], &bl[0], bl.size());
-	  decoded = decode_raw_32bit(rawData32, skiMask);
-	}
-	else {
-	  rawData8.resize(bl.size() / sizeof(unsigned char));
-	  std::memcpy(&rawData8[0], &bl[0], bl.size());
-	  decoded = decode_raw_8bit(rawData8);
-
-	}
 	// Here we parse the data per hexaboard and per ski roc and only leave meaningful data (Zero suppress and finding main frame):
 	const std::vector<std::vector<unsigned short>> dataBlockZS = GetZSdata(decoded);
 
@@ -240,9 +226,14 @@ namespace eudaq {
     }
 
 
-    std::vector<std::array<unsigned int,1924>> decode_raw_32bit(std::vector<uint32_t>& raw, const uint32_t ch_mask) const{
+    std::vector<std::array<unsigned int,1924>> decode_raw_32bit(std::vector<uint32_t>& raw, uint32_t ch_mask) const{
       std::cout<<"In decoder"<<std::endl;
       printf("\t SkiMask: 0x%08x;   Length of Raw: %d\n", ch_mask, raw.size());
+
+      // If external mask is provided, use that, otherwise get it from FF bits in first word:
+      if (ch_mask==0)
+	ch_mask = raw[0];
+      
       for (int b=0; b<20; b++)
 	std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % b % raw[b]<<std::endl;
 
@@ -298,43 +289,6 @@ namespace eudaq {
 
       return ev;
 
-    }
-
-
-    std::vector<std::array<unsigned int,1924>> decode_raw_8bit(const std::vector<unsigned char>& raw) const{
-
-      // Code from Sandro with minor modifications
-      //unsigned int ev[4][1924];
-      std::vector<std::array<unsigned int, 1924>> ev(4);
-
-      unsigned char x;
-      for(int i = 0; i < 1924; i = i+1){
-	for (int k = 0; k < 4; k = k + 1){
-	  ev[k][i] = 0;
-	}
-      }
-
-      for(int  i = 0; i < 1924; i = i+1){
-	for (int j=0; j < 16; j = j+1){
-	  x = raw[1 + i*16 + j];
-	  x = x & 15; // <-- APZ: Not sure why this is needed.
-	  for (int k = 0; k < 4; k = k + 1){
-	    ev[k][i] = ev[k][i] | (unsigned int) (((x >> (3 - k) ) & 1) << (15 - j));
-	  }
-	}
-      }
-
-      unsigned int t, bith;
-      for(int k = 0; k < 4 ; k = k +1 ){
-	for(int i = 0; i < 128*13; i = i + 1){
-	  bith = ev[k][i] & 0x8000;
-
-	  t = gray_to_brady(ev[k][i] & 0x7fff);
-	  ev[k][i] =  bith | t;
-	}
-      }
-
-      return ev;
     }
 
     char GetMainFrame(const unsigned int r, const char mainFrameOffset=5) const {
