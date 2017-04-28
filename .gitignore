@@ -9,6 +9,7 @@ lib/*
 *.raw2
 *.idx
 *.dat
+*.slcio
 
 # ignore everything in logs
 logs/*
