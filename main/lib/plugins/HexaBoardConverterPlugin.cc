@@ -17,7 +17,7 @@
 
 const size_t RAW_EV_SIZE_32 = 123152;
 
-const size_t nSkiPerBoard=8;
+const size_t nSkiPerBoard=32;
 //const uint32_t skiMask = 0x000000FF;
 const uint32_t skiMask = 0;
 
@@ -104,7 +104,7 @@ namespace eudaq {
 	  EUDAQ_WARN("There is something wrong with the data. Size= "+eudaq::to_string(bl.size()));
 	  return true;
 	}
-	
+
 
 	std::vector<uint32_t> rawData32;
 	rawData32.resize(bl.size() / sizeof(uint32_t));
@@ -150,13 +150,13 @@ namespace eudaq {
 
 	      //if (skiID==0 && pix==0)
 	      //std::cout<<" Zero-Zero problem. ind = "<<ind<<"  ID:"<<data[hitSizeZS*ind]<<std::endl;
-	      
+
 	      for (int ts=0; ts<hitSizeZS-1; ts++)
 		plane.SetPixel(ind, skiID_2, pix, dataBlockZS[h][hitSizeZS*ind+1 + ts], false, ts);
 	    }
-	    
+
 	  }
-	  
+
 	  // Set the trigger ID
 	  plane.SetTLUEvent(GetTriggerID(ev));
 	  // Add the plane to the StandardEvent
@@ -233,7 +233,7 @@ namespace eudaq {
       // If external mask is provided, use that, otherwise get it from FF bits in first word:
       if (ch_mask==0)
 	ch_mask = raw[0];
-      
+
       for (int b=0; b<20; b++)
 	std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % b % raw[b]<<std::endl;
 
@@ -302,7 +302,7 @@ namespace eudaq {
 	  else if (k2==-1)
 	    k2 = p;
 	  else
-	    printf("Error: more than two positions in roll mask! 0x%08x \n",r);
+	    EUDAQ_WARN("Error: more than two positions in roll mask! RollMask="+eudaq::to_hex(r,8));
 	}
       }
 
@@ -320,14 +320,11 @@ namespace eudaq {
       //printf("last = %d\n", last);
       // k2+1 it the begin TS
 
-      // Let's assume we can somehow determine the main frame
-      //const char mainFrameOffset = 5; // offset of the pulse wrt trigger (k2 rollmask)
-      const char mainFrame = (last+mainFrameOffset)%13;
+      // Order of TS is reverse in raw data, hence subtruct 12:
+      const char mainFrame = 12 - (last+mainFrameOffset)%13;
 
       return mainFrame;
     }
-
-
 
 
     std::vector<std::vector<unsigned short>> GetZSdata(const std::vector<std::array<unsigned int,1924>> &decoded) const{

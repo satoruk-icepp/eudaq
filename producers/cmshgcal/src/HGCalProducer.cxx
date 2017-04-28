@@ -225,7 +225,7 @@ private:
 
     m_state = STATE_RUNNING;
     // At the end, set the status that will be displayed in the Run Control.
-    SetStatus(eudaq::Status::LVL_OK, "Started");
+    SetStatus(eudaq::Status::LVL_OK, "Running");
   }
 
   // // This gets called whenever a run is stopped
