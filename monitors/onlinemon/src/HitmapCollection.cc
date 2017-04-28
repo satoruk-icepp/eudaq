@@ -156,11 +156,9 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
     }
     // cout << "HitmapCollection:: Monitor running in online-mode" << endl;
     char tree[1024], folder[1024];
-    sprintf(tree, "%s/Sensor %i/RawHitmap", p.getName().c_str(), p.getID());
+    sprintf(tree, "%s/Sensor %i/Occupancy", p.getName().c_str(), p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
-    _mon->getOnlineMon()->registerHisto(
-        tree, getHitmapHistos(p.getName(), p.getID())->getHitmapHisto(), "COLZ",
-        0);
+    _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsOccupancyHisto(), "COLZL");
 
     sprintf(folder, "%s", p.getName().c_str());
 #ifdef DEBUG
@@ -168,6 +166,18 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
     cout << "DEBUG " << folder << " " << tree << endl;
 #endif
     _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
+
+    sprintf(tree, "%s/Sensor %i/Charge", p.getName().c_str(), p.getID());
+    _mon->getOnlineMon()->registerTreeItem(tree);
+    _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsChargeHisto(), "COLZL");
+
+    _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
+
+    sprintf(tree, "%s/Sensor %i/RawHitmap", p.getName().c_str(), p.getID());
+    _mon->getOnlineMon()->registerTreeItem(tree);
+    _mon->getOnlineMon()->registerHisto(
+        tree, getHitmapHistos(p.getName(), p.getID())->getHitmapHisto(), "COLZ",
+        0);
 
     sprintf(tree, "%s/Sensor %i/Hitmap X Projection", p.getName().c_str(),
             p.getID());
