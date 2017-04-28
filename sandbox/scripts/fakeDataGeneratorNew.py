@@ -10,8 +10,8 @@ import numpy as np
 HOSTTCP = '127.0.0.1'
 #HOSTTCP = '128.141.196.126'
 PORTTCP = 55511
-#HOSTUDP = '128.141.196.126'
-HOSTUDP = '128.141.196.154'
+
+HOSTUDP = '' # To be determined from connection
 PORTUDP = 55512
 
 t1_stop = threading.Event()
@@ -49,16 +49,14 @@ def sendFakeData_32bit(sudp, stop_event):
       
     if rawData!=None:
       d = rawData[evmod*RAW_EV_SIZE:(evmod+1)*RAW_EV_SIZE]
-
       npd = np.fromstring(d, dtype=np.uint8)
       #print len(npd), npd.nbytes, npd
       npd32 = npd.astype(np.uint32)
-      # print len(npd32), npd32.nbytes, npd32
+      #print len(npd32), npd32.nbytes, npd32.nbytes/4, npd32
       half1 = npd32[0:15500]
-      half2 = npd32[15500:]
-      half2.append(0x0a0b0c0d) # this is to check endienness
-      print len(half1), half1.nbytes, len(half2), half2.nbytes
-      # print half1
+      half2 = np.append(npd32[15500:], [0x0a0b0c0d]).astype(np.uint32) # this is to check endienness
+      # print len(half1), half1.nbytes, len(half2), half2.nbytes, half2.dtype
+      # print half2[-3], half2[-2], half2[-1]
       
     else:
       d = 'Hello World'
@@ -66,6 +64,7 @@ def sendFakeData_32bit(sudp, stop_event):
     print 'submitting data', ev, evmod, len(d)
 
     try:
+      # print 'UDP host:', HOSTUDP
       # The data is too large now to send in one go. So, plit it in two packets:
       sudp.sendto(half1, (HOSTUDP,PORTUDP))
       sudp.sendto(half2, (HOSTUDP,PORTUDP))
@@ -198,6 +197,8 @@ if __name__ == "__main__":
       # wait to accept a connection
       conn, addr = sTcp.accept()
       print 'Connected with ' + addr[0] + ':' + str(addr[1])
+
+      HOSTUDP=addr[0]
 
       #start new thread
       start_new_thread(clientthread ,(conn,sUdp,))

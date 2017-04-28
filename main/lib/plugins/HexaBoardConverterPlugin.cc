@@ -16,11 +16,10 @@
 #endif
 
 const size_t RAW_EV_SIZE_8  = 30787;
-//const size_t RAW_EV_SIZE_32 = 123141;
 const size_t RAW_EV_SIZE_32 = 123152;
-const size_t nBoards=2;
-const size_t nSkiPerBoard=8;
-const uint32_t skiMask = 0x000000FF;
+
+const size_t nSkiPerBoard=4;
+const uint32_t skiMask = 0x0000000F;
 
 const char mainFrameOffset=5;
 
@@ -90,7 +89,7 @@ namespace eudaq {
       const unsigned nBlocks = rev->NumBlocks();
       std::cout<<"Number of Raw Data Blocks: "<<nBlocks<<std::endl;
 
-      const unsigned nPlanes = nBoards*nSkiPerBoard/4;
+      const unsigned nPlanes = nBlocks*nSkiPerBoard/4;
       std::cout<<"Number of Planes: "<<nPlanes<<std::endl;
 
       for (unsigned blo=0; blo<nBlocks; blo++){
@@ -243,7 +242,7 @@ namespace eudaq {
 
     std::vector<std::array<unsigned int,1924>> decode_raw_32bit(std::vector<uint32_t>& raw, const uint32_t ch_mask) const{
       std::cout<<"In decoder"<<std::endl;
-      printf("\t SkiMask: 0x%08x \n", ch_mask);
+      printf("\t SkiMask: 0x%08x;   Length of Raw: %d\n", ch_mask, raw.size());
       for (int b=0; b<20; b++)
 	std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % b % raw[b]<<std::endl;
 
@@ -270,7 +269,7 @@ namespace eudaq {
       }
 
       uint32_t x;
-      int offset = 1; // Due to FF or other things in data head
+      const int offset = 1; // Due to FF or other things in data head
       for(int  i = 0; i < 1924; i++){
 	for (int j = 0; j < 16; j++){
 	  x = raw[offset + i*16 + j];
