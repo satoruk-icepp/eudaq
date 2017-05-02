@@ -478,6 +478,7 @@ void caliceahcalbifProducer::ProcessQueuedBifData() {
       uint32_t evtNumber; //trigger number
       uint8_t fineStamps[4] = { 0, 0, 0, 0 };
       uint32_t cycleLengthBxids;
+      uint64_t readout_gap;// statistics - time for conversion and readout
       switch (word1 >> 60) {
          case 0x00: //internal trigger
 //                  std::cout << "i";
@@ -552,6 +553,7 @@ void caliceahcalbifProducer::ProcessQueuedBifData() {
                sprintf(errorMessage, "BIF End-of-Readout-Cycle received without previous start in Run %d ROC %d.Possible data loss", m_run, _ReadoutCycle);
                EUDAQ_WARN(errorMessage);
             }
+	    readout_gap = _acq_start_ts - _acq_stop_ts; //still have the old stop TS from previous cycle stored
             _ROC_started = false;
             _stats.triggers += _triggersInCycle;
             _stats.runStopTS = timestamp;
@@ -573,8 +575,10 @@ void caliceahcalbifProducer::ProcessQueuedBifData() {
                   std::cout << std::dec << "ROC: " << (int) _ReadoutCycle;
                   std::cout << "\tLength[BXings]: " << (int) cycleLengthBxids;
                   std::cout << "\tTrigs: " << (int) _triggersInCycle;
-                  std::cout << "\tlen: " << 32 * (0.00000078125) * (timestamp - _acq_start_ts) << " ms";
-                  std::cout << std::endl;
+                  std::cout << "\tL: " << 32 * (0.00000078125) * (timestamp - _acq_start_ts) << " ms";
+		  std::cout << "\tgap: " << 32 * (0.00000078125) * (readout_gap) << " ms";
+		  std::cout << "\tPhase: " << (_acq_start_ts & 0x07) ;
+		  std::cout << std::endl;
                   break;
                case 1:
                   std::cout << "@" << std::flush;
