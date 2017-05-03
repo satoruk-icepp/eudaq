@@ -9,6 +9,7 @@
 #define HITMAPHISTOS_HH_
 
 #include <TH2I.h>
+#include <TH2Poly.h>
 #include <TFile.h>
 
 #include <map>
@@ -26,6 +27,8 @@ protected:
   int _maxX;
   int _maxY;
   bool _wait;
+  TH2Poly *_hexagons_occupancy;
+  TH2Poly *_hexagons_charge;
   TH2I *_hitmap;
   TH1I *_hitXmap;
   TH1I *_hitYmap;
@@ -62,6 +65,8 @@ public:
   void Calculate(const int currentEventNum);
   void Write();
 
+  TH2Poly *getHexagonsOccupancyHisto() { return _hexagons_occupancy; }
+  TH2Poly *getHexagonsChargeHisto() { return _hexagons_charge; }
   TH2I *getHitmapHisto() { return _hitmap; }
   TH1I *getHitXmapHisto() { return _hitXmap; }
   TH1I *getHitYmapHisto() { return _hitYmap; }
@@ -109,6 +114,10 @@ private:
   int SetHistoAxisLabels(TH1 *histo, string xlabel, string ylabel);
   int filling_counter; // we don't need occupancy to be refreshed for every
                        // single event
+
+  map < pair < int,int >, int > coordinates_sensor;
+  map < pair < int,int >, int > get_map_coordinates_sensor();
+  TH2Poly* get_th2poly(string name, string title);
 
   RootMonitor *_mon;
   unsigned int mimosa26_max_section;
