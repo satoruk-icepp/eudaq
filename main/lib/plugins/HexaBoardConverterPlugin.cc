@@ -18,8 +18,8 @@
 const size_t RAW_EV_SIZE_32 = 123152;
 
 const size_t nSkiPerBoard=32;
-//const uint32_t skiMask = 0x000000FF;
-const uint32_t skiMask = 0;
+const uint32_t skiMask = 0xFFFFFFFF;
+//const uint32_t skiMask = 0;
 
 const char mainFrameOffset=5;
 
@@ -226,13 +226,14 @@ namespace eudaq {
     }
 
 
-    std::vector<std::array<unsigned int,1924>> decode_raw_32bit(std::vector<uint32_t>& raw, uint32_t ch_mask) const{
+    std::vector<std::array<unsigned int,1924>> decode_raw_32bit(std::vector<uint32_t>& raw, const uint32_t ch_mask) const{
       std::cout<<"In decoder"<<std::endl;
       printf("\t SkiMask: 0x%08x;   Length of Raw: %d\n", ch_mask, raw.size());
 
-      // If external mask is provided, use that, otherwise get it from FF bits in first word:
-      if (ch_mask==0)
-	ch_mask = raw[0];
+      // Check that an external mask agrees with first 32-bit word in data
+      if (ch_mask!=raw[0])
+	EUDAQ_WARN("You extarnal mask ("+eudaq::to_hex(raw[0])+") does not agree with the one found in data ("+eudaq::to_hex(ch_mask)+")");
+
 
       for (int b=0; b<20; b++)
 	std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % b % raw[b]<<std::endl;
@@ -250,14 +251,19 @@ namespace eudaq {
 	EUDAQ_WARN("The mask does not agree with expected number of SkiRocs. Mask count:"+ eudaq::to_string(mask_count));
       }
 
+      std::vector<std::array<unsigned int, 1924>> ev(mask_count, std::array<unsigned int, 1924>());
 
-      std::vector<std::array<unsigned int, 1924>> ev(mask_count);
-
+      /* //All are already initialized to zeros.
+	 //so this is not needed:
       for(int i = 0; i < 1924; i++){
 	for (int k = 0; k < mask_count; k++){
+	  // Let's check if it is not zero already:
+	  if (ev[k][i]!=0)
+	    std::cout<<"It is not zero:"<<ev[k][i]<<std::endl;
 	  ev[k][i] = 0;
 	}
       }
+      */
 
       uint32_t x;
       const int offset = 1; // Due to FF or other things in data head
@@ -275,7 +281,9 @@ namespace eudaq {
 	}
       }
 
-
+      
+      // Let's not do the gray decoding here. It's not necessary.
+      /*
       unsigned int t, bith;
       for(int k = 0; k < mask_count; k++ ){
         for(int i = 0; i < 128*13; i++){
@@ -285,7 +293,7 @@ namespace eudaq {
           ev[k][i] =  bith | t;
         }
       }
-
+      */
 
       return ev;
 
@@ -371,8 +379,8 @@ namespace eudaq {
 	for (int ch = 0; ch < 64; ch+=2){
 
 	  const int chArrPos = 63-ch; // position of the hit in array
-	  //const int chargeLG = decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF;
-	  const int chargeHG = decoded[ski][mainFrame*128 + 64 + chArrPos] & 0x0FFF;
+	  //const int chargeLG = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
+	  const int chargeHG = gray_to_brady(decoded[ski][mainFrame*128 + 64 + chArrPos] & 0x0FFF);
 
 	  //std::cout<<ch <<": chargeHG="<<chargeHG<<"   LG:"<<chargeLG <<std::endl;
 
@@ -383,33 +391,35 @@ namespace eudaq {
 
 
 	  // Low gain (save 5 time-slices total):
-	  dataBlockZS[hexa].push_back(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF);
-	  dataBlockZS[hexa].push_back(decoded[ski][tsm1*128 + chArrPos] & 0x0FFF);
-	  dataBlockZS[hexa].push_back(decoded[ski][ts0*128 + chArrPos] & 0x0FFF);
-	  dataBlockZS[hexa].push_back(decoded[ski][ts1*128 + chArrPos] & 0x0FFF);
-	  dataBlockZS[hexa].push_back(decoded[ski][ts2*128 + chArrPos] & 0x0FFF);
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF));
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm1*128 + chArrPos] & 0x0FFF));
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts0*128 + chArrPos] & 0x0FFF));
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts1*128 + chArrPos] & 0x0FFF));
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts2*128 + chArrPos] & 0x0FFF));
 
 	  // High gain:
-	  dataBlockZS[hexa].push_back(decoded[ski][tsm2*128 + 64 + chArrPos] & 0x0FFF);
-	  dataBlockZS[hexa].push_back(decoded[ski][tsm1*128 + 64 + chArrPos] & 0x0FFF);
-	  dataBlockZS[hexa].push_back(decoded[ski][ts0*128 + 64 + chArrPos] & 0x0FFF);
-	  dataBlockZS[hexa].push_back(decoded[ski][ts1*128 + 64 + chArrPos] & 0x0FFF);
-	  dataBlockZS[hexa].push_back(decoded[ski][ts2*128 + 64 + chArrPos] & 0x0FFF);
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm2*128 + 64 + chArrPos] & 0x0FFF));
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm1*128 + 64 + chArrPos] & 0x0FFF));
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts0*128 + 64 + chArrPos] & 0x0FFF));
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts1*128 + 64 + chArrPos] & 0x0FFF));
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts2*128 + 64 + chArrPos] & 0x0FFF));
 
 
 	  // Filling TOA (stop falling clock)
-	  dataBlockZS[hexa].push_back(decoded[ski][1664 + chArrPos] & 0x0FFF);
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + chArrPos] & 0x0FFF));
 
 	  // Filling TOA (stop rising clock)
-	  dataBlockZS[hexa].push_back(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF);
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF));
 
 	  // Filling TOT (slow)
-	  dataBlockZS[hexa].push_back(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF);
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF));
 
 	  // Filling TOT (fast)
-	  dataBlockZS[hexa].push_back(decoded[ski][1664 + 3*64 + chArrPos] & 0x0FFF);
+	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + 3*64 + chArrPos] & 0x0FFF));
+
 
 	  // Global TS 14 MSB (it's gray encoded?). Not decoded here!
+	  // Not sure how to decode Global Time Stamp yet...
 	  dataBlockZS[hexa].push_back(decoded[ski][1921]);
 
 	  // Global TS 12 LSB + 1 extra bit (binary encoded)
