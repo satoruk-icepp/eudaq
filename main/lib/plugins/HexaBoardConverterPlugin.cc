@@ -17,8 +17,8 @@
 
 const size_t RAW_EV_SIZE_32 = 123152;
 
-const size_t nSkiPerBoard=32;
-const uint32_t skiMask = 0xFFFFFFFF;
+const size_t nSkiPerBoard=4;
+const uint32_t skiMask = 0x0000000F;
 //const uint32_t skiMask = 0;
 
 const char mainFrameOffset=5;
@@ -26,6 +26,7 @@ const char mainFrameOffset=5;
 // For zero usppression:
 const int ped = 190;  // pedestal
 const int noi = 20;   // noise
+const int thresh = 200; // ZS threshold (above pedestal)
 
 // Size of ZS data ()per channel
 const char hitSizeZS = 17;
@@ -232,7 +233,7 @@ namespace eudaq {
 
       // Check that an external mask agrees with first 32-bit word in data
       if (ch_mask!=raw[0])
-	EUDAQ_WARN("You extarnal mask ("+eudaq::to_hex(raw[0])+") does not agree with the one found in data ("+eudaq::to_hex(ch_mask)+")");
+	EUDAQ_DEBUG("You extarnal mask ("+eudaq::to_hex(ch_mask)+") does not agree with the one found in data ("+eudaq::to_hex(raw[0])+")");
 
 
       for (int b=0; b<20; b++)
@@ -385,7 +386,7 @@ namespace eudaq {
 	  //std::cout<<ch <<": chargeHG="<<chargeHG<<"   LG:"<<chargeLG <<std::endl;
 
 	  // ZeroSuppress it:
-	  if (chargeHG - (ped+noi) < 0) continue;
+	  if (chargeHG - (ped+noi) < thresh) continue;
 
 	  dataBlockZS[hexa].push_back((ski%4)*100+ch);
 

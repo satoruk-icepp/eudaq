@@ -3,6 +3,7 @@ FIND_PACKAGE( ROOT REQUIRED)
 INCLUDE_DIRECTORIES( . include ${ROOT_INCLUDE_DIR} )
 
 SET (OnlineMon_SOURCES
+#  src/hgcOnlineMon.cxx
   src/OnlineMon.cxx
   src/OnlineMonWindow.cc
   src/BaseCollection.cc
@@ -43,8 +44,10 @@ set(OnlineMon_DICTIONARY ${CMAKE_CURRENT_BINARY_DIR}/OnlineMonDict.cxx)
 ROOT_GENERATE_DICTIONARY_OLD("${OnlineMon_HEADERS}" "${OnlineMon_DICTIONARY}" "${MY_INCLUDE_DIRECTORIES}")
 
 add_executable(OnlineMon.exe ${OnlineMon_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/OnlineMonDict.cxx)
+#add_executable(hgcOnlineMon.exe ${OnlineMon_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/OnlineMonDict.cxx)
 
 target_link_libraries(OnlineMon.exe EUDAQ ${EUDAQ_THREADS_LIB} ${ROOT_LIBRARIES} ${ADDITIONAL_LIBRARIES})
+#target_link_libraries(hgcOnlineMon.exe EUDAQ ${EUDAQ_THREADS_LIB} ${ROOT_LIBRARIES} ${ADDITIONAL_LIBRARIES})
 
 INSTALL(TARGETS OnlineMon.exe
   RUNTIME DESTINATION bin
