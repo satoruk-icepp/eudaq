@@ -236,7 +236,8 @@ namespace eudaq {
 	EUDAQ_DEBUG("You extarnal mask ("+eudaq::to_hex(ch_mask)+") does not agree with the one found in data ("+eudaq::to_hex(raw[0])+")");
 
 
-      for (int b=0; b<20; b++)
+      
+      for (int b=0; b<2; b++)
 	std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % b % raw[b]<<std::endl;
 
       std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % 30786 % raw[30786]<<std::endl;

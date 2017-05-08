@@ -13,6 +13,7 @@ protected:
   int _x;
   int _y;
   int _tot;
+  int _amp;
   int _lvl1;
   int _reduceX;
   int _reduceY;
@@ -31,9 +32,11 @@ public:
   int getY() const { return _y; }
 
   int getTOT() const { return _tot; }
+  int getAMP() const { return _amp; }
   int getLVL1() const { return _lvl1; }
   void setLVL1(const int lvl1) { _lvl1 = lvl1; }
-  void setTOT(const int tot) { _tot = tot; }
+  void setTOT(const int tot) { _tot = tot; } // time over threshold
+  void setAMP(const int amp) { _amp = amp; } // Amplitude
   // void reduce(const int reduceX, const int reduceY) {_reduceX = reduceX;
   // _reduceY = reduceY;}
   // does this pixel use analog information ?

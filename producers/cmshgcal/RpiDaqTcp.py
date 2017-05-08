@@ -139,7 +139,7 @@ def clientthread(conn, sudp):
               ret = -1
             while (ret==None):
               print 'We must wait until the daq finishes, because it is too fragile to kill'
-              sleep(1)
+              time.sleep(1)
               
             print 'Return code of the daq:', ret
             
