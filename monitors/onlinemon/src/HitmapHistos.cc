@@ -256,10 +256,12 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
 
   if (_hexagons_occupancy != NULL && _hexagons_charge != NULL && !pixelIsHot) {
     int ch  = _ski_to_ch_map.find(make_pair(pixel_x,pixel_y))->second;
-    if(ch < 0 || ch > 127)
-      std::cout<<" There is a problem with channel number\n pixel_x = "
-	       <<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<std::endl;      
 
+    if(ch < 0 || ch > 127)
+    std::cout<<" There is a problem with channel number\n pixel_x = "
+	     <<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<std::endl;      
+
+    
     else {
       //if(bin<-1 || bin > 133){      
       //std::cout<<" There is a problem with bin number\n pixel_x = "
@@ -271,12 +273,12 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
 	if (bin == ch){
 	  std::cout<<" pixel_x = "<<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<"  icell="<<icell<<std::endl;
 	  
-	  char buffer_bin[3]; sprintf(buffer_bin,"%d", (char)icell);
+	  char buffer_bin[3]; sprintf(buffer_bin,"%d", (char)(icell+1));
 	  string bin_name = "Sensor_"+string(buffer_bin);
 	  _hexagons_occupancy->Fill(bin_name.c_str(), 1);
 	  
-	  _hexagons_charge->SetBinContent(icell, hit.getAMP()); 
-	//_hexagons_charge->SetBinContent(bin,bin); //It is bin,bin for the moment, until we define what charge is
+	  _hexagons_charge->SetBinContent(icell+1, hit.getAMP()); 
+	  //_hexagons_charge->SetBinContent(bin,bin); //It is bin,bin for the moment, until we define what charge is
 	}
       }
     }

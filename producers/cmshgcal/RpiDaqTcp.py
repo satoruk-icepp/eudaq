@@ -137,9 +137,9 @@ def clientthread(conn, sudp):
               ret = pro.poll()
             except:
               ret = -1
-            while (ret==None):
-              print 'We must wait until the daq finishes, because it is too fragile to kill'
-              time.sleep(1)
+            #while (ret==None):
+            #  print 'We must wait until the daq finishes, because it is too fragile to kill'
+            # time.sleep(1)
               
             print 'Return code of the daq:', ret
             
