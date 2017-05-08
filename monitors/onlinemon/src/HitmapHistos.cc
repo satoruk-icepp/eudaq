@@ -18,7 +18,7 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
       _nClusters(NULL), _nHits(NULL), _clusterXWidth(NULL),
       _clusterYWidth(NULL), _nbadHits(NULL), _nHotPixels(NULL),
       _hitmapSections(NULL), is_MIMOSA26(false), is_APIX(false),
-      is_USBPIX(false), is_USBPIXI4(false) {
+      is_USBPIX(false), is_USBPIXI4(false), is_HEXABOARD(false){
   char out[1024], out2[1024];
 
   _mon = mon;
@@ -33,6 +33,8 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
     is_USBPIXI4 = true;
   } else if (_sensor == std::string("USBPIXI4B")) {
     is_USBPIXI4 = true;
+  } else if (_sensor == std::string("HexaBoard")) {
+    is_HEXABOARD = true;
   }
   is_DEPFET = p.is_DEPFET;
 
@@ -230,7 +232,8 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
   } else {
     std::cout << "No max sensorsize known!" << std::endl;
   }
-  coordinates_sensor = get_map_coordinates_sensor();
+  
+  Set_SkiToHexaboard_ChannelMap();
 }
 
 int HitmapHistos::zero_plane_array() {
@@ -252,12 +255,32 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
     pixelIsHot = true;
 
   if (_hexagons_occupancy != NULL && _hexagons_charge != NULL && !pixelIsHot) {
-    int bin = coordinates_sensor.find(make_pair(pixel_x,pixel_y))->second;
-    if(-1<bin && bin<134){//This has to be understood when the final version is available
-     char buffer_bin[5]; sprintf(buffer_bin,"%g",double(bin));
-     string bin_name = "Sensor_"+string(buffer_bin);    
-     _hexagons_occupancy->Fill(bin_name.c_str(),1);
-     _hexagons_charge->SetBinContent(bin,bin); //It is bin,bin for the moment, until we define what charge is
+    int ch  = _ski_to_ch_map.find(make_pair(pixel_x,pixel_y))->second;
+
+    if(ch < 0 || ch > 127)
+    std::cout<<" There is a problem with channel number\n pixel_x = "
+	     <<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<std::endl;      
+
+    
+    else {
+      //if(bin<-1 || bin > 133){      
+      //std::cout<<" There is a problem with bin number\n pixel_x = "
+      //	 <<" pixel_x = "<<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<"  bin="<<bin<<std::endl;
+
+      // Loop over the bins and Fill the one matched to our channel 
+      for (int icell = 0; icell < 133 ; icell++) {
+	int bin = ch_to_bin_map[icell];
+	if (bin == ch){
+	  std::cout<<" pixel_x = "<<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<"  icell="<<icell<<std::endl;
+	  
+	  char buffer_bin[3]; sprintf(buffer_bin,"%d", (char)(icell+1));
+	  string bin_name = "Sensor_"+string(buffer_bin);
+	  _hexagons_occupancy->Fill(bin_name.c_str(), 1);
+	  
+	  _hexagons_charge->SetBinContent(icell+1, hit.getAMP()); 
+	  //_hexagons_charge->SetBinContent(bin,bin); //It is bin,bin for the moment, until we define what charge is
+	}
+      }
     }
   }
 
@@ -525,149 +548,12 @@ int HitmapHistos::SetHistoAxisLabely(TH1 *histo, string ylabel) {
   return 0;
 }
 
-map < pair < int,int >, int > HitmapHistos::get_map_coordinates_sensor() {
- map < pair < int,int >, int > map_coordinates_sensor;
- double sc[381] = {//381 = 3*127
-  1,0,20,
-  2,3,50,
-  3,3,48,
-  4,3,44,
-  5,0,22,
-  6,0,12,
-  7,3,56,
-  8,3,52,
-  9,3,36,
-  10,3,32,
-  11,0,28,
-  12,0,24,
-  13,0,8,
-  14,0,10,
-  15,3,46,
-  16,3,62,
-  17,3,54,
-  18,3,38,
-  19,3,34,
-  20,3,30,
-  21,0,26,
-  22,0,14,
-  23,0,6,
-  24,0,2,
-  25,0,60,
-  26,3,58,
-  27,3,60,
-  28,3,42,
-  29,3,40,
-  30,3,28,
-  31,0,30,
-  32,0,18,
-  33,0,16,
-  34,0,0,
-  35,0,4,
-  36,3,6,
-  37,3,0,
-  38,3,2,
-  39,3,20,
-  40,3,22,
-  41,3,26,
-  42,0,32,
-  43,0,54,
-  44,0,56,
-  45,0,58,
-  46,0,62,
-  47,3,10,
-  48,3,12,
-  49,3,4,
-  50,3,16,
-  51,3,18,
-  52,3,24,
-  53,0,34,
-  54,0,38,
-  55,0,52,
-  56,0,44,
-  57,0,50,
-  58,0,48,
-  59,2,50,
-  60,2,48,
-  61,3,8,
-  62,3,14,
-  63,2,44,
-  64,1,36,
-  65,0,36,
-  66,1,28,
-  67,0,42,
-  68,0,40,
-  69,0,46,
-  70,2,60,
-  71,2,62,
-  72,2,46,
-  73,2,52,
-  74,2,54,
-  75,2,36,
-  76,1,38,
-  77,1,26,
-  78,1,22,
-  79,1,20,
-  80,1,8,
-  81,1,16,
-  82,2,14,
-  83,2,58,
-  84,2,0,
-  85,2,56,
-  86,2,38,
-  87,1,40,
-  88,1,34,
-  89,1,24,
-  90,1,2,
-  91,1,18,
-  92,1,14,
-  93,2,16,
-  94,2,8,
-  95,2,4,
-  96,2,2,
-  97,2,42,
-  98,2,40,
-  99,1,32,
-  100,1,30,
-  101,1,0,
-  102,1,4,
-  103,1,10,
-  104,1,12,
-  105,2,18,
-  106,2,20,
-  107,2,6,
-  108,2,10,
-  109,1,42,
-  110,1,44,
-  111,1,58,
-  112,1,54,
-  113,1,6,
-  114,2,22,
-  115,2,24,
-  116,2,12,
-  117,2,30,
-  118,1,46,
-  119,1,50,
-  120,1,56,
-  121,1,62,
-  122,2,26,
-  123,2,28,
-  124,2,32,
-  125,1,48,
-  126,1,52,
-  127,2,34
- };
- 
- for(int c=0; c<127; c++){
-  int row = c*3;
-  map_coordinates_sensor.insert(make_pair(make_pair(sc[row+1],sc[row+2]),sc[row]));
- }
- //for(int c=0; c<127; c++){
- // map < pair < int,int >, int >::iterator it;
- //int row = c*3;
- // cout<<"Mapping is "<<map_coordinates_sensor.find(make_pair(sc[row+1],sc[row+2]))->second<<endl;
- //}
- //cout<<endl;
- return map_coordinates_sensor;
+void HitmapHistos::Set_SkiToHexaboard_ChannelMap(){
+
+  for(int c=0; c<127; c++){
+    int row = c*3;
+    _ski_to_ch_map.insert(make_pair(make_pair(sc_to_ch_map[row+1],sc_to_ch_map[row+2]),sc_to_ch_map[row]));
+  }
 }
 
 TH2Poly* HitmapHistos::get_th2poly(string name, string title) {

@@ -17,8 +17,8 @@
 
 const size_t RAW_EV_SIZE_32 = 123152;
 
-const size_t nSkiPerBoard=32;
-const uint32_t skiMask = 0xFFFFFFFF;
+const size_t nSkiPerBoard=4;
+const uint32_t skiMask = 0x0000000F;
 //const uint32_t skiMask = 0;
 
 const char mainFrameOffset=5;
@@ -26,6 +26,7 @@ const char mainFrameOffset=5;
 // For zero usppression:
 const int ped = 190;  // pedestal
 const int noi = 20;   // noise
+const int thresh = 200; // ZS threshold (above pedestal)
 
 // Size of ZS data ()per channel
 const char hitSizeZS = 17;
@@ -232,10 +233,11 @@ namespace eudaq {
 
       // Check that an external mask agrees with first 32-bit word in data
       if (ch_mask!=raw[0])
-	EUDAQ_WARN("You extarnal mask ("+eudaq::to_hex(raw[0])+") does not agree with the one found in data ("+eudaq::to_hex(ch_mask)+")");
+	EUDAQ_DEBUG("You extarnal mask ("+eudaq::to_hex(ch_mask)+") does not agree with the one found in data ("+eudaq::to_hex(raw[0])+")");
 
 
-      for (int b=0; b<20; b++)
+      
+      for (int b=0; b<2; b++)
 	std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % b % raw[b]<<std::endl;
 
       std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % 30786 % raw[30786]<<std::endl;
@@ -299,7 +301,7 @@ namespace eudaq {
 
     }
 
-    char GetMainFrame(const unsigned int r, const char mainFrameOffset=5) const {
+    char GetRollMaskEnd(const unsigned int r) const {
       //printf("Roll mask = %d \n", r);
       int k1 = -1, k2 = -1;
       for (int p=0; p<13; p++){
@@ -328,13 +330,17 @@ namespace eudaq {
       //printf("last = %d\n", last);
       // k2+1 it the begin TS
 
+      return last;
+    }
+      
+    int GetMainFrame(const unsigned int r, const char mainFrameOffset=5) const {
       // Order of TS is reverse in raw data, hence subtruct 12:
+      const char last = GetRollMaskEnd(r);
+      
       const char mainFrame = 12 - (last+mainFrameOffset)%13;
-
-      return mainFrame;
     }
 
-
+    
     std::vector<std::vector<unsigned short>> GetZSdata(const std::vector<std::array<unsigned int,1924>> &decoded) const{
 
       std::cout<<"In GetZSdata() method"<<std::endl;
@@ -359,6 +365,8 @@ namespace eudaq {
 	//
 	const unsigned int r = decoded[ski][1920];
 
+	/*
+	  
 	const char mainFrame = GetMainFrame(r, mainFrameOffset);
 
 	const int tsm2 = (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13;
@@ -366,7 +374,8 @@ namespace eudaq {
 	const int ts0  = mainFrame;
 	const int ts1  = (mainFrame+1)%13;
 	const int ts2  = (mainFrame+2)%13;
-
+	*/
+	
 	//printf("TS 0 to be saved: %d\n", tsm2);
 	//printf("TS 1 to be saved: %d\n", tsm1);
 	//printf("TS 2 to be saved (MainFrame): %d\n", ts0);
@@ -379,13 +388,38 @@ namespace eudaq {
 	for (int ch = 0; ch < 64; ch+=2){
 
 	  const int chArrPos = 63-ch; // position of the hit in array
-	  //const int chargeLG = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
-	  const int chargeHG = gray_to_brady(decoded[ski][mainFrame*128 + 64 + chArrPos] & 0x0FFF);
 
-	  //std::cout<<ch <<": chargeHG="<<chargeHG<<"   LG:"<<chargeLG <<std::endl;
+	  // ----------
+	  // Temporarly!
+	  // Let's find the frame wit max charge, per channel.
+	  //
 
-	  // ZeroSuppress it:
-	  if (chargeHG - (ped+noi) < 0) continue;
+
+	  int mainFrame = -1;
+	  	  
+	  for (int ts = 0; ts < 13; ts++){
+	    
+	    //const int chargeLG = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
+	    const int chargeHG = gray_to_brady(decoded[ski][ts*128 + 64 + chArrPos] & 0x0FFF);
+	    
+	    //std::cout<<ch <<": chargeHG="<<chargeHG<<"   LG:"<<chargeLG <<std::endl;
+	    
+	    // ZeroSuppress it:
+	    if (chargeHG - (ped+noi) > thresh) {
+	      mainFrame = ts;
+	      break;
+	    }
+	  }
+
+	  if (mainFrame == -1) // The channel does not pass ZS threshold at any TS
+	    continue;
+	  
+	  const int tsm2 = (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13;
+	  const int tsm1 = (((mainFrame - 1) % 13) + ((mainFrame >= 1) ? 0 : 13))%13;
+	  const int ts0  = mainFrame;
+	  const int ts1  = (mainFrame+1)%13;
+	  const int ts2  = (mainFrame+2)%13;
+
 
 	  dataBlockZS[hexa].push_back((ski%4)*100+ch);
 

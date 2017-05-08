@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import socket   
-import sys 
+import sys
 import struct
 import time
 
