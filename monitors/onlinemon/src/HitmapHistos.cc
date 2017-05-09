@@ -12,7 +12,8 @@
 
 HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
     : _sensor(p.getName()), _id(p.getID()), _maxX(p.getMaxX()),
-      _maxY(p.getMaxY()), _wait(false), _hexagons_occupancy(NULL), _hexagons_charge(NULL), _hitmap(NULL), _hitXmap(NULL),
+      _maxY(p.getMaxY()), _wait(false), _hexagons_occupancy(NULL), _hexagons_charge(NULL), _hexagons_tot(NULL), 
+      _hitmap(NULL), _hitXmap(NULL),
       _hitYmap(NULL), _clusterMap(NULL), _lvl1Distr(NULL), _lvl1Width(NULL),
       _lvl1Cluster(NULL), _totSingle(NULL), _totCluster(NULL), _hitOcc(NULL),
       _nClusters(NULL), _nHits(NULL), _clusterXWidth(NULL),
@@ -48,6 +49,9 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
     sprintf(out, "%s/Sensor %i/Charge", _sensor.c_str(), _id);
     sprintf(out2, "h_hexagons_charge_%s_%i", _sensor.c_str(), _id);
     _hexagons_charge = get_th2poly(out,out2); 
+    sprintf(out, "%s/Sensor %i/TOT", _sensor.c_str(), _id);
+    sprintf(out2, "h_hexagons_tot_%s_%i", _sensor.c_str(), _id);
+    _hexagons_tot = get_th2poly(out,out2); 
     sprintf(out, "%s %i Raw Hitmap", _sensor.c_str(), _id);
     sprintf(out2, "h_hitmap_%s_%i", _sensor.c_str(), _id);
     _hitmap = new TH2I(out2, out, _maxX + 1, 0, _maxX, _maxY + 1, 0, _maxY);
@@ -254,7 +258,7 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
       _mon->mon_configdata.getHotpixelcut())
     pixelIsHot = true;
 
-  if (_hexagons_occupancy != NULL && _hexagons_charge != NULL && !pixelIsHot) {
+  if (_hexagons_occupancy != NULL && _hexagons_charge != NULL && _hexagons_tot != NULL && !pixelIsHot) {
     int ch  = _ski_to_ch_map.find(make_pair(pixel_x,pixel_y))->second;
 
     if(ch < 0 || ch > 127)
@@ -276,9 +280,14 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
 	  char buffer_bin[3]; sprintf(buffer_bin,"%d", (char)(icell+1));
 	  string bin_name = "Sensor_"+string(buffer_bin);
 	  _hexagons_occupancy->Fill(bin_name.c_str(), 1);
-	  
+
 	  _hexagons_charge->SetBinContent(icell+1, hit.getAMP()); 
 	  //_hexagons_charge->SetBinContent(bin,bin); //It is bin,bin for the moment, until we define what charge is
+
+	  if (hit.getTOT()!=4)
+	    _hexagons_tot->Fill(bin_name.c_str(), 1);
+	  
+
 	}
       }
     }
@@ -401,6 +410,7 @@ void HitmapHistos::Fill(const SimpleStandardCluster &cluster) {
 void HitmapHistos::Reset() {
   _hexagons_occupancy->Reset("");
   _hexagons_charge->Reset("");
+  _hexagons_tot->Reset("");
   _hitmap->Reset();
   _hitXmap->Reset();
   _hitYmap->Reset();
@@ -499,6 +509,7 @@ void HitmapHistos::Calculate(const int currentEventNum) {
 void HitmapHistos::Write() {
   _hexagons_occupancy->Write();
   _hexagons_charge->Write();
+  _hexagons_tot->Write();
   _hitmap->Write();
   _hitXmap->Write();
   _hitYmap->Write();
