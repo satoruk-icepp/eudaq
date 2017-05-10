@@ -45,7 +45,6 @@ class RpiProducer : public eudaq::Producer {
 
       bool configurationSuccessful = true;
 
-      m_exampleparam = 123;
 
       // Do any configuration of the hardware here
       // Configuration file values are accessible as config.Get(name, default)
@@ -60,7 +59,7 @@ class RpiProducer : public eudaq::Producer {
 
       // first make sure the folder on the target rpi is up-to-date
       EUDAQ_INFO(("Synchronizing files in source directory " + m_sourceDirPath + " with target directory pi1:" + m_targetDirPath + "...").data());
-      int folderSyncReturnStatus = system(("rsync --progress -a -v -c -e ssh " + m_sourceDirPath + "/ pi1:" + m_targetDirPath + "/").data());
+      int folderSyncReturnStatus = 0; // =system(("rsync --progress -a -v -c -e ssh " + m_sourceDirPath + "/ pi1:" + m_targetDirPath + "/").data());
       if (folderSyncReturnStatus != 0) {
         EUDAQ_ERROR(("Synchronization failed with exit status: " + eudaq::to_string(folderSyncReturnStatus)).data());
         configurationSuccessful = false;
@@ -71,7 +70,7 @@ class RpiProducer : public eudaq::Producer {
 
       // now execute code to reset configuration
       EUDAQ_INFO("Now trying to execute configuration reset script " + m_resetConfiguration_exe_fileName + "...");
-      int configurationResetReturnStatus = system(("ssh -T \"sudo source " + m_targetDirPath + "/" + m_resetConfiguration_exe_fileName + "\"").data());
+      int configurationResetReturnStatus = 0; //system(("ssh -T \"sudo source " + m_targetDirPath + "/" + m_resetConfiguration_exe_fileName + "\"").data());
       if (configurationResetReturnStatus != 0) {
         EUDAQ_ERROR(("Execution of configuration reset script failed with exit status: " + eudaq::to_string(configurationResetReturnStatus)).data());
         configurationSuccessful = false;
@@ -80,13 +79,9 @@ class RpiProducer : public eudaq::Producer {
         EUDAQ_INFO("Successfully executed configuration reset script!");
       }
       
-      m_ski = config.Get("Ski", 0);
-
       m_portTCP = config.Get("portTCP", 55511);
       m_portUDP = config.Get("portUDP", 55512);
-      m_rpi_1_ip = config.Get("RPI_1_IP", "127.0.0.1");
-
-      std::cout << "Example SKI Parameter = " << m_ski << std::endl;
+      m_rpi_1_ip = config.Get("RPI_1_IP", "192.168.222.3");
 
       if (configurationSuccessful) {
         SetStatus(eudaq::Status::LVL_OK, "Configuration reset!");
@@ -106,7 +101,7 @@ class RpiProducer : public eudaq::Producer {
     // It receives the new run number as a parameter
     virtual void OnStartRun(unsigned param) {
       EUDAQ_INFO("Configuring SKIROCS...");
-      int skirocConfReturnStatus = system(("ssh -T \"sudo ./" + m_targetDirPath + "/" + m_configureSkirocs_exe_fileName + "\"").data());
+      int skirocConfReturnStatus = 0; //=system(("ssh -T \"sudo ./" + m_targetDirPath + "/" + m_configureSkirocs_exe_fileName + "\"").data());
       if (skirocConfReturnStatus != 0) {
         EUDAQ_ERROR(("Configuration of SKIROCS failed with status: " + eudaq::to_string(skirocConfReturnStatus)).data());
         return;
@@ -145,8 +140,8 @@ class RpiProducer : public eudaq::Producer {
       }
 	
 
-      
-      SendCommand("START_RUN");
+      std::string message = "START_RUN " + eudaq::to_string(m_run);
+      SendCommand(message.c_str());
 
       char answer[20];
       bzero(answer, 20);
@@ -180,7 +175,8 @@ class RpiProducer : public eudaq::Producer {
       eudaq::RawDataEvent bore(eudaq::RawDataEvent::BORE(EVENT_TYPE, m_run));
       // You can set tags on the BORE that will be saved in the data file
       // and can be used later to help decoding
-      bore.SetTag("MyTag", eudaq::to_string(m_exampleparam));
+      //bore.SetTag("MyTag", eudaq::to_string(m_exampleparam));
+
       // Send the event to the Data Collector
       SendEvent(bore);
 
@@ -509,7 +505,6 @@ private:
     // std::string m_path_programFPGA_SYNCH_exe, m_path_programFPGAs_RDOUT_exe, m_path_programORMs_RDOUT_exe, m_path_programORM_CTL_ext, m_sourceDirPath, m_targetDirPath;
     std::string m_resetConfiguration_exe_fileName, m_sourceDirPath, m_targetDirPath, m_configureSkirocs_exe_fileName;
     unsigned m_ski;
-    unsigned m_exampleparam; // probably can be safely gotten rid of
     bool m_stopping, m_stopped, m_done, m_started, m_running, m_configured;
     int m_sockfd1, m_sockfd2; //TCP and UDP socket connection file descriptors (fd)
     //std::mutex m_mufd;
