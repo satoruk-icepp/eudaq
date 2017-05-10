@@ -42,28 +42,79 @@ class RpiProducer : public eudaq::Producer {
     // This gets called whenever the DAQ is configured
     virtual void OnConfigure(const eudaq::Configuration & config) {
       std::cout << "Configuring: " << config.Name() << std::endl;
-      
+
+      bool configurationSuccessful = true;
+
+      m_exampleparam = 123;
+
       // Do any configuration of the hardware here
       // Configuration file values are accessible as config.Get(name, default)
-      m_exampleparam = config.Get("Parameter", 0);
+      
+      // Fetch parameters needed to reset configuration
+      m_resetConfiguration_exe_fileName = config.Get("resetConfiguration_exe_fileName", "resetConfiguraton.sh");
+      m_sourceDirPath = config.Get("sourceDirPath", "thisShouldBeReset");
+      m_targetDirPath = config.Get("targetDirPath", "thisShouldBeReset");
+      m_configureSkirocs_exe_fileName = config.Get("configureSkirocs_exe_fileName", "configureSkirocs.sh");
+
+      // reset configuration by programming FPGAs on the SYNCH and RDOUT boards, and the RDOUT and CTL ORMs
+
+      // first make sure the folder on the target rpi is up-to-date
+      EUDAQ_INFO(("Synchronizing files in source directory " + m_sourceDirPath + " with target directory pi1:" + m_targetDirPath + "...").data());
+      int folderSyncReturnStatus = system(("rsync --progress -a -v -c -e ssh " + m_sourceDirPath + "/ pi1:" + m_targetDirPath + "/").data());
+      if (folderSyncReturnStatus != 0) {
+        EUDAQ_ERROR(("Synchronization failed with exit status: " + eudaq::to_string(folderSyncReturnStatus)).data());
+        configurationSuccessful = false;
+      }
+      else {
+        EUDAQ_INFO("Successfully synchronized folder!");
+      }
+
+      // now execute code to reset configuration
+      EUDAQ_INFO("Now trying to execute configuration reset script " + m_resetConfiguration_exe_fileName + "...");
+      int configurationResetReturnStatus = system(("ssh -T \"sudo source " + m_targetDirPath + "/" + m_resetConfiguration_exe_fileName + "\"").data());
+      if (configurationResetReturnStatus != 0) {
+        EUDAQ_ERROR(("Execution of configuration reset script failed with exit status: " + eudaq::to_string(configurationResetReturnStatus)).data());
+        configurationSuccessful = false;
+      }
+      else {
+        EUDAQ_INFO("Successfully executed configuration reset script!");
+      }
+      
       m_ski = config.Get("Ski", 0);
 
       m_portTCP = config.Get("portTCP", 55511);
       m_portUDP = config.Get("portUDP", 55512);
       m_rpi_1_ip = config.Get("RPI_1_IP", "127.0.0.1");
 
-      std::cout << "Example Parameter = " << m_exampleparam << std::endl;
       std::cout << "Example SKI Parameter = " << m_ski << std::endl;
 
-      // At the end, set the status that will be displayed in the Run Control.
-      SetStatus(eudaq::Status::LVL_OK, "Configured (" + config.Name() + ")");
+      if (configurationSuccessful) {
+        SetStatus(eudaq::Status::LVL_OK, "Configuration reset!");
+      }
+      else {
+        SetStatus(eudaq::Status::LVL_ERROR, "Unable to reset configuration!");
+      }
 
-      m_configured=true;
+      // At the end, set the status that will be displayed in the Run Control.
+      // SetStatus(eudaq::Status::LVL_OK, "Configured (" + config.Name() + ")");
+
+      // m_configured=true;
+      m_configured = configurationSuccessful;
     }
 
     // This gets called whenever a new run is started
     // It receives the new run number as a parameter
     virtual void OnStartRun(unsigned param) {
+      EUDAQ_INFO("Configuring SKIROCS...");
+      int skirocConfReturnStatus = system(("ssh -T \"sudo ./" + m_targetDirPath + "/" + m_configureSkirocs_exe_fileName + "\"").data());
+      if (skirocConfReturnStatus != 0) {
+        EUDAQ_ERROR(("Configuration of SKIROCS failed with status: " + eudaq::to_string(skirocConfReturnStatus)).data());
+        return;
+      }
+      else {
+        EUDAQ_INFO("Successfully configured SKIROCS!");
+      }
+    
       m_run = param;
       m_ev = 0;
 
@@ -452,9 +503,13 @@ class RpiProducer : public eudaq::Producer {
 
 
     
-  private:
-    unsigned m_run, m_ev, m_exampleparam;
+private:
+    unsigned m_run, m_ev;
+    // std::string m_commonHostnamePrefix, m_pathToExampleFile, m_localScriptDir, m_testScriptName;
+    // std::string m_path_programFPGA_SYNCH_exe, m_path_programFPGAs_RDOUT_exe, m_path_programORMs_RDOUT_exe, m_path_programORM_CTL_ext, m_sourceDirPath, m_targetDirPath;
+    std::string m_resetConfiguration_exe_fileName, m_sourceDirPath, m_targetDirPath, m_configureSkirocs_exe_fileName;
     unsigned m_ski;
+    unsigned m_exampleparam; // probably can be safely gotten rid of
     bool m_stopping, m_stopped, m_done, m_started, m_running, m_configured;
     int m_sockfd1, m_sockfd2; //TCP and UDP socket connection file descriptors (fd)
     //std::mutex m_mufd;

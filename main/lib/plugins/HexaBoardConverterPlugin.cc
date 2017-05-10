@@ -21,12 +21,12 @@ const size_t nSkiPerBoard=4;
 const uint32_t skiMask = 0x0000000F;
 //const uint32_t skiMask = 0;
 
-const char mainFrameOffset=5;
+const char mainFrameOffset=8;
 
 // For zero usppression:
-const int ped = 190;  // pedestal
-const int noi = 20;   // noise
-const int thresh = 200; // ZS threshold (above pedestal)
+const int ped = 150;  // pedestal
+const int noi = 10;   // noise
+const int thresh = 100; // ZS threshold (above pedestal)
 
 // Size of ZS data ()per channel
 const char hitSizeZS = 17;
@@ -320,7 +320,7 @@ namespace eudaq {
 
       // Check that k1 and k2 are consecutive
       char last = -1;
-      if (k1==0 && k2==12) { last = 0;}
+      if (k1==0 && k2==12) { last = 12;}
       else if (abs(k1-k2)>1)
 	EUDAQ_WARN("The k1 and k2 are not consecutive! abs(k1-k2) = "+ eudaq::to_string(abs(k1-k2)));
       //printf("The k1 and k2 are not consecutive! abs(k1-k2) = %d\n", abs(k1-k2));
@@ -337,7 +337,8 @@ namespace eudaq {
       // Order of TS is reverse in raw data, hence subtruct 12:
       const char last = GetRollMaskEnd(r);
       
-      const char mainFrame = 12 - (last+mainFrameOffset)%13;
+      int mainFrame = 12 - (((last - mainFrameOffset) % 13) + ((last >= mainFrameOffset) ? 0 : 13))%13;
+      return mainFrame;
     }
 
     
@@ -365,16 +366,13 @@ namespace eudaq {
 	//
 	const unsigned int r = decoded[ski][1920];
 
-	/*
-	  
 	const char mainFrame = GetMainFrame(r, mainFrameOffset);
 
-	const int tsm2 = (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13;
-	const int tsm1 = (((mainFrame - 1) % 13) + ((mainFrame >= 1) ? 0 : 13))%13;
+	const int ts2 = (((mainFrame - 2) % 13) + ((mainFrame >= 2) ? 0 : 13))%13;
+	const int ts1 = (((mainFrame - 1) % 13) + ((mainFrame >= 1) ? 0 : 13))%13;
 	const int ts0  = mainFrame;
-	const int ts1  = (mainFrame+1)%13;
-	const int ts2  = (mainFrame+2)%13;
-	*/
+	const int tsm1  = (mainFrame+1)%13;
+	const int tsm2  = (mainFrame+2)%13;
 	
 	//printf("TS 0 to be saved: %d\n", tsm2);
 	//printf("TS 1 to be saved: %d\n", tsm1);
@@ -393,8 +391,7 @@ namespace eudaq {
 	  // Temporarly!
 	  // Let's find the frame wit max charge, per channel.
 	  //
-
-
+	  /*
 	  int mainFrame = -1;
 	  	  
 	  for (int ts = 0; ts < 13; ts++){
@@ -420,7 +417,17 @@ namespace eudaq {
 	  const int ts1  = (mainFrame+1)%13;
 	  const int ts2  = (mainFrame+2)%13;
 
+	  */
 
+	  const int chargeLG = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
+	  //const int chargeHG = gray_to_brady(decoded[ski][ts*128 + 64 + chArrPos] & 0x0FFF);
+	  
+	  //std::cout<<ch <<": chargeHG="<<chargeHG<<"   LG:"<<chargeLG <<std::endl;
+	  
+	  // ZeroSuppress it:
+	  if (chargeLG - (ped+noi) < thresh) 
+	    continue;
+	  
 	  dataBlockZS[hexa].push_back((ski%4)*100+ch);
 
 

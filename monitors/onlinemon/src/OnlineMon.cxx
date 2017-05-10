@@ -284,13 +284,13 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
       }
       SimpleStandardPlane simpPlane(sensorname,plane.ID(),plane.XSize(),plane.YSize(), plane.TLUEvent(),plane.PivotPixel(),&mon_configdata);
 
-      unsigned int lvl1 = 7;
+      unsigned int lvl1 = 2;
       // if (lvl1 > 2 && plane.HitPixels(lvl1) > 0) std::cout << "LVLHits: " << lvl1 << ": " << plane.HitPixels(lvl1) << std::endl;
       
       for (unsigned int index = 0; index < plane.HitPixels(lvl1); index++)
         {
           SimpleStandardHit hit((int)plane.GetX(index,lvl1),(int)plane.GetY(index,lvl1));
-          hit.setTOT((int)plane.GetPixel(index,lvl1)); //this stores the analog information if existent, else it stores 1
+          hit.setTOT((int)plane.GetPixel(index, 12)); // TOT 
           hit.setAMP((int)plane.GetPixel(index,lvl1)); //this stores the analog information if existent, else it stores 1
           hit.setLVL1(lvl1);
 
