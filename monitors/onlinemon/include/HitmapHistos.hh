@@ -30,7 +30,8 @@ protected:
 
   TH2Poly *_hexagons_occupancy;
   TH2Poly *_hexagons_charge;
-  TH2Poly *_hexagons_tot;
+  TH2Poly *_hexagons_occ_tot;
+  TH2Poly *_hexagons_occ_toa;
   TH2I *_hitmap;
   TH1I *_hitXmap;
   TH1I *_hitYmap;
@@ -69,7 +70,8 @@ public:
 
   TH2Poly *getHexagonsOccupancyHisto() { return _hexagons_occupancy; }
   TH2Poly *getHexagonsChargeHisto() { return _hexagons_charge; }
-  TH2Poly *getHexagonsTotHisto() { return _hexagons_tot; }
+  TH2Poly *getHexagonsOccTotHisto() { return _hexagons_occ_tot; }
+  TH2Poly *getHexagonsOccToaHisto() { return _hexagons_occ_toa; }
   TH2I *getHitmapHisto() { return _hitmap; }
   TH1I *getHitXmapHisto() { return _hitXmap; }
   TH1I *getHitYmapHisto() { return _hitYmap; }

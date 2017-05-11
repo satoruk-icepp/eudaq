@@ -291,8 +291,9 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
         {
           SimpleStandardHit hit((int)plane.GetX(index,lvl1),(int)plane.GetY(index,lvl1));
           hit.setTOT((int)plane.GetPixel(index, 12)); // TOT
-          hit.setAMP((int)plane.GetPixel(index,lvl1)); //this stores the analog information if existent, else it stores 1
-          hit.setLVL1(lvl1);
+          hit.setTOT((int)plane.GetPixel(index, 12)); // TOT
+          hit.setAMP((int)plane.GetPixel(index, 2)); // Let's use this guy for TOA storage!
+          hit.setLVL1((int)plane.GetPixel(index, 11));
 
           if (simpPlane.getAnalogPixelType()) //this is analog pixel, apply threshold
           {

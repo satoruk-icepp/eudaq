@@ -24,9 +24,9 @@ const uint32_t skiMask = 0x0000000F;
 const char mainFrameOffset=8;
 
 // For zero usppression:
-const int ped = 150;  // pedestal
+//const int ped = 150;  // pedestal. It is now calculated as median from all channels in hexaboard
 const int noi = 10;   // noise
-const int thresh = 100; // ZS threshold (above pedestal)
+const int thresh = 80; // ZS threshold (above pedestal)
 
 // Size of ZS data ()per channel
 const char hitSizeZS = 17;
@@ -381,8 +381,43 @@ namespace eudaq {
 	//printf("TS 4 to be saved: %d\n", ts2);
 
 	// -- End of main frame determination
+	
 
+	std::vector<unsigned short> tmp_adc;
+	for (int ch = 0; ch < 64; ch+=2){
+	  // Here lets estimate the pedestal and noise by averaging over all channels
+	  const int chArrPos = 63-ch; // position of the hit in array
+	  unsigned short adc = 0;
+	  adc = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0; // Taking care of overflow and zeros
+	  tmp_adc.push_back(adc);
+	}
 
+	std::sort(tmp_adc.begin(), tmp_adc.end());
+
+	unsigned median = 0 ;
+	
+	if (tmp_adc.size() == 32){
+	  median = tmp_adc[15];
+	  /* We could also do mean and stdev if we wanted to:
+	  double sum = std::accumulate(tmp_adc.begin(), tmp_adc.end(), 0.0);
+	  double mean = sum / tmp_adc.size();
+	  
+	  double sq_sum = std::inner_product(tmp_adc.begin(), tmp_adc.end(), tmp_adc.begin(), 0.0);
+	  double stdev = std::sqrt(sq_sum / tmp_adc.size() - mean * mean);
+	  */
+	}
+	else
+	  std::cout<<"There is something wrong with your tmp_adc.size()"<<tmp_adc.size()<<std::endl;
+
+	
+	std::cout<<" Median of all channels:\n"<<median
+		 <<"\t also, first guy:"<<tmp_adc.front()<<"  and last guy:"<<tmp_adc.back()<<std::endl;
+
+	tmp_adc.clear();
+	
+	const int ped = median;
+	
 	for (int ch = 0; ch < 64; ch+=2){
 
 	  const int chArrPos = 63-ch; // position of the hit in array
@@ -425,9 +460,11 @@ namespace eudaq {
 	  if (adc==0) adc=4096;  else if (adc==4) adc=0; // Taking care of overflow and zeros
 	  
 	  const int chargeLG = adc;
-	  //const int chargeHG = gray_to_brady(decoded[ski][ts*128 + 64 + chArrPos] & 0x0FFF);
 	  
-	  //std::cout<<ch <<": chargeHG="<<chargeHG<<"   LG:"<<chargeLG <<std::endl;
+	  //std::cout<<ch <<": charge LG:"<<chargeLG
+	  //<<"ped + noi = "<<ped+noi<<"   charge-(ped+noi) = "<<chargeLG - (ped+noi)<<std::endl;
+	  
+	  //const int chargeHG = gray_to_brady(decoded[ski][ts*128 + 64 + chArrPos] & 0x0FFF);
 	  
 	  // ZeroSuppress it:
 	  if (chargeLG - (ped+noi) < thresh) 
