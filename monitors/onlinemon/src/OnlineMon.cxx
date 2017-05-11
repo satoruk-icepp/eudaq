@@ -149,7 +149,7 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
   previous_event_clustering_time=0;
   previous_event_correlation_time=0;
 
-  onlinemon->SetOnlineMon(this);    
+  onlinemon->SetOnlineMon(this);
 
 }
 
@@ -286,11 +286,11 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
 
       unsigned int lvl1 = 2;
       // if (lvl1 > 2 && plane.HitPixels(lvl1) > 0) std::cout << "LVLHits: " << lvl1 << ": " << plane.HitPixels(lvl1) << std::endl;
-      
+
       for (unsigned int index = 0; index < plane.HitPixels(lvl1); index++)
         {
           SimpleStandardHit hit((int)plane.GetX(index,lvl1),(int)plane.GetY(index,lvl1));
-          hit.setTOT((int)plane.GetPixel(index, 12)); // TOT 
+          hit.setTOT((int)plane.GetPixel(index, 12)); // TOT
           hit.setAMP((int)plane.GetPixel(index,lvl1)); //this stores the analog information if existent, else it stores 1
           hit.setLVL1(lvl1);
 
@@ -322,8 +322,8 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
 		// Or set SkiRoc specific values
 		if (hit.getAMP() < 20)
 		  continue;
-              
-	      }	    
+
+	      }
             simpPlane.addHit(hit);
           }
           else //purely digital pixel
@@ -332,9 +332,9 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
           }
 
         }
-     
 
-      
+
+
       simpEv.addPlane(simpPlane);
 #ifdef DEBUG
       cout << "Type: " << plane.Type() << endl;
@@ -345,7 +345,8 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
     }
 
     my_event_inner_operations_time.Start(true);
-    simpEv.doClustering();
+    // Don't do clustering for hexaboard. This would not make any sense
+    //simpEv.doClustering();
     my_event_inner_operations_time.Stop();
     previous_event_clustering_time = my_event_inner_operations_time.RealTime();
 
@@ -495,7 +496,7 @@ int main(int argc, const char ** argv) {
   eudaq::Option<std::string> file (op, "f", "data-file", "", "filename",
       "A data file to load - setting this changes the default"
       " run control address to 'null://'");
-  eudaq::Option<int>             x(op, "x", "left",    100, "pos");
+  eudaq::Option<int>             x(op, "x", "left",    500, "pos");
   eudaq::Option<int>             y(op, "y", "top",       0, "pos");
   eudaq::Option<int>             w(op, "w", "width",  1400, "pos");
   eudaq::Option<int>             h(op, "g", "height",  700, "pos", "The initial position of the window");
@@ -528,9 +529,10 @@ int main(int argc, const char ** argv) {
     }
     if (gStyle!=NULL)
     {
-      gStyle->SetPalette(1);
-      gStyle->SetNumberContours(99);
-      gStyle->SetOptStat(1111);
+      gStyle->SetPalette(56);
+      gStyle->SetNumberContours(50);
+      gStyle->SetOptStat(0);
+      //gStyle->SetStatX(0.2);
       gStyle->SetStatH(static_cast<Float_t>(0.15));
     }
     else

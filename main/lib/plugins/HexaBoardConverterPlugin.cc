@@ -419,7 +419,12 @@ namespace eudaq {
 
 	  */
 
-	  const int chargeLG = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
+
+	  unsigned short adc = 0;
+	  adc = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0; // Taking care of overflow and zeros
+	  
+	  const int chargeLG = adc;
 	  //const int chargeHG = gray_to_brady(decoded[ski][ts*128 + 64 + chArrPos] & 0x0FFF);
 	  
 	  //std::cout<<ch <<": chargeHG="<<chargeHG<<"   LG:"<<chargeLG <<std::endl;
@@ -432,39 +437,77 @@ namespace eudaq {
 
 
 	  // Low gain (save 5 time-slices total):
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm1*128 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts0*128 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts1*128 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts2*128 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0; // Taking care of overflow and zeros
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][tsm1*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts0*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts1*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts2*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // High gain:
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm2*128 + 64 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm1*128 + 64 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts0*128 + 64 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts1*128 + 64 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts2*128 + 64 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][tsm2*128 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
+	  adc = gray_to_brady(decoded[ski][tsm1*128 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts0*128 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts1*128 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts2*128 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Filling TOA (stop falling clock)
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][1664 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Filling TOA (stop rising clock)
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Filling TOT (slow)
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Filling TOT (fast)
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + 3*64 + chArrPos] & 0x0FFF));
-
+	  adc = gray_to_brady(decoded[ski][1664 + 3*64 +chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Global TS 14 MSB (it's gray encoded?). Not decoded here!
 	  // Not sure how to decode Global Time Stamp yet...
-	  dataBlockZS[hexa].push_back(decoded[ski][1921]);
+	  adc = decoded[ski][1921];
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Global TS 12 LSB + 1 extra bit (binary encoded)
-	  dataBlockZS[hexa].push_back(decoded[ski][1922]);
+	  adc = decoded[ski][1922];
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	}
 
