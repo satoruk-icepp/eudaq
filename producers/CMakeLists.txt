@@ -16,7 +16,6 @@ option(IGNORE_KNOWN_ISSUES "Ignore known compilation issues of producer executab
 
 
 optional_add_subdirectory(ipbusTest)
-#optional_add_subdirectory(cmshgcal)
 
 optional_add_subdirectory(altro)
 optional_add_subdirectory(altroUSB)

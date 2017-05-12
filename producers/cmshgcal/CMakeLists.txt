@@ -1,7 +1,8 @@
 SET(hgcal_name "HGCalProducer.exe")
+SET(wirechamber_name "WireChamberProducer.exe")
 SET(rpi_name "RpiProducer.exe")
 
-SET(sourcefiles src/IpbusHwController.cc src/TriggerController.cc)
+SET(sourcefiles src/IpbusHwController.cc src/TriggerController.cc src/CAEN_v1290.cc)
 
 find_package(CACTUS REQUIRED)
 find_package(ROOT REQUIRED)
@@ -10,12 +11,15 @@ LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${EXTERN_BOOST_LIB_PREFIX} ${EXTERN_PUGIXM
 
 ADD_EXECUTABLE(${hgcal_name} src/HGCalProducer.cxx ${sourcefiles})
 ADD_EXECUTABLE(${rpi_name} src/RpiProducer.cxx)
+ADD_EXECUTABLE(${wirechamber_name} src/WireChamberProducer.cxx)
 
 TARGET_LINK_LIBRARIES(${hgcal_name} EUDAQ ${EUDAQ_THREADS_LIB} ${ROOT_LIBRARIES} boost_timer boost_thread boost_filesystem boost_regex boost_system boost_thread boost_program_options cactus_extern_pugixml cactus_uhal_log cactus_uhal_grammars cactus_uhal_uhal)
 
 TARGET_LINK_LIBRARIES(${rpi_name} EUDAQ ${EUDAQ_THREADS_LIB})
 
-INSTALL(TARGETS  ${hgcal_name} ${rpi_name}
+TARGET_LINK_LIBRARIES(${wirechamber_name} EUDAQ ${EUDAQ_THREADS_LIB})
+
+INSTALL(TARGETS  ${hgcal_name} ${rpi_name} ${wirechamber_name}
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib)
