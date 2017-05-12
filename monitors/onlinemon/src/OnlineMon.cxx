@@ -96,6 +96,21 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
   }
 
 
+  if (gStyle!=NULL)
+    {
+      gStyle->SetPalette(mon_configdata.getDqmColorMap());
+      gStyle->SetNumberContours(50);
+      gStyle->SetOptStat(0);
+      //gStyle->SetStatX(0.2);
+      gStyle->SetStatH(static_cast<Float_t>(0.15));
+    }
+  else
+    {
+      cout<<"Global gStyle Object not found" <<endl;
+      exit(-1);
+    }
+  
+  
   // print the configuration
   mon_configdata.PrintConfiguration();
 
@@ -528,26 +543,13 @@ int main(int argc, const char ** argv) {
       cout<<"Global gROOT Object not found" <<endl;
       exit(-1);
     }
-    if (gStyle!=NULL)
-    {
-      gStyle->SetPalette(56);
-      gStyle->SetNumberContours(50);
-      gStyle->SetOptStat(0);
-      //gStyle->SetStatX(0.2);
-      gStyle->SetStatH(static_cast<Float_t>(0.15));
-    }
-    else
-    {
-      cout<<"Global gStyle Object not found" <<endl;
-      exit(-1);
-    }
 
     // start the GUI
     //    cout<< "DEBUG: LIMIT VALUE " << (unsigned)limit.Value();
     TApplication theApp("App", &argc, const_cast<char**>(argv),0,0);
     RootMonitor mon(rctrl.Value(), file.Value(), x.Value(), y.Value(),
-        w.Value(), h.Value(), argc, offline.Value(), limit.Value(),
-        skipping.Value(), skip_counter.Value(), configfile.Value());
+		    w.Value(), h.Value(), argc, offline.Value(), limit.Value(),
+		    skipping.Value(), skip_counter.Value(), configfile.Value());
     mon.setWriteRoot(do_rootatend.IsSet());
     mon.autoReset(do_resetatend.IsSet());
     mon.setReduce(reduce.Value());

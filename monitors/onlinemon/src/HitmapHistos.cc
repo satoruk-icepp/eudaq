@@ -290,10 +290,10 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
 	  _hexagons_charge->SetBinContent(icell+1, hit.getAMP()); 
 	  //_hexagons_charge->SetBinContent(bin,bin); //It is bin,bin for the moment, until we define what charge is
 
-	  if (hit.getTOT()!=4)
+	  if (hit.getTOT()!=0)
 	    _hexagons_occ_tot->Fill(bin_name.c_str(), 1);
 	  
-	  if (hit.getLVL1()!=4)
+	  if (hit.getLVL1()!=0)
 	    _hexagons_occ_toa->Fill(bin_name.c_str(), 1);
 	  
 
