@@ -12,7 +12,8 @@
 
 HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
     : _sensor(p.getName()), _id(p.getID()), _maxX(p.getMaxX()),
-      _maxY(p.getMaxY()), _wait(false), _hexagons_occupancy(NULL), _hexagons_charge(NULL), _hexagons_tot(NULL), 
+      _maxY(p.getMaxY()), _wait(false),
+      _hexagons_occupancy(NULL), _hexagons_charge(NULL), _hexagons_occ_tot(NULL), _hexagons_occ_toa(NULL), 
       _hitmap(NULL), _hitXmap(NULL),
       _hitYmap(NULL), _clusterMap(NULL), _lvl1Distr(NULL), _lvl1Width(NULL),
       _lvl1Cluster(NULL), _totSingle(NULL), _totCluster(NULL), _hitOcc(NULL),
@@ -49,13 +50,16 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
     sprintf(out, "%s/Sensor %i/Charge", _sensor.c_str(), _id);
     sprintf(out2, "h_hexagons_charge_%s_%i", _sensor.c_str(), _id);
     _hexagons_charge = get_th2poly(out,out2); 
-    sprintf(out, "%s/Sensor %i/TOT", _sensor.c_str(), _id);
-    sprintf(out2, "h_hexagons_tot_%s_%i", _sensor.c_str(), _id);
-    _hexagons_tot = get_th2poly(out,out2); 
+    sprintf(out, "%s/Sensor %i/Occ_TOT", _sensor.c_str(), _id);
+    sprintf(out2, "h_hexagons_occ_tot_%s_%i", _sensor.c_str(), _id);
+    _hexagons_occ_tot = get_th2poly(out,out2); 
+    sprintf(out, "%s/Sensor %i/Occ_TOA", _sensor.c_str(), _id);
+    sprintf(out2, "h_hexagons_occ_toa_%s_%i", _sensor.c_str(), _id);
+    _hexagons_occ_toa = get_th2poly(out,out2); 
     sprintf(out, "%s %i Raw Hitmap", _sensor.c_str(), _id);
     sprintf(out2, "h_hitmap_%s_%i", _sensor.c_str(), _id);
     _hitmap = new TH2I(out2, out, _maxX + 1, 0, _maxX, _maxY + 1, 0, _maxY);
-    SetHistoAxisLabels(_hitmap, "X", "Y");
+    SetHistoAxisLabels(_hitmap, "SkiRoc ID", "Channel");
     // std::cout << "Created Histogram " << out2 << std::endl;
 
     sprintf(out, "%s %i Raw Hitmap X-Projection", _sensor.c_str(), _id);
@@ -127,8 +131,9 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
 
     sprintf(out, "%s %i Number of Hits", _sensor.c_str(), _id);
     sprintf(out2, "h_nHits_%s_%i", _sensor.c_str(), _id);
-    _nHits = new TH1I(out2, out, 500, 0, 99);
+    _nHits = new TH1I(out2, out, 500, 0, 40);
     SetHistoAxisLabelx(_nHits, "n_Hits");
+    //_nHits.SetStats(1);
 
     sprintf(out, "%s %i Number of Invalid Hits", _sensor.c_str(), _id);
     sprintf(out2, "h_nbadHits_%s_%i", _sensor.c_str(), _id);
@@ -258,13 +263,14 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
       _mon->mon_configdata.getHotpixelcut())
     pixelIsHot = true;
 
-  if (_hexagons_occupancy != NULL && _hexagons_charge != NULL && _hexagons_tot != NULL && !pixelIsHot) {
+  if (_hexagons_occupancy != NULL && _hexagons_charge != NULL && _hexagons_occ_tot != NULL && _hexagons_occ_toa != NULL && !pixelIsHot) {
     int ch  = _ski_to_ch_map.find(make_pair(pixel_x,pixel_y))->second;
-
-    if(ch < 0 || ch > 127)
-    std::cout<<" There is a problem with channel number\n pixel_x = "
-	     <<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<std::endl;      
-
+    
+    if (ch < 0 || ch > 127){
+      std::cout<<" There is a problem with channel number\n pixel_x = "
+	       <<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<std::endl;      
+      ch=999;
+    }
     
     else {
       //if(bin<-1 || bin > 133){      
@@ -275,7 +281,7 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
       for (int icell = 0; icell < 133 ; icell++) {
 	int bin = ch_to_bin_map[icell];
 	if (bin == ch){
-	  std::cout<<" pixel_x = "<<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<"  icell="<<icell<<std::endl;
+	  //std::cout<<" pixel_x = "<<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<"  icell="<<icell<<std::endl;
 	  
 	  char buffer_bin[3]; sprintf(buffer_bin,"%d", (char)(icell+1));
 	  string bin_name = "Sensor_"+string(buffer_bin);
@@ -284,8 +290,11 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
 	  _hexagons_charge->SetBinContent(icell+1, hit.getAMP()); 
 	  //_hexagons_charge->SetBinContent(bin,bin); //It is bin,bin for the moment, until we define what charge is
 
-	  if (hit.getTOT()!=4)
-	    _hexagons_tot->Fill(bin_name.c_str(), 1);
+	  if (hit.getTOT()!=0)
+	    _hexagons_occ_tot->Fill(bin_name.c_str(), 1);
+	  
+	  if (hit.getLVL1()!=0)
+	    _hexagons_occ_toa->Fill(bin_name.c_str(), 1);
 	  
 
 	}
@@ -410,7 +419,8 @@ void HitmapHistos::Fill(const SimpleStandardCluster &cluster) {
 void HitmapHistos::Reset() {
   _hexagons_occupancy->Reset("");
   _hexagons_charge->Reset("");
-  _hexagons_tot->Reset("");
+  _hexagons_occ_tot->Reset("");
+  _hexagons_occ_toa->Reset("");
   _hitmap->Reset();
   _hitXmap->Reset();
   _hitYmap->Reset();
@@ -509,7 +519,8 @@ void HitmapHistos::Calculate(const int currentEventNum) {
 void HitmapHistos::Write() {
   _hexagons_occupancy->Write();
   _hexagons_charge->Write();
-  _hexagons_tot->Write();
+  _hexagons_occ_tot->Write();
+  _hexagons_occ_toa->Write();
   _hitmap->Write();
   _hitXmap->Write();
   _hitYmap->Write();

@@ -24,9 +24,9 @@ const uint32_t skiMask = 0x0000000F;
 const char mainFrameOffset=8;
 
 // For zero usppression:
-const int ped = 150;  // pedestal
+//const int ped = 150;  // pedestal. It is now calculated as median from all channels in hexaboard
 const int noi = 10;   // noise
-const int thresh = 100; // ZS threshold (above pedestal)
+const int thresh = 50; // ZS threshold (above pedestal)
 
 // Size of ZS data ()per channel
 const char hitSizeZS = 17;
@@ -306,7 +306,7 @@ namespace eudaq {
       int k1 = -1, k2 = -1;
       for (int p=0; p<13; p++){
 	//printf("pos = %d, %d \n", p, r & (1<<12-p));
-	if (r & (1<<12-p)) {
+	if (r & (1<<p)) {
 	  if (k1==-1)
 	    k1 = p;
 	  else if (k2==-1)
@@ -320,7 +320,7 @@ namespace eudaq {
 
       // Check that k1 and k2 are consecutive
       char last = -1;
-      if (k1==0 && k2==12) { last = 12;}
+      if (k1==0 && k2==12) { last = 0;}
       else if (abs(k1-k2)>1)
 	EUDAQ_WARN("The k1 and k2 are not consecutive! abs(k1-k2) = "+ eudaq::to_string(abs(k1-k2)));
       //printf("The k1 and k2 are not consecutive! abs(k1-k2) = %d\n", abs(k1-k2));
@@ -333,11 +333,12 @@ namespace eudaq {
       return last;
     }
       
-    int GetMainFrame(const unsigned int r, const char mainFrameOffset=5) const {
+    int GetMainFrame(const unsigned int r, const char mainFrameOffset=8) const {
       // Order of TS is reverse in raw data, hence subtruct 12:
       const char last = GetRollMaskEnd(r);
-      
-      int mainFrame = 12 - (((last - mainFrameOffset) % 13) + ((last >= mainFrameOffset) ? 0 : 13))%13;
+
+      int mainFrame = 12 - ( last + (13 - mainFrameOffset) ) % 13;
+      //int mainFrame = 12 - (((last - mainFrameOffset) % 13) + ((last >= mainFrameOffset) ? 0 : 13))%13;
       return mainFrame;
     }
 
@@ -373,7 +374,9 @@ namespace eudaq {
 	const int ts0  = mainFrame;
 	const int tsm1  = (mainFrame+1)%13;
 	const int tsm2  = (mainFrame+2)%13;
-	
+
+	const int after_track1 = (GetRollMaskEnd(r)+1)%13;
+	const int after_track2 = (GetRollMaskEnd(r)+2)%13;
 	//printf("TS 0 to be saved: %d\n", tsm2);
 	//printf("TS 1 to be saved: %d\n", tsm1);
 	//printf("TS 2 to be saved (MainFrame): %d\n", ts0);
@@ -381,8 +384,43 @@ namespace eudaq {
 	//printf("TS 4 to be saved: %d\n", ts2);
 
 	// -- End of main frame determination
+	
 
+	std::vector<unsigned short> tmp_adc;
+	for (int ch = 0; ch < 64; ch+=2){
+	  // Here lets estimate the pedestal and noise by averaging over all channels
+	  const int chArrPos = 63-ch; // position of the hit in array
+	  unsigned short adc = 0;
+	  adc = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0; // Taking care of overflow and zeros
+	  tmp_adc.push_back(adc);
+	}
 
+	std::sort(tmp_adc.begin(), tmp_adc.end());
+
+	unsigned median = 0 ;
+	
+	if (tmp_adc.size() == 32){
+	  median = tmp_adc[15];
+	  /* We could also do mean and stdev if we wanted to:
+	  double sum = std::accumulate(tmp_adc.begin(), tmp_adc.end(), 0.0);
+	  double mean = sum / tmp_adc.size();
+	  
+	  double sq_sum = std::inner_product(tmp_adc.begin(), tmp_adc.end(), tmp_adc.begin(), 0.0);
+	  double stdev = std::sqrt(sq_sum / tmp_adc.size() - mean * mean);
+	  */
+	}
+	else
+	  std::cout<<"There is something wrong with your tmp_adc.size()"<<tmp_adc.size()<<std::endl;
+
+	
+	std::cout<<" Median of all channels:\n"<<median
+		 <<"\t also, first guy:"<<tmp_adc.front()<<"  and last guy:"<<tmp_adc.back()<<std::endl;
+
+	tmp_adc.clear();
+	
+	const int ped = median;
+	
 	for (int ch = 0; ch < 64; ch+=2){
 
 	  const int chArrPos = 63-ch; // position of the hit in array
@@ -419,10 +457,17 @@ namespace eudaq {
 
 	  */
 
-	  const int chargeLG = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
-	  //const int chargeHG = gray_to_brady(decoded[ski][ts*128 + 64 + chArrPos] & 0x0FFF);
+
+	  unsigned short adc = 0;
+	  adc = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0; // Taking care of overflow and zeros
 	  
-	  //std::cout<<ch <<": chargeHG="<<chargeHG<<"   LG:"<<chargeLG <<std::endl;
+	  const int chargeLG = adc;
+	  
+	  //std::cout<<ch <<": charge LG:"<<chargeLG
+	  //<<"ped + noi = "<<ped+noi<<"   charge-(ped+noi) = "<<chargeLG - (ped+noi)<<std::endl;
+	  
+	  //const int chargeHG = gray_to_brady(decoded[ski][ts*128 + 64 + chArrPos] & 0x0FFF);
 	  
 	  // ZeroSuppress it:
 	  if (chargeLG - (ped+noi) < thresh) 
@@ -432,39 +477,92 @@ namespace eudaq {
 
 
 	  // Low gain (save 5 time-slices total):
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm1*128 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts0*128 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts1*128 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts2*128 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][tsm2*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0; // Taking care of overflow and zeros
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][tsm1*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts0*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts1*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts2*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // High gain:
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm2*128 + 64 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][tsm1*128 + 64 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts0*128 + 64 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts1*128 + 64 + chArrPos] & 0x0FFF));
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][ts2*128 + 64 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][tsm2*128 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
+	  adc = gray_to_brady(decoded[ski][tsm1*128 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts0*128 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts1*128 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+
+	  adc = gray_to_brady(decoded[ski][ts2*128 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Filling TOA (stop falling clock)
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][1664 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Filling TOA (stop rising clock)
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Filling TOT (slow)
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Filling TOT (fast)
-	  dataBlockZS[hexa].push_back(gray_to_brady(decoded[ski][1664 + 3*64 + chArrPos] & 0x0FFF));
+	  adc = gray_to_brady(decoded[ski][1664 + 3*64 +chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
+
+	  // For PEDESTAL. Get first TS after track (LG):
+	  adc = gray_to_brady(decoded[ski][after_track1*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0; // Taking care of overflow and zeros
+	  dataBlockZS[hexa].push_back(adc);
+
+	  // For PEDESTAL. Get second TS after track (LG):
+	  adc = gray_to_brady(decoded[ski][after_track2*128 + chArrPos] & 0x0FFF);
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0; // Taking care of overflow and zeros
+	  dataBlockZS[hexa].push_back(adc);
+
+	  
+	  /* Let's not save this for the moment (no need)
 
 	  // Global TS 14 MSB (it's gray encoded?). Not decoded here!
 	  // Not sure how to decode Global Time Stamp yet...
-	  dataBlockZS[hexa].push_back(decoded[ski][1921]);
+	  adc = decoded[ski][1921];
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
 
 	  // Global TS 12 LSB + 1 extra bit (binary encoded)
-	  dataBlockZS[hexa].push_back(decoded[ski][1922]);
+	  adc = decoded[ski][1922];
+	  if (adc==0) adc=4096;  else if (adc==4) adc=0;
+	  dataBlockZS[hexa].push_back(adc);
+	  */
 
 	}
 
