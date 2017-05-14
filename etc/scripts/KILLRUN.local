@@ -1,7 +1,7 @@
 #!/bin/bash
 # cleanup of DAQ
 
-PROCESSES="TestDataCollector.exe TLUProducer.exe miniTLU_Producer.exe TLUControl.exe NiProducer.exe OnlineMon.exe euLog.exe euRun.exe IpbusTestProducer.exe RpiTestProducer.exe HGCalProducer.exe"
+PROCESSES="TestDataCollector.exe TLUProducer.exe miniTLU_Producer.exe TLUControl.exe NiProducer.exe OnlineMon.exe euLog.exe euRun.exe IpbusTestProducer.exe RpiTestProducer.exe RpiProducer.exe HGCalProducer.exe"
 
 for thisprocess in $PROCESSES
 do

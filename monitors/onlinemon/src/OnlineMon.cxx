@@ -305,10 +305,11 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
       for (unsigned int index = 0; index < plane.HitPixels(lvl1); index++)
         {
           SimpleStandardHit hit((int)plane.GetX(index,lvl1),(int)plane.GetY(index,lvl1));
+
+	  const int avg = (plane.GetPixel(index, 1) + plane.GetPixel(index, 2) + plane.GetPixel(index, 3))/3; 
+          hit.setAMP(avg); // Average amplitude over 3 time samples around maximum 
+          hit.setLVL1((int)plane.GetPixel(index, 11));// Let's use this guy for TOA storage!
           hit.setTOT((int)plane.GetPixel(index, 12)); // TOT
-          hit.setTOT((int)plane.GetPixel(index, 12)); // TOT
-          hit.setAMP((int)plane.GetPixel(index, 2)); // Let's use this guy for TOA storage!
-          hit.setLVL1((int)plane.GetPixel(index, 11));
 
           if (simpPlane.getAnalogPixelType()) //this is analog pixel, apply threshold
           {
@@ -336,7 +337,7 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
 	      {
 		// Here we could set more selection on the pixels
 		// Or set SkiRoc specific values
-		if (hit.getAMP() < 20)
+		if (hit.getAMP() == 0)
 		  continue;
 
 	      }
@@ -523,7 +524,7 @@ int main(int argc, const char ** argv) {
   eudaq::Option<unsigned>        corr_width(op, "cw", "corr_width",500, "Width of the track correlation window");
   eudaq::Option<unsigned>        corr_planes(op, "cp", "corr_planes",  5, "Minimum amount of planes for track reconstruction in the correlation");
   eudaq::Option<bool>            track_corr(op, "tc", "track_correlation", false, "Using (EXPERIMENTAL) track correlation(true) or cluster correlation(false)");
-  eudaq::Option<int>             update(op, "u", "update",  1000, "update every ms");
+  eudaq::Option<int>             update(op, "u", "update",  2000, "update every ms");
   eudaq::Option<int>             offline(op, "o", "offline",  0, "running is offlinemode - analyse until event <num>");
   eudaq::Option<std::string>     configfile(op, "c", "config_file"," ", "filename","Config file to use for onlinemon");
   eudaq::OptionFlag do_rootatend (op, "rf","root","Write out root-file after each run");
