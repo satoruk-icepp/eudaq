@@ -42,6 +42,11 @@ void HitmapCollection::fillHistograms(const SimpleStandardPlane &simpPlane) {
   //        std::cout << "Final AVG: " << std::scientific << (double)events /
   //        (double)10000 << std::endl;
 
+
+  // Reset Charge histogram
+  // It crushes the programm.....
+  //hitmap->getHexagonsChargeHisto()->Reset("");
+    
   for (int hitpix = 0; hitpix < simpPlane.getNHits(); hitpix++) {
     const SimpleStandardHit &onehit = simpPlane.getHit(hitpix);
 
@@ -136,8 +141,11 @@ void HitmapCollection::Fill(const SimpleStandardEvent &simpev) {
 
   for (int plane = 0; plane < simpev.getNPlanes(); plane++) {
     const SimpleStandardPlane &simpPlane = simpev.getPlane(plane);
+
     fillHistograms(simpPlane);
+
   }
+    
 }
 HitmapHistos *HitmapCollection::getHitmapHistos(std::string sensor, int id) {
   SimpleStandardPlane sp(sensor, id);

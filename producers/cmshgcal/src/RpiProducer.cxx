@@ -270,7 +270,7 @@ class RpiProducer : public eudaq::Producer {
 	if (!m_running)
 	  {
 	    eudaq::mSleep(2000);
-	    EUDAQ_DEBUG("Not Running; but sleeping");
+	    //EUDAQ_DEBUG("Not Running; but sleeping");
 	    SetStatus(eudaq::Status::LVL_USER, "Sleeping");
 	    continue;
 	  }
@@ -289,7 +289,7 @@ class RpiProducer : public eudaq::Producer {
 	// ***********
 
 	SetStatus(eudaq::Status::LVL_DEBUG, "Running");
-	EUDAQ_DEBUG("Running again");
+	//EUDAQ_DEBUG("Running again");
 
 	const int bufsize = split1;
 	char buffer[bufsize];

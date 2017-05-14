@@ -26,7 +26,7 @@ const char mainFrameOffset=8;
 // For zero usppression:
 //const int ped = 150;  // pedestal. It is now calculated as median from all channels in hexaboard
 const int noi = 10;   // noise
-const int thresh = 50; // ZS threshold (above pedestal)
+const int thresh = 70; // ZS threshold (above pedestal)
 
 // Size of ZS data ()per channel
 const char hitSizeZS = 17;
@@ -390,6 +390,7 @@ namespace eudaq {
 	for (int ch = 0; ch < 64; ch+=2){
 	  // Here lets estimate the pedestal and noise by averaging over all channels
 	  const int chArrPos = 63-ch; // position of the hit in array
+
 	  unsigned short adc = 0;
 	  adc = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
 	  if (adc==0) adc=4096;  else if (adc==4) adc=0; // Taking care of overflow and zeros
@@ -425,6 +426,10 @@ namespace eudaq {
 
 	  const int chArrPos = 63-ch; // position of the hit in array
 
+	  // This channel is not conected. Notice that ski-roc numbering here is reverted by (3-ski) relation.
+	  // (Ie, the actual disconnected channel is (1,60), but in this numbering it's (2.60))
+	  if (ski==2 && ch==60) continue; 
+	  
 	  // ----------
 	  // Temporarly!
 	  // Let's find the frame wit max charge, per channel.

@@ -263,7 +263,7 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
       _mon->mon_configdata.getHotpixelcut())
     pixelIsHot = true;
 
-  if (_hexagons_occupancy != NULL && _hexagons_charge != NULL && _hexagons_occ_tot != NULL && _hexagons_occ_toa != NULL && !pixelIsHot) {
+  if (_hexagons_occupancy != NULL && _hexagons_occ_tot != NULL && _hexagons_occ_toa != NULL && !pixelIsHot) {
     int ch  = _ski_to_ch_map.find(make_pair(pixel_x,pixel_y))->second;
     
     if (ch < 0 || ch > 127){
@@ -287,8 +287,6 @@ void HitmapHistos::Fill(const SimpleStandardHit &hit) {
 	  string bin_name = "Sensor_"+string(buffer_bin);
 	  _hexagons_occupancy->Fill(bin_name.c_str(), 1);
 
-	  _hexagons_charge->SetBinContent(icell+1, hit.getAMP()); 
-	  //_hexagons_charge->SetBinContent(bin,bin); //It is bin,bin for the moment, until we define what charge is
 
 	  if (hit.getTOT()!=0)
 	    _hexagons_occ_tot->Fill(bin_name.c_str(), 1);
@@ -360,6 +358,30 @@ void HitmapHistos::Fill(const SimpleStandardPlane &plane) {
   if (_nClusters != NULL)
     _nClusters->Fill(plane.getNClusters());
 
+
+  
+  if (is_HEXABOARD){
+
+    if (_hexagons_charge != NULL  && plane.getNHits()>1) {
+      for (int icell = 0; icell < 133 ; icell++) {
+	_hexagons_charge->SetBinContent(icell+1, 0); 
+	
+	const int bin = ch_to_bin_map[icell];
+	
+	for (int hitpix = 0; hitpix < plane.getNHits(); hitpix++) {
+	  const SimpleStandardHit &hit = plane.getHit(hitpix);
+	  
+	  const int pixel_x = hit.getX();
+	  const int pixel_y = hit.getY();
+	  const int ch  = _ski_to_ch_map.find(make_pair(pixel_x,pixel_y))->second;
+	  
+	  if (bin == ch)
+	    _hexagons_charge->SetBinContent(icell+1, hit.getAMP()); 
+	}
+      }
+    }
+  }
+  
   // we fill the information for the individual mimosa sections, and do a
   // zero-suppression,in case not all sections have hits/clusters
   if (is_MIMOSA26) {
