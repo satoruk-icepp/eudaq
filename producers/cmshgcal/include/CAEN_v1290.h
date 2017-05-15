@@ -6,21 +6,37 @@
 #include <string>
 
 #include "eudaq/Logger.hh"
+#include "eudaq/Utils.hh"
+
+#include <random>
+#include <algorithm> 
+
 
 #define WORDSIZE 4
 
 struct tdcData {
-  unsigned int board ;
-  unsigned int channel ;
-  unsigned int tdcReadout ;
+  int ID;
+  unsigned int timeStamp_ch0;
+  unsigned int timeStamp_ch1;
+  unsigned int timeStamp_ch2;
+  unsigned int timeStamp_ch3;
 } ;
 
 #define DEBUG_BOARD 0
 
-class CAEN_V1290 {
+class CAEN_v1290 {
   public: 
-    CAEN_V1290 (){};
+    CAEN_v1290 (int _ID){
+      ID = _ID;
+    };
+    
+    void ReadoutTDC();
+    tdcData GetCurrentData();
+    
+  private:
     int Unpack (std::ifstream &stream) ;
+    int ID;
+    tdcData currentData;
 };
 
 #endif
