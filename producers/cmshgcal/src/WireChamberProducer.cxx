@@ -169,20 +169,19 @@ class WireChamberProducer : public eudaq::Producer {
       boost::thread threadVec[DWC_TDCs.size()];
       for( int dwc_index=0; dwc_index<(int)DWC_TDCs.size(); dwc_index++) {
         threadVec[dwc_index]=boost::thread(readTDCThread, DWC_TDCs[dwc_index]);
+        threadVec[dwc_index].join();
       }
 
       if (stopping) continue;
 
-      //run the threads
-      for( int dwc_index=0; dwc_index<(int)DWC_TDCs.size(); dwc_index++){
-        threadVec[dwc_index].join();
-      }
+
       m_WireChamberTriggerController->readoutCompleted();
 
       //making an EUDAQ event
       eudaq::RawDataEvent ev(EVENT_TYPE,m_run,m_ev);
       
       //clear the old entries
+      dwc_event_for_filling.clear();
       dwc_ids_for_filling.clear();
       dwc_ch0_min_timestamp_for_filling.clear();
       dwc_ch1_min_timestamp_for_filling.clear();
@@ -193,6 +192,8 @@ class WireChamberProducer : public eudaq::Producer {
       for (size_t dwc_tdc_index=0; dwc_tdc_index<N_DWCs; dwc_tdc_index++) {
         tdcData thisData = DWC_TDCs[dwc_tdc_index]->GetCurrentData(); 
         std::vector<unsigned int> dataForEUDAQ;
+        dataForEUDAQ.push_back(thisData.event);        
+        dwc_event_for_filling.push_back(thisData.event);
         dataForEUDAQ.push_back(thisData.ID);
         dwc_ids_for_filling.push_back(thisData.ID);
         dataForEUDAQ.push_back(thisData.timeStamp_ch0);
@@ -231,6 +232,7 @@ class WireChamberProducer : public eudaq::Producer {
     //generated for each run
     TTree* outTree;
 
+    std::vector<int> dwc_event_for_filling;
     std::vector<int> dwc_ids_for_filling;
     std::vector<unsigned int> dwc_ch0_min_timestamp_for_filling;  //e.g. x min
     std::vector<unsigned int> dwc_ch1_min_timestamp_for_filling;  //e.g. x max
