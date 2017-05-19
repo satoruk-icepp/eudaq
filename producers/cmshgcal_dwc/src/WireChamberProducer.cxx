@@ -20,7 +20,6 @@
 #include <TFile.h>
 #include <TTree.h>
 
-
 #include "IpbusHwController.h"
 #include "WireChamberTriggerController.h"
 #include "CAEN_v1290.h"

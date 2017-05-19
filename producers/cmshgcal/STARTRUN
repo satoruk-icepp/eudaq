@@ -94,15 +94,6 @@ xterm -sb -sl 1000 -geom 80x600-280-900 -fn fixed -T "CMS HGCal Producer" -e './
 sleep 2
 
 
-######################################################################
-# wire chamber Producer
-###############
-printf '\033[22;33m\t delay wire chamber Producer \033[0m \n'
-xterm -sb -sl 1000 -geom 80x600-280-900 -fn fixed -T "Delay Wire Chamber Producer" -e './WireChamberProducer.exe -r tcp://$HOSTIP:$RCPORT' &
-
-sleep 2
-
-
 
 #####################################################################
 if [ -f "OnlineMon.exe" ]

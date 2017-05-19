@@ -5,13 +5,27 @@
 #include <vector>
 
 #include "IpbusHwController.h"
-#include "TriggerController.h"
 #include "CAEN_v1290.h"
 
 #include "boost/thread/thread.hpp"
 
 #include <random>
 #include <algorithm>
+
+
+enum STATES{ 
+  WAIT,
+  BUSY,
+  RDOUT_RDY,
+  RDOUT_FIN,
+  END_RUN
+};
+
+enum ACQ_MODE{
+  BEAMTEST,
+  PEDESTAL,
+  DEBUG
+};
 
 class WireChamberTriggerController {
  public:
