@@ -27,8 +27,10 @@ After downloading this directory:
 ## Directory structure
 * ```/build```  -  build directory
 * ```/include/CAEN_V1290.hpp```  -  Header file in which device specific access codes are defined.
+* ```/include/Unpacker.hpp```  -  Header file for the unpacker class that converts the bitstreams into physical information.
 * ```/libraries/```  -  Contains the compiled and necessary libraries for the interfacing to the CAEN TDC.
 * ```/src/CAEN_V1290.cpp```  -  Source file that implements the interface.
+* ```/src/Unpacker.cpp```  -  Source file for the unpacker class that converts the bitstreams into physical information.
 * ```/CMakeLists.txt```  -  cmake steering file to automatically produce make-files.
 * ```/install_CAEN_libraries.sh``` -  Installation script that places the compiled libraries into the appropriate directories.
 * ```/main.cc```  -   Main program that instantiates a TDC device and calls some functions for testing.

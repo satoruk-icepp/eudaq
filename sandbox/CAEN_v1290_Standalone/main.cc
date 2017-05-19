@@ -1,11 +1,14 @@
 #include <iostream>
 #include "CAEN_V1290.hpp"
+#include "Unpacker.hpp"
 
 
 int main() {
 	std::vector<WORD> data;
 	
 	CAEN_V1290* device = new CAEN_V1290();
+	Unpacker* unpacker = new Unpacker(1);
+
 	std::cout<<std::endl<<"++++++++ Test of some functions ++++++++"<<std::endl<<std::endl; 
 
 	std::cout<<"Setting the handle: "<<device->SetHandle(1)<<std::endl;
@@ -18,4 +21,13 @@ int main() {
 	std::cout<<"Clearing the device: "<<device->Clear()<<std::endl;
 
 	std::cout<<std::endl<<"...Done"<<std::endl;
+
+	data.clear();
+	device->generatePseudoData(data);
+
+	for (size_t i=0; i<data.size(); i++) {
+		std::cout<<"data "<<i<<" : "<<data[i]<<std::endl;
+	}
+
+	unpacker->ConvertTDCData(data);
 }

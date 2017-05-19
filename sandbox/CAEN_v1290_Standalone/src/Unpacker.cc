@@ -1,6 +1,6 @@
 #include "Unpacker.hpp"
 
-#define DEBUG_UNPACKER 0
+#define DEBUG_UNPACKER 1
 
 #include <string>
 
@@ -14,18 +14,20 @@ int Unpacker::Unpack (std::vector<WORD> Words) {
       std::cout << "TDC WORD: " << currentWord <<std::endl;
     
     if (currentWord>>28 == 10 ) { //TDC BOE
-      unsigned int tdcEvent=currentWord & 0xFFFFFFF;   //looks at the first 28 bits
+      unsigned int tdcEvent= (currentWord>>5) & 0x3FFFFF; 
       currentData.event = tdcEvent;
       if (DEBUG_UNPACKER) 
-        std::cout << "[CAEN_V12490][Unpack] ID:"<< currentData.ID << "      | TDC 1190 BOE: event " << tdcEvent+1 << std::endl;
+        std::cout << "[CAEN_V12490][Unpack] | TDC 1190 BOE: event " << tdcEvent+1 << std::endl;
       continue;
     }
     
     else if (currentWord>>28 == 0) {//TDC DATUM
       unsigned int channel = (currentWord>>21) & 0x1f;   //looks at the bits 22 - 27
       unsigned int tdcReadout = currentWord & 0x1fffff;  //looks at bits 1 - 21
+      std::cout<<"CHANNEL = "<<channel<<std::endl;
+
       if (DEBUG_UNPACKER) 
-        std::cout << "[CAEN_V12490][Unpack] ID:"<< currentData.ID << "      | tdc 1190 board channel " << channel +" tdcReadout " << tdcReadout <<std::endl;
+        std::cout << "[CAEN_V12490][Unpack] | tdc 1190 board channel " << channel +" tdcReadout " << tdcReadout <<std::endl;
       
       //check if channel exists, if not create it
       if (timeStamps.find(channel) == timeStamps.end()) {
@@ -36,8 +38,8 @@ int Unpacker::Unpack (std::vector<WORD> Words) {
       continue;
     }
     
-    else if (currentWord>>28 == 16) { //TDC EOE 
-      std::cout << "[CAEN_V12490][Unpack] ID:"<< currentData.ID << "      | TDC 1190 BOE: end of event " << std::endl;
+    else if (currentWord>>28 == 8) { //TDC EOE 
+      std::cout << "[CAEN_V12490][Unpack] | TDC 1190 BOE: end of event " << std::endl;
       break;
     }
    

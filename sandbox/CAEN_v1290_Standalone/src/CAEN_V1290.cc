@@ -167,17 +167,17 @@ int CAEN_V1290::BufferClear() {
  
 //19 May 2017: So far only some dummy values
 int CAEN_V1290::Config() {
-  GetConfiguration()->baseAddress=12345678;   //some dummy address as integer value
+  GetConfiguration()->baseAddress=0x00AA0000;   //use default from September 2016's configuration
   GetConfiguration()->model=static_cast<CAEN_V1290_Model_t>(1);       //should correspond to 16ch version (LEMO inputs)
   GetConfiguration()->triggerTimeSubtraction=static_cast<bool>(1);
   GetConfiguration()->triggerMatchMode=static_cast<bool>(1);
   GetConfiguration()->emptyEventEnable=static_cast<bool>(1);
-  GetConfiguration()->edgeDetectionMode=static_cast<CAEN_V1290_EdgeDetection_t>(3);   //CAEN_V1290_TRAILING_AND_LEADING
+  GetConfiguration()->edgeDetectionMode=static_cast<CAEN_V1290_EdgeDetection_t>(2);   //ONLY LEADING EDGE DETECTION
   GetConfiguration()->timeResolution=static_cast<CAEN_V1290_TimeResolution_t>(3);   //CAEN_V1290_25PS_RESO
-  GetConfiguration()->maxHitsPerEvent=static_cast<CAEN_V1290_MaxHits_t>(6);   //CAEN_V1290_THIRTYTWO_HITS
-  GetConfiguration()->enabledChannels=16;
-  GetConfiguration()->windowWidth=25;
-  GetConfiguration()->windowOffset=0;
+  GetConfiguration()->maxHitsPerEvent=static_cast<CAEN_V1290_MaxHits_t>(9);   //CAEN_V1290_THIRTYTWO_HITS
+  GetConfiguration()->enabledChannels=0x00FF; //use default from September 2016's configuration, this will enable channels 1-8....for 12 channels use 0x0FFF, 16 channels use 0xFFFF
+  GetConfiguration()->windowWidth=0x40; //use default from September 2016's configuration
+  GetConfiguration()->windowOffset=0x24;  //use default from September 2016's configuration
 
   _isConfigured=true; 
 
@@ -235,8 +235,12 @@ int CAEN_V1290::Read(std::vector<WORD> &v) {
     return ERR_READ;
   }
 
-  int evt_num = data>>5 & 0x3FFFFF;
-  v.push_back( (0xA << 28) | (evt_num & 0xFFFFFFF ));
+  int evt_num = data>>5 & 0x3FFFFF; 
+  #ifdef CAENV1290_DEBUG
+    std::cout << "[CAEN_V1290]::[DEBUG]::EVENT NUMBER" << evt_num << std::endl;
+  #endif
+  //v.push_back( (0xA << 28) | (evt_num & 0xFFFFFFF ));     //defines the global header in the data stream that is sent to the producer
+  v.push_back( data );     //defines the global header in the data stream that is sent to the producer
 
   //Read until trailer
   int glb_tra=0;
@@ -396,3 +400,56 @@ int CAEN_V1290::OpReadTDC(WORD* data) {
   return 0;
 }
 
+
+
+
+
+
+
+void CAEN_V1290::generatePseudoData(std::vector<WORD> &data) {
+  std::default_random_engine generator;
+  std::vector< std::normal_distribution<double> > distrs;
+  distrs.push_back(std::normal_distribution<double>(600., 10.));
+  distrs.push_back(std::normal_distribution<double>(400., 10.));
+  distrs.push_back(std::normal_distribution<double>(650., 10.));
+  distrs.push_back(std::normal_distribution<double>(390., 10.));
+  distrs.push_back(std::normal_distribution<double>(610., 10.));
+  distrs.push_back(std::normal_distribution<double>(410., 10.));
+  distrs.push_back(std::normal_distribution<double>(660., 10.));
+  distrs.push_back(std::normal_distribution<double>(400., 10.));
+
+  WORD bitStream = 0;
+
+  //first the BOE
+  unsigned int eventNr = 1;
+  bitStream = bitStream | 10<<28;
+  data.push_back(bitStream);
+  
+  //generate the channel information
+  for (unsigned int channel=0; channel<8; channel++) {
+    unsigned int readout;
+    readout=distrs[channel](generator);
+    
+
+    for (int N=0; N<20; N++) {
+      bitStream = 0;
+      bitStream = bitStream | 0<<28;
+      bitStream = bitStream | channel<<21;
+      bitStream = bitStream | (readout+N);
+      data.push_back(bitStream);
+    }
+  }
+  
+  //last the BOE
+  bitStream = 0;
+  bitStream = bitStream | 0x08<<28;
+  std::cout<<" 0x10 = "<<0x10<<std::endl;
+  std::cout<<" 0x10<<2 = "<<(0x10<<2)<<std::endl;
+  std::cout<<" 0x10<<10 = "<<(0x10<<10)<<std::endl;
+  std::cout<<" 0x10<<20 = "<<(0x10<<20)<<std::endl;
+  std::cout<<" 0x10<<24 = "<<(0x10<<24)<<std::endl;
+  std::cout<<" 0x10<<28 = "<<(0x10<<28)<<std::endl;
+  std::cout<<" sizeof(0x10<<28) = "<<sizeof(0x10<<28)<<std::endl;
+  std::cout<<"Last bitstream: "<<bitStream<<std::endl;
+  data.push_back(bitStream);
+}

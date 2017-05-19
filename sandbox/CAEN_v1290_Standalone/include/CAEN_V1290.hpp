@@ -4,6 +4,7 @@
 #include <string>
 #include <vector> 
 #include <iostream>
+#include <random>
 
 #include "CAENVMElib.h"
 #include "CAENVMEtypes.h" 
@@ -152,6 +153,8 @@ public:
   virtual int Read(std::vector<WORD> &v);
   virtual int SetHandle(int handle) { handle_=handle; return 0;};
 
+  virtual void generatePseudoData(std::vector<WORD> &data);
+
   inline CAEN_V1290_Config_t* GetConfiguration() { return &configuration_; };
 
 private:
@@ -169,6 +172,8 @@ protected:
   unsigned int id_;
   std::string type_;
 };
+
+
 
 #endif
 
