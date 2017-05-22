@@ -56,6 +56,11 @@ typedef uint32_t WORD;
 #define CAEN_V1290_TRGLOST_BITMASK         0x8000
 #define CAEN_V1290_WORDTYE_BITMASK         0x001F
 
+//for testing purposes and software trigger
+#define CAEN_V1290_ENABLE_TEST_MODE_OPCODE         0xC500
+#define CAEN_V1290_DISABLE_TEST_MODE_OPCODE        0xC600
+#define CAEN_V1290_SOFTWARETRIGGERREG      0x101A
+
 class CAEN_V1290 {
 public:
   typedef enum  {
@@ -156,6 +161,10 @@ public:
   virtual void generatePseudoData(std::vector<WORD> &data);
 
   inline CAEN_V1290_Config_t* GetConfiguration() { return &configuration_; };
+
+  int EnableTDCTestMode(WORD testData);
+  int DisableTDCTestMode();
+  int SoftwareTrigger();
 
 private:
   int CheckStatusAfterRead();

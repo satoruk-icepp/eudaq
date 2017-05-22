@@ -338,6 +338,38 @@ int CAEN_V1290::CheckStatusAfterRead() {
   return 0;
 }
 
+
+int CAEN_V1290::EnableTDCTestMode(WORD testData) {
+  int status = 0;
+
+  /* I step: Enable the test mode */
+  status |= OpWriteTDC(CAEN_V1290_ENABLE_TEST_MODE_OPCODE);
+  usleep(100000); 
+  /* II step: Write the test word */
+  status |= OpWriteTDC(testData);
+  usleep(100000); 
+  /* III step: Write a t=0x0044 into the test-word high*/
+  status |= OpWriteTDC(0x0044);
+  usleep(100000); 
+
+  return status;
+}
+
+int CAEN_V1290::DisableTDCTestMode() {
+  int status = 0;
+
+  status |= OpWriteTDC(CAEN_V1290_DISABLE_TEST_MODE_OPCODE); 
+  return status;
+}
+
+int CAEN_V1290::SoftwareTrigger() {
+  int status = 0;
+
+  status |= CAENVME_WriteCycle(handle_,configuration_.baseAddress + CAEN_V1290_SOFTWARETRIGGERREG,0x0000, CAEN_V1290_ADDRESSMODE, cvD16);
+  return status;
+}
+
+
 int CAEN_V1290::OpWriteTDC(WORD data) {
   int status;
   const int TIMEOUT = 100000;
