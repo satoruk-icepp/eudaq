@@ -121,9 +121,6 @@ int OnlineMonConfiguration::ReadConfigurationFile() {
         } else if (key.compare("SnapShotFormat") == 0) {
           value = remove_this_character(value, '"');
           SnapShotFormat = value;
-        } else if (key.compare("DqmColorMap") == 0) {
-          value = remove_this_character(value, '"');
-          DqmColorMap = StringToNumber<int>(value);
         } else {
           cerr << "Unknown Key " << key << endl;
         }
@@ -193,7 +190,7 @@ void OnlineMonConfiguration::SetDefaults() {
   // general settings
   SnapShotDir = "../snapshots/";
   SnapShotFormat = ".pdf";
-  DqmColorMap = 56;
+
   // mimosa26 settings
   mimosa26_max_sections = 4;
   mimosa26_section_boundary = 288;
@@ -239,14 +236,6 @@ string OnlineMonConfiguration::getSnapShotFormat() const {
 
 void OnlineMonConfiguration::setSnapShotFormat(string SnapShotFormat) {
   this->SnapShotFormat = SnapShotFormat;
-}
-
-int OnlineMonConfiguration::getDqmColorMap() const {
-  return DqmColorMap;
-}
-
-void OnlineMonConfiguration::setDqmColorMap(int colorID) {
-  this->DqmColorMap = colorID;
 }
 
 void OnlineMonConfiguration::PrintConfiguration() {

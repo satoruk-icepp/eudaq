@@ -17,7 +17,7 @@ EUDAQMonitorHistos::EUDAQMonitorHistos(const SimpleStandardEvent &ev) {
   Hits_vs_PlaneHisto =
       new TProfile("Hits vs Plane", "Hits vs Plane", nplanes, 0, nplanes);
   Hits_vs_EventsTotal =
-      new TProfile("Hits vs Event", "Hits vs Event", 1000, 0, 1000);
+      new TProfile("Hits vs Event", "Hits vs Event", 1000, 0, 20000);
   //    TracksPerEvent = new TH2I("Tracks per Event", "Tracks per Event", 1000,
   //    0, 20000, 5, 0, 5);
   TracksPerEvent =
@@ -44,7 +44,7 @@ EUDAQMonitorHistos::EUDAQMonitorHistos(const SimpleStandardEvent &ev) {
     histolabel_tlu << "TLU Delta vs Event Nr " << name;
 
     Hits_vs_Events[i] = new TProfile(histolabel.str().c_str(),
-                                     histolabel.str().c_str(), 1000, 0, 1000);
+                                     histolabel.str().c_str(), 1000, 0, 20000);
     TLUdelta_perEventHisto[i] =
         new TProfile(histolabel_tlu.str().c_str(), histolabel_tlu.str().c_str(),
                      1000, 0, 20000);

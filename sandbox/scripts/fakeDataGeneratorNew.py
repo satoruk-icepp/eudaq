@@ -49,18 +49,18 @@ def sendFakeData_32bit(sudp, stop_event):
       
     if rawData!=None:
       d = rawData[evmod*RAW_EV_SIZE:(evmod+1)*RAW_EV_SIZE]
-      npd = np.fromstring(d, dtype=np.uint8)
-      #print len(npd), npd.nbytes, npd
-      npd32 = npd.astype(np.uint32)
-      #print len(npd32), npd32.nbytes, npd32.nbytes/4, npd32
-      half1 = npd32[0:15500]
-      half2 = np.append(npd32[15500:], [0x0a0b0c0d]).astype(np.uint32) # this is to check endienness
-      # print len(half1), half1.nbytes, len(half2), half2.nbytes, half2.dtype
-      # print half2[-3], half2[-2], half2[-1]
-      
     else:
       d = 'Hello World'
 
+    npd = np.fromstring(d, dtype=np.uint8)
+    #print len(npd), npd.nbytes, npd
+    npd32 = npd.astype(np.uint32)
+    #print len(npd32), npd32.nbytes, npd32.nbytes/4, npd32
+    half1 = npd32[0:15500]
+    half2 = np.append(npd32[15500:], [0x0a0b0c0d]).astype(np.uint32) # this is to check endienness
+    # print len(half1), half1.nbytes, len(half2), half2.nbytes, half2.dtype
+    # print half2[-3], half2[-2], half2[-1]
+    
     print 'submitting data', ev, evmod, len(d)
 
     try:
@@ -136,7 +136,7 @@ def clientthread(conn, sudp):
         
         print 'Command recieved:', str(data), type(data)
 
-        if str(data)=='START_RUN':
+        if str(data)[0:9]=='START_RUN':
             t1_stop.clear()
             conn.sendall('GOOD_START\n')
             #sudp.sendto('GOOD_START\n', (HOST,PORTUDP))

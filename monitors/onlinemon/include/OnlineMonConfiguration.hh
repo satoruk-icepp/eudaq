@@ -34,9 +34,6 @@ public:
   std::string getSnapShotFormat() const;
   void setSnapShotFormat(std::string SnapShotFormat);
 
-  int getDqmColorMap() const;
-  void setDqmColorMap(int colorID);
-
   double getHotpixelcut() const;
   void setHotpixelcut(double hotpixelcut);
 
@@ -56,7 +53,6 @@ private:
   std::string ConfigurationFileName;
   std::string SnapShotDir;
   std::string SnapShotFormat;
-  int DqmColorMap;
   // MIMOSA26 Settings
   unsigned int mimosa26_max_sections;
   unsigned int mimosa26_section_boundary;
