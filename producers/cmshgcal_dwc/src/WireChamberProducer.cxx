@@ -23,7 +23,7 @@
 #include "IpbusHwController.h"
 #include "WireChamberTriggerController.h"
 #include "CAEN_v1290.h"
-
+#include "Unpacker.h"
 
 
 
@@ -31,8 +31,9 @@ void startTriggerThread( WireChamberTriggerController* trg_ctrl, uint32_t *run, 
   trg_ctrl->startrunning( *run, *mode );
 }
 
-void readTDCThread( CAEN_v1290* tdc) {
-  tdc->ReadoutTDC();
+void readTDCThread( CAEN_V1290* tdc, std::vector<WORD>& data) {
+  //tdc->Read(data);      //needs to be tested with proper trigger
+  tdc->generatePseudoData(data);
 }
 
 
@@ -44,9 +45,21 @@ class WireChamberProducer : public eudaq::Producer {
   WireChamberProducer(const std::string & name, const std::string & runcontrol)
     : eudaq::Producer(name, runcontrol), m_run(0), m_ev(0), stopping(false), done(false), started(0) {
       std::cout<<"Initialisation of the DWC Producer..."<<std::endl;
+      tdc = new CAEN_V1290();
+      tdc_unpacker = new Unpacker();
       outTree=NULL;
       m_sync_orm=NULL;
       m_WireChamberTriggerController=NULL;
+    
+      for (size_t i=0; i<4; i++) {   //four DWCs
+        dwc_XUP_timestamp.push_back(-999);
+        dwc_XDOWN_timestamp.push_back(-999);
+        dwc_YUP_timestamp.push_back(-999);
+        dwc_YDOWN_timestamp.push_back(-999);
+        recoX.push_back(-999);
+        recoY.push_back(-999);
+      }
+
     }
 
   virtual void OnConfigure(const eudaq::Configuration & config) {
@@ -54,10 +67,30 @@ class WireChamberProducer : public eudaq::Producer {
 
     //Setup the the wire chambers objects for filling
     N_DWCs = config.Get("NumberOfWireChambers", 2);
-    for (std::vector<CAEN_v1290*>::iterator dwc_tdc = DWC_TDCs.begin(); dwc_tdc != DWC_TDCs.end(); dwc_tdc++) delete (*dwc_tdc);
-      
-    DWC_TDCs.clear();
-    for (size_t dwc_tdc_index=1; dwc_tdc_index<=N_DWCs; dwc_tdc_index++) DWC_TDCs.push_back(new CAEN_v1290(dwc_tdc_index));     //possibly have to add some hardware address here
+
+    CAEN_V1290::CAEN_V1290_Config_t _config;
+    _config.baseAddress = config.Get("baseAddress", 0x00AA0000);
+    _config.model = config.Get("model", 1);
+    _config.triggerTimeSubtraction = config.Get("triggerTimeSubtraction", 1);
+    _config.triggerMatchMode = config.Get("triggerMatchMode", 1);
+    _config.emptyEventEnable = config.Get("emptyEventEnable", 1);
+    _config.edgeDetectionMode = config.Get("edgeDetectionMode", 2);
+    _config.timeResolution = config.Get("timeResolution", 3);
+    _config.maxHitsPerEvent = config.Get("maxHitsPerEvent", 9);
+    _config.enabledChannels = config.Get("enabledChannels", 0x00FF);
+    _config.windowWidth = config.Get("windowWidth", 0x40);
+    _config.windowOffset = config.Get("windowOffset", 0x24);
+
+    tdc->Config(_config);
+    
+
+    //read the channel map
+    for (unsigned int channel=0; channel<16; channel++){
+      channel_map[static_cast<CHANNEL_INDEX>(channel)] = config.Get(("channel_"+std::to_string(channel)).c_str(), -1);
+    }
+
+    //conversion slope:
+    conversionSlope = config.Get("conversionSlope", 0.2);
 
     //setup the synchronisation board
     int mode = config.Get("AcquisitionMode", 0);
@@ -73,8 +106,7 @@ class WireChamberProducer : public eudaq::Producer {
     if (m_WireChamberTriggerController!=NULL) delete m_WireChamberTriggerController; 
     m_sync_orm = new ipbus::IpbusHwController(config.Get("ConnectionFile","file://./etc/connection.xml"),
                 config.Get("SYNC_ORM_NAME","SYNC_ORM"));
-    m_WireChamberTriggerController = new WireChamberTriggerController(DWC_TDCs, m_sync_orm);
-
+    m_WireChamberTriggerController = new WireChamberTriggerController(tdc, m_sync_orm);
 
     //Read the data output file prefix
     dataFilePrefix = config.Get("dataFilePrefix", "../data/dwc_run_");
@@ -98,13 +130,13 @@ class WireChamberProducer : public eudaq::Producer {
     outTree = new TTree("DelayWireChambers", "DelayWireChambers");
     outTree->Branch("run", &m_run);
     outTree->Branch("event", &m_ev);
-    outTree->Branch("N_DWC", &N_DWCs);
-    outTree->Branch("ids", &dwc_ids_for_filling);
-    outTree->Branch("channel0_timestamps", &dwc_ch0_min_timestamp_for_filling);
-    outTree->Branch("channel1_timestamps", &dwc_ch1_min_timestamp_for_filling);
-    outTree->Branch("channel2_timestamps", &dwc_ch2_min_timestamp_for_filling);
-    outTree->Branch("channel3_timestamps", &dwc_ch3_min_timestamp_for_filling);
-
+    outTree->Branch("channelXUP_timestamps", &dwc_XUP_timestamp);
+    outTree->Branch("channelXDOWN_timestamps", &dwc_XDOWN_timestamp);
+    outTree->Branch("channelYUP_timestamps", &dwc_YUP_timestamp);
+    outTree->Branch("channelYDOWN_timestamps", &dwc_YDOWN_timestamp);
+    outTree->Branch("recoX", &recoX);
+    outTree->Branch("recoY", &recoY);
+    
     m_triggerThread=boost::thread(startTriggerThread,m_WireChamberTriggerController,&m_run,&m_acqmode);
 
     SetStatus(eudaq::Status::LVL_OK, "Running");
@@ -144,7 +176,14 @@ class WireChamberProducer : public eudaq::Producer {
   virtual void OnTerminate() {
     EUDAQ_INFO("Terminating...");
     done = true;
+    eudaq::mSleep(200);
+    
+    delete tdc;
+    delete tdc_unpacker;
+    delete m_sync_orm;
+    delete m_WireChamberTriggerController;
   }
+
 
   void ReadoutLoop() {
     while(!done) {
@@ -165,50 +204,56 @@ class WireChamberProducer : public eudaq::Producer {
       m_ev++;
       
       //First: Make instance of threads to read out the DWC TDCs in parallel
-      boost::thread threadVec[DWC_TDCs.size()];
-      for( int dwc_index=0; dwc_index<(int)DWC_TDCs.size(); dwc_index++) {
-        threadVec[dwc_index]=boost::thread(readTDCThread, DWC_TDCs[dwc_index]);
-        threadVec[dwc_index].join();
-      }
-
+      std::vector<WORD> data;
+      boost::thread TDC_thread = boost::thread(readTDCThread, tdc, std::ref(data));
+      TDC_thread.join();
+      
       if (stopping) continue;
-
 
       m_WireChamberTriggerController->readoutCompleted();
 
+      std::map<unsigned int, unsigned int> timeOfArrivals = tdc_unpacker->ConvertTDCData(data);
+
       //making an EUDAQ event
       eudaq::RawDataEvent ev(EVENT_TYPE,m_run,m_ev);
-      
-      //clear the old entries
-      dwc_event_for_filling.clear();
-      dwc_ids_for_filling.clear();
-      dwc_ch0_min_timestamp_for_filling.clear();
-      dwc_ch1_min_timestamp_for_filling.clear();
-      dwc_ch2_min_timestamp_for_filling.clear();
-      dwc_ch3_min_timestamp_for_filling.clear();
+      ev.AddBlock(1, data);
+
+      dwc_XUP_timestamp[0] = (channel_map[X1_UP] >= 0) ? timeOfArrivals[channel_map[X1_UP]] : -999;
+      dwc_XDOWN_timestamp[0] = (channel_map[X1_DOWN] >= 0) ? timeOfArrivals[channel_map[X1_DOWN]] : -999;
+      dwc_YUP_timestamp[0] = (channel_map[Y1_UP] >= 0) ? timeOfArrivals[channel_map[Y1_UP]] : -999;
+      dwc_YDOWN_timestamp[0] = (channel_map[Y1_DOWN] >= 0) ? timeOfArrivals[channel_map[Y1_DOWN]] : -999;
+      recoX[0] = (dwc_XUP_timestamp[0]!=-999 && dwc_XDOWN_timestamp[0]!=-999) ? conversionSlope*(dwc_XDOWN_timestamp[0]-dwc_XUP_timestamp[0])/4 : -999.;    //4 time stamps are 1ns, slope is 0.2mm/ns
+      recoY[0] = (dwc_YUP_timestamp[0]!=-999 && dwc_YDOWN_timestamp[0]!=-999) ? conversionSlope*(dwc_YDOWN_timestamp[0]-dwc_YUP_timestamp[0])/4 : -999.;    //4 time stamps are 1ns, slope is 0.2mm/ns
 
 
-      for (size_t dwc_tdc_index=0; dwc_tdc_index<N_DWCs; dwc_tdc_index++) {
-        tdcData thisData = DWC_TDCs[dwc_tdc_index]->GetCurrentData(); 
-        std::vector<unsigned int> dataForEUDAQ;
-        dataForEUDAQ.push_back(thisData.event);        
-        dwc_event_for_filling.push_back(thisData.event);
-        dataForEUDAQ.push_back(thisData.ID);
-        dwc_ids_for_filling.push_back(thisData.ID);
-        dataForEUDAQ.push_back(thisData.timeStamp_ch0);
-        dwc_ch0_min_timestamp_for_filling.push_back(thisData.timeStamp_ch0);
-        dataForEUDAQ.push_back(thisData.timeStamp_ch1);
-        dwc_ch1_min_timestamp_for_filling.push_back(thisData.timeStamp_ch1);
-        dataForEUDAQ.push_back(thisData.timeStamp_ch2);
-        dwc_ch2_min_timestamp_for_filling.push_back(thisData.timeStamp_ch2);
-        dataForEUDAQ.push_back(thisData.timeStamp_ch3);
-        dwc_ch3_min_timestamp_for_filling.push_back(thisData.timeStamp_ch3);
-        ev.AddBlock(dwc_tdc_index, dataForEUDAQ);
-      }
-      std::cout<<"Writing event nr. : "<<m_ev<<" to the tree"<<std::endl;
+      dwc_XUP_timestamp[1] = (channel_map[X2_UP] >= 0) ? timeOfArrivals[channel_map[X2_UP]] : -999;
+      dwc_XDOWN_timestamp[1] = (channel_map[X2_DOWN] >= 0) ? timeOfArrivals[channel_map[X2_DOWN]] : -999;
+      dwc_YUP_timestamp[1] = (channel_map[Y2_UP] >= 0) ? timeOfArrivals[channel_map[Y2_UP]] : -999;
+      dwc_YDOWN_timestamp[1] = (channel_map[Y2_DOWN] >= 0) ? timeOfArrivals[channel_map[Y2_DOWN]] : -999;
+      recoX[1] = (dwc_XUP_timestamp[1]!=-999 && dwc_XDOWN_timestamp[1]!=-999) ? conversionSlope*(dwc_XDOWN_timestamp[1]-dwc_XUP_timestamp[1])/4 : -999.;    
+      recoY[1] = (dwc_YUP_timestamp[1]!=-999 && dwc_YDOWN_timestamp[1]!=-999) ? conversionSlope*(dwc_YDOWN_timestamp[1]-dwc_YUP_timestamp[1])/4 : -999.;    
+
+
+      dwc_XUP_timestamp[2] = (channel_map[X3_UP] >= 0) ? timeOfArrivals[channel_map[X3_UP]] : -999;
+      dwc_XDOWN_timestamp[2] = (channel_map[X3_DOWN] >= 0) ? timeOfArrivals[channel_map[X3_DOWN]] : -999;
+      dwc_YUP_timestamp[2] = (channel_map[Y3_UP] >= 0) ? timeOfArrivals[channel_map[Y3_UP]] : -999;
+      dwc_YDOWN_timestamp[2] = (channel_map[Y3_DOWN] >= 0) ? timeOfArrivals[channel_map[Y3_DOWN]] : -999;
+      recoX[2] = (dwc_XUP_timestamp[2]!=-999 && dwc_XDOWN_timestamp[2]!=-999) ? conversionSlope*(dwc_XDOWN_timestamp[2]-dwc_XUP_timestamp[2])/4 : -999.;    
+      recoY[2] = (dwc_YUP_timestamp[2]!=-999 && dwc_YDOWN_timestamp[2]!=-999) ? conversionSlope*(dwc_YDOWN_timestamp[2]-dwc_YUP_timestamp[2])/4 : -999.;    
+
+
+      dwc_XUP_timestamp[3] = (channel_map[X4_UP] >= 0) ? timeOfArrivals[channel_map[X4_UP]] : -999;
+      dwc_XDOWN_timestamp[3] = (channel_map[X4_DOWN] >= 0) ? timeOfArrivals[channel_map[X4_DOWN]] : -999;
+      dwc_YUP_timestamp[3] = (channel_map[Y4_UP] >= 0) ? timeOfArrivals[channel_map[Y4_UP]] : -999;
+      dwc_YDOWN_timestamp[3] = (channel_map[Y4_DOWN] >= 0) ? timeOfArrivals[channel_map[Y4_DOWN]] : -999;      
+      recoX[3] = (dwc_XUP_timestamp[3]!=-999 && dwc_XDOWN_timestamp[3]!=-999) ? conversionSlope*(dwc_XDOWN_timestamp[3]-dwc_XUP_timestamp[3])/4 : -999.;    
+      recoY[3] = (dwc_YUP_timestamp[3]!=-999 && dwc_YDOWN_timestamp[3]!=-999) ? conversionSlope*(dwc_YDOWN_timestamp[3]-dwc_YUP_timestamp[3])/4 : -999.;    
+
+
       outTree->Fill();
 
       //Adding the event to the EUDAQ format
+      
       SendEvent(ev);
     }
   }
@@ -222,23 +267,25 @@ class WireChamberProducer : public eudaq::Producer {
     boost::thread m_triggerThread;
 
     //set on configuration
-    std::vector<CAEN_v1290*> DWC_TDCs;
+    CAEN_V1290* tdc;
+    Unpacker* tdc_unpacker;
     ACQ_MODE m_acqmode;
     ipbus::IpbusHwController*  m_sync_orm;
-    WireChamberTriggerController *m_WireChamberTriggerController;
+    WireChamberTriggerController* m_WireChamberTriggerController;
 
+    std::map<CHANNEL_INDEX, unsigned int> channel_map;
 
     //generated for each run
     TTree* outTree;
 
-    std::vector<int> dwc_event_for_filling;
-    std::vector<int> dwc_ids_for_filling;
-    std::vector<unsigned int> dwc_ch0_min_timestamp_for_filling;  //e.g. x min
-    std::vector<unsigned int> dwc_ch1_min_timestamp_for_filling;  //e.g. x max
-    std::vector<unsigned int> dwc_ch2_min_timestamp_for_filling;  //e.g. y min
-    std::vector<unsigned int> dwc_ch3_min_timestamp_for_filling;  //e.g. y max
+    std::vector<int> dwc_XUP_timestamp;  //e.g. x min
+    std::vector<int> dwc_XDOWN_timestamp;  //e.g. x max
+    std::vector<int> dwc_YUP_timestamp;  //e.g. y min
+    std::vector<int> dwc_YDOWN_timestamp;  //e.g. y max
     
-
+    double conversionSlope;
+    std::vector<double> recoX;
+    std::vector<double> recoY;
 };
 
 // The main function that will create a Producer instance and run it

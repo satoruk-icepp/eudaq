@@ -1,8 +1,8 @@
 #include "WireChamberTriggerController.h"
 
 
-WireChamberTriggerController::WireChamberTriggerController(std::vector< CAEN_v1290* > rdout, 
-ipbus::IpbusHwController* sync) : m_state(WAIT), m_acqmode(BEAMTEST), m_run(0), m_evt(0), m_rdout_orms(rdout), m_sync_orm(sync), m_gotostop(false), m_rdoutcompleted(false){}
+WireChamberTriggerController::WireChamberTriggerController(CAEN_V1290* rdout, 
+ipbus::IpbusHwController* sync) : m_state(WAIT), m_acqmode(BEAMTEST), m_run(0), m_evt(0), m_rdout_orm(rdout), m_sync_orm(sync), m_gotostop(false), m_rdoutcompleted(false){}
 
 
 void WireChamberTriggerController::startrunning( uint32_t runNumber, const ACQ_MODE mode ) {

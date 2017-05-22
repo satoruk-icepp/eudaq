@@ -187,6 +187,10 @@ int CAEN_V1290::Config() {
 
 //Read the ADC buffer and send it out in WORDS vector
 int CAEN_V1290::Read(std::vector<WORD> &v) {
+  #ifdef CAENV1290_DEBUG
+    std::cout << "[CAEN_V1290]::[DEBUG]::READING" << std::endl;
+  #endif
+
   v.clear();
   if (handle_<0) {
     return ERR_CONF_NOT_FOUND;
@@ -364,8 +368,8 @@ int CAEN_V1290::DisableTDCTestMode() {
 
 int CAEN_V1290::SoftwareTrigger() {
   int status = 0;
-
-  status |= CAENVME_WriteCycle(handle_,configuration_.baseAddress + CAEN_V1290_SOFTWARETRIGGERREG,0x0000, CAEN_V1290_ADDRESSMODE, cvD16);
+  WORD dummy_data = 0x0000;
+  status |= CAENVME_WriteCycle(handle_,configuration_.baseAddress + CAEN_V1290_SOFTWARETRIGGERREG,&dummy_data, CAEN_V1290_ADDRESSMODE, cvD16);
   return status;
 }
 
@@ -377,6 +381,7 @@ int CAEN_V1290::OpWriteTDC(WORD data) {
   int time=0;
   /* Check the Write OK bit */
   WORD rdata=0;
+  /*
   do {
     status = CAENVME_ReadCycle(handle_,configuration_.baseAddress + CAEN_V1290_MICROHANDREG ,&rdata, CAEN_V1290_ADDRESSMODE, cvD16);
     time++;
@@ -384,7 +389,7 @@ int CAEN_V1290::OpWriteTDC(WORD data) {
       std::cout << "[CAEN_V1290]::[INFO]::Handshake micro op writing " << rdata << " #" << time << " " << status << std::endl;
     #endif
   } while (!(rdata & 0x1) && (time < TIMEOUT) );
-
+  */
   if ( time == TIMEOUT ) {
     std::cout << "[CAEN_V1290]::[ERROR]::Cannot handshake micro op writing " << status << std::endl; 
     return ERR_WRITE_OP;

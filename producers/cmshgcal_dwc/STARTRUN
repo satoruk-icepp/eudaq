@@ -62,13 +62,13 @@ printf '\033[22;33m\t Starting Subprocesses \033[0m \n'
 ###############
 printf '\033[22;33m\t RunControl \033[0m \n'
 ./euRun.exe -x 0 -y 0 -w 650 -g 550 -a tcp://$RCPORT &
-sleep 1
+sleep 3
 ######################################################################
 # euLog
 ###############
 printf '\033[22;33m\t Logger  \033[0m \n'
 ./euLog.exe -x 0 -y 550 -w 1500 -g 450 -r tcp://$HOSTIP:44000 &
-sleep 2
+sleep 3
 
 ######################################################################
 # DataCollector
@@ -79,7 +79,7 @@ flog="../logs/Run${NEWRUNNUM}_DataCollector_$dt.log"
 nohup ./TestDataCollector.exe -r tcp://$HOSTIP:$RCPORT > $flog 2>&1 &
 printf "The logs from the DataCollector are in $flog file. \n"
 
-sleep 2
+sleep 3
 
 
 
@@ -89,7 +89,7 @@ sleep 2
 printf '\033[22;33m\t delay wire chamber Producer \033[0m \n'
 xterm -sb -sl 1000 -geom 80x600-280-900 -fn fixed -T "Delay Wire Chamber Producer" -e './WireChamberProducer.exe -r tcp://$HOSTIP:$RCPORT' &
 
-sleep 2
+sleep 3
 
 
 

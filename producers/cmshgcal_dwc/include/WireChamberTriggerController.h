@@ -30,7 +30,7 @@ enum ACQ_MODE{
 class WireChamberTriggerController {
  public:
   WireChamberTriggerController(){;}
-  WireChamberTriggerController(std::vector< CAEN_v1290* > rdout, ipbus::IpbusHwController* sync);
+  WireChamberTriggerController(CAEN_V1290* rdout, ipbus::IpbusHwController* sync);
   void startrunning(uint32_t, const ACQ_MODE);
 
   bool checkState( STATES st ) const { return m_state==st; }
@@ -52,7 +52,7 @@ class WireChamberTriggerController {
   void runPedestal();
   void runDebug();
 
-  std::vector< CAEN_v1290* > m_rdout_orms;
+  CAEN_V1290* m_rdout_orm;
   ipbus::IpbusHwController*  m_sync_orm;
   STATES m_state;
   ACQ_MODE m_acqmode;

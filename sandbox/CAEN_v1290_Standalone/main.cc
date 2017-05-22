@@ -40,7 +40,9 @@ int main() {
 	std::cout<<"Enabling test mode"<<std::endl;
 	std::cout<<"+++++++++++++++++++"<<std::endl<<std::endl;
 	device->EnableTDCTestMode(0x1111);
+	std::cout<<"Testing mode enabled"<<std::endl;
 	device->SoftwareTrigger();
+	std::cout<<"Software trigger fired"<<std::endl;
 	device->Read(data);
 	std::cout<<"Read events after software trigger: "<<std::endl;
 	for (size_t i=0; i<data.size(); i++) {
