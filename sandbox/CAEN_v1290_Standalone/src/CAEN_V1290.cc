@@ -1,7 +1,7 @@
 #include "CAEN_V1290.hpp"
 
 
-#define CAENV1290_DEBUG 
+#define CAENV1290_DEBUG 0
 
 int CAEN_V1290::Init() {
   int status=0;
@@ -410,9 +410,9 @@ int CAEN_V1290::OpWriteTDC(WORD data) {
   do {
     status = CAENVME_ReadCycle(handle_,configuration_.baseAddress + CAEN_V1290_MICROHANDREG ,&rdata, CAEN_V1290_ADDRESSMODE, cvD16);
     time++;
-    #ifdef CAENV1290_DEBUG
-      std::cout << "[CAEN_V1290]::[INFO]::Handshake micro op writing " << rdata << " #" << time << " " << status << std::endl;
-    #endif
+    //#ifdef CAENV1290_DEBUG
+    //  std::cout << "[CAEN_V1290]::[INFO]::Handshake micro op writing " << rdata << " #" << time << " " << status << std::endl;
+    //#endif
   } while (!(rdata & 0x1) && (time < TIMEOUT) );
   
   if ( time == TIMEOUT ) {
