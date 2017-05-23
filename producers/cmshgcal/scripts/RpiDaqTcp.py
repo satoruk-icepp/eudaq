@@ -1,46 +1,83 @@
 #!/usr/bin/env python
 
-#
-# This script is to be run on RPI which does data-acquisition.
-# It could be tested also from any other machine.
-
-# Usage:
-#
-
 import socket
-import sys, io, argparse, subprocess
+import os, fnmatch, sys, io, argparse, subprocess
 from thread import *
 import threading
 import time
 import numpy as np
 
-#MYIP = '128.141.196.225'
-MYIP = '127.0.0.1'
-PORTTCP = 55511
+parser =  argparse.ArgumentParser(description='RPI DAQ: a TCP server')
+parser.add_argument('-f', '--inputFile', dest="fname", type=str, default=None,
+                    help="Raw data file to open")
+parser.add_argument('--ev', dest="nEvents", type=int,  default=20, help="Number of events to take")
+parser.add_argument('--ped', dest="ped", action="store_true", default=False, help="This is a pedestal Run")
 
+opt = parser.parse_args()
+
+nEvents = opt.nEvents
+
+MYHOSTIP = '192.168.222.3'
+PORTTCP = 55511
 HOSTUDP = '' # To be determined from connection
 PORTUDP = 55512
 
-t1_stop = threading.Event()
 
-EventRate = 20 # Events per spill
-SpillTime = 5  # Duration of the spill in seconds
-InterSpill = 3 # Time between spills in seconds
+
+workingPath = os.getcwd()
+print 'My working directory is: ', workingPath
+
+PathToData = workingPath+'/'
+#PathToData = workingPath+'/data/'
+
+if opt.ped:
+  executable = workingPath+'/Test_DAQ_Pedestal'
+else:
+  executable = workingPath+'/Test_DAQ'
+
+# Use this for testing (will not run any data-taking):
+# executable = workingPath+'/take_a_nap.exe'
+
+t1_stop = threading.Event()
 
 RAW_EV_SIZE = 30787
 
-parser =  argparse.ArgumentParser(description='RPI DAQ: a TCP server')
-parser.add_argument('-f', '--inputFile', dest="fname", type=str, default=None, required=True,
-                    help="Raw data file to open")
-opt = parser.parse_args()
+#EventRate = 20 # Events per spill
+#SpillTime = 5  # Duration of the spill in seconds
+#InterSpill = 3 # Time between spills in seconds
 
-def sendData(sudp, stop_event):
+def moveDataToNFS(PathToNFS='/nfs/disk2_2TB/data/'):
 
-  # Here read the file with some raw data from HexaBoard
-  # fname = 'RUN_170317_0912.raw' # This file is not on github, get it elsewhere
+  for fi in os.listdir(PathToData):
+    if fnmatch.fnmatch(fi, '*RUN_*.txt'):
+      print 'Moving file..', PathToData+fi, ' to', PathToNFS+fi
+
+      command = ' '.join(['cp', PathToData+fi, PathToNFS+fi, '&&','rm','-f', PathToData+fi]) 
+      pro = os.system(command)
+      if pro!=0:
+        print "Could not move the file for some reason... fname = ", fi
+        
+def sendData(sudp, stop_event, runNumber = 3):
   rawData = None
+
+  prefix= 'RUN_'
+  if opt.ped:
+    prefix='PED_RUN_'
+    
+  fname = opt.fname
+  if fname==None:
+    for fi in os.listdir(PathToData):
+      print 'Looking for file..', fi
+      if fnmatch.fnmatch(fi, prefix+ '%04d'% (runNumber)+'_*.raw.txt'):
+        fname = PathToData+fi
+        print fi, fname
+        break
+
+  if fname==None:
+    print 'Cant find a file name to send for run:', runNumber, '\n \t\t is it pedestal:', opt.ped
+          
   try:
-    f = io.open(opt.fname, "rb")
+    f = io.open(fname, "rb")
     print f
   except EnvironmentError:
     print "Can't open file?", opt.fname
@@ -52,12 +89,22 @@ def sendData(sudp, stop_event):
 
     rawData = f.read(RAW_EV_SIZE)
     
-    if ev%EventRate==0:
-      stop_event.wait(InterSpill)
+    #if ev%EventRate==0:
+    #  stop_event.wait(InterSpill)
 
+    if len(rawData) < RAW_EV_SIZE:
+      print '\n \t We have reached the end of file, or did not read the full event.'
+      print '\t We must return to the previous position and wait for more data to come (if any)'
+      print 'Or, maybe, that is all data we can get and in that case you must \n \t ** STOP the RUN from EUDAQ **'
+      f.seek(-len(rawData), 1)
+      # print 'tell after seek:', f.tell()
+      time.sleep(3)
+      continue
+                              
     if rawData=='':
       print 'We reached EOF'
       print 'Will wait for a bit, maybe more data will appear'
+      print 'Actualy, THIS SHOULD NEVER HAPPEN. If you see this message -- let me know.'
       time.sleep(3)
       continue
     
@@ -83,13 +130,15 @@ def sendData(sudp, stop_event):
       # print 'UDP host:', HOSTUDP
       # The data is too large now to send in one go. So, plit it in two packets:
       sudp.sendto(half1, (HOSTUDP,PORTUDP))
-      time.sleep(0.005)
+      time.sleep(0.01)
       sudp.sendto(half2, (HOSTUDP,PORTUDP))
       #conn.sendall('-->>>  Here is your data <<< --')
     except socket.error:
       print 'The client socket is probably closed. We stop sending data.'
       break
-    time.sleep(SpillTime/EventRate)
+    
+    time.sleep(0.2)
+    #time.sleep(SpillTime/EventRate)
     # stop_event.wait(SpillTime/EventRate)
     ev+=1
     
@@ -115,31 +164,49 @@ def clientthread(conn, sudp):
         
         print 'Command recieved:', str(data), type(data)
 
-        if str(data)=='START_RUN':
+        if str(data)[0:9]=='START_RUN':
             t1_stop.clear()
-            # First, let's reply to the DAQ that we received her command
-            conn.sendall('GOOD_START\n')
 
+            try:
+                runNumber = (str(data).split())[1]
+            except:
+                print 'Run number is not provided!'
+                conn.sendall('NO_START_FOR_YOU\n')
+                continue
+            
             # Now let's start the local daq code
-            pro = subprocess.Popen(['./a.out','5'], stdin=None, stdout=None, stderr=None, shell=False)
+            with  open('logs/log_run_'+str(runNumber)+'.log', 'w') as logFile:
+              print 'The executable to run is:', executable
+              print 'The log file of the executable will be:', logFile
 
-            # Let's take a quick nap.
-            time.sleep(0.2)
+              pro = subprocess.Popen(['sudo', executable, str(runNumber), str(nEvents)], stdin=None, stdout=logFile, stderr=logFile, shell=False)
+
+            # Let's take a quick sleep, to let the DAQ create the needed datafile.
+            time.sleep(3)
 
             # And start a thread to trasmit raw data to DAQ server via UDP:
-            start_new_thread(sendData, (sudp,t1_stop))
+            start_new_thread(sendData, (sudp,t1_stop,int(runNumber)))
             
-            print 'Sent GOOD_START confirmation'
+            # Now, let's reply to the DAQ that we received her command and started the run:
+            conn.sendall('GOOD_START\n')
+            
+            print 'Sent GOOD_START confirmation. Runnumber = ', runNumber
 
         elif str(data)=='STOP_RUN':
             t1_stop.set()
+            
             try:
               ret = pro.poll()
             except:
               ret = -1
-            #while (ret==None):
-            #  print 'We must wait until the daq finishes, because it is too fragile to kill'
-            # time.sleep(1)
+            while (ret==None):
+              try:
+                ret = pro.poll()
+              except:
+                ret = -1
+                
+              print 'We must wait until the daq finishes, because it is too fragile to kill'
+              time.sleep(1)
               
             print 'Return code of the daq:', ret
             
@@ -147,6 +214,11 @@ def clientthread(conn, sudp):
             conn.sendall('STOPPED_OK')
             #sudp.sendto('STOPPED_OK', (HOST,PORTUDP))
             print 'Sent STOPPED_OK confirmation'
+
+            print 'Now movind the data files to NFS directory'
+            moveDataToNFS()
+            print 'Done moving'
+            
         else:
             conn.sendall('Message Received at the server: %s\n' % str(data))
             #sudp.sendto('Message Received at the server: %s\n' % str(data), (HOST,PORTUDP))
@@ -163,7 +235,7 @@ if __name__ == "__main__":
   print 'Socket created:', sTcp
 
   try:
-    sTcp.bind((MYIP, PORTTCP))
+    sTcp.bind((MYHOSTIP, PORTTCP))
   except socket.error , msg:
     print 'Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
     sys.exit()
@@ -197,6 +269,11 @@ if __name__ == "__main__":
       #start new thread
       start_new_thread(clientthread ,(conn,sUdp,))
 
+  except KeyboardInterrupt:
+    print 'Interrupted by keyboard. Closing down...'
+    sTcp.close()
+    sUdp.close()
+    
   finally:
     sTcp.close()
     sUdp.close()

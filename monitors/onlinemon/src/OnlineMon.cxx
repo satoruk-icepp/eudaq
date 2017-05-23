@@ -440,7 +440,7 @@ void RootMonitor::OnStartRun(unsigned param) {
   }
 
   Monitor::OnStartRun(param);
-  std::cout << "Called on start run" << param <<std::endl;
+  std::cout << "OnlineMon: Called on start run. RUN=" << param <<std::endl;
   onlinemon->UpdateStatus("Starting run..");
   char out[255];
   sprintf(out, "run%d.root",param);
