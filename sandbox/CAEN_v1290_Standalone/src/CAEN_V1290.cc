@@ -406,7 +406,7 @@ int CAEN_V1290::OpWriteTDC(WORD data) {
   int time=0;
   /* Check the Write OK bit */
   WORD rdata=0;
-  /*
+  
   do {
     status = CAENVME_ReadCycle(handle_,configuration_.baseAddress + CAEN_V1290_MICROHANDREG ,&rdata, CAEN_V1290_ADDRESSMODE, cvD16);
     time++;
@@ -414,7 +414,7 @@ int CAEN_V1290::OpWriteTDC(WORD data) {
       std::cout << "[CAEN_V1290]::[INFO]::Handshake micro op writing " << rdata << " #" << time << " " << status << std::endl;
     #endif
   } while (!(rdata & 0x1) && (time < TIMEOUT) );
-  */
+  
   if ( time == TIMEOUT ) {
     std::cout << "[CAEN_V1290]::[ERROR]::Cannot handshake micro op writing " << status << std::endl; 
     return ERR_WRITE_OP;
