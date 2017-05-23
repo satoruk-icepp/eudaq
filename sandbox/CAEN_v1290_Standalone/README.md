@@ -13,7 +13,15 @@ Code is tested on SLC6 with the following additional dependencies:
 * ```CAENComm Library```
 * ```CAENDigitizer Library```
 
-## How to run
+## Installation on pcminn03
+The test program is installed and can be run on pcminn03 in the test-lab (b.27). Its location is in ```/home/cmsdaq/DAQ/eudaq/sandbox/CAEN_v1290_Standalone```.
+It is currently connected to the VME crate. When running ```./test``` the according LEDs signal that read and write access via the VME crate is occuring.
+
+Next (23 May 2017):
+
+* Feed oscilloscope signals into the TDC and stress-test the interface. 
+
+## How to install and run
 After downloading this directory:
 
 1. ```cd thisdir```
