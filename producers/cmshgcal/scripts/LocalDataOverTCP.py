@@ -115,7 +115,7 @@ def clientthread(conn, sudp):
         
         print 'Command recieved:', str(data), type(data)
 
-        if str(data)=='START_RUN':
+        if str(data)[0:9]=='START_RUN':
             t1_stop.clear()
             # First, let's reply to the DAQ that we received her command
             conn.sendall('GOOD_START\n')
