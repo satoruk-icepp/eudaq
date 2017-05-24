@@ -94,6 +94,7 @@ public:
   bool is_USBPIXI4;
   bool is_FORTIS;
   bool is_EXPLORER;
+  bool is_HEXABOARD;
   bool is_UNKNOWN;
 
 private:

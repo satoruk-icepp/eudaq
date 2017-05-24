@@ -96,6 +96,21 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
   }
 
 
+  if (gStyle!=NULL)
+    {
+      gStyle->SetPalette(mon_configdata.getDqmColorMap());
+      gStyle->SetNumberContours(50);
+      gStyle->SetOptStat(0);
+      //gStyle->SetStatX(0.2);
+      gStyle->SetStatH(static_cast<Float_t>(0.15));
+    }
+  else
+    {
+      cout<<"Global gStyle Object not found" <<endl;
+      exit(-1);
+    }
+  
+  
   // print the configuration
   mon_configdata.PrintConfiguration();
 
@@ -149,7 +164,7 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
   previous_event_clustering_time=0;
   previous_event_correlation_time=0;
 
-  onlinemon->SetOnlineMon(this);    
+  onlinemon->SetOnlineMon(this);
 
 }
 
@@ -251,7 +266,7 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
       return; //don't process any further
     }
 
-    for (unsigned int i = 0; i < num;i++)
+    for (unsigned int i = 0; i < num; i++)
     {
       const eudaq::StandardPlane & plane = ev.GetPlane(i);
 
@@ -284,17 +299,17 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
       }
       SimpleStandardPlane simpPlane(sensorname,plane.ID(),plane.XSize(),plane.YSize(), plane.TLUEvent(),plane.PivotPixel(),&mon_configdata);
 
-      for (unsigned int lvl1 = 0; lvl1 < plane.NumFrames(); lvl1++)
-      {
-        // if (lvl1 > 2 && plane.HitPixels(lvl1) > 0) std::cout << "LVLHits: " << lvl1 << ": " << plane.HitPixels(lvl1) << std::endl;
+      unsigned int lvl1 = 2;
+      // if (lvl1 > 2 && plane.HitPixels(lvl1) > 0) std::cout << "LVLHits: " << lvl1 << ": " << plane.HitPixels(lvl1) << std::endl;
 
-        for (unsigned int index = 0; index < plane.HitPixels(lvl1);index++)
+      for (unsigned int index = 0; index < plane.HitPixels(lvl1); index++)
         {
           SimpleStandardHit hit((int)plane.GetX(index,lvl1),(int)plane.GetY(index,lvl1));
-          hit.setTOT((int)plane.GetPixel(index,lvl1)); //this stores the analog information if existent, else it stores 1
-          hit.setLVL1(lvl1);
 
-
+	  const int avg = (plane.GetPixel(index, 1) + plane.GetPixel(index, 2) + plane.GetPixel(index, 3))/3; 
+          hit.setAMP(avg); // Average amplitude over 3 time samples around maximum 
+          hit.setLVL1((int)plane.GetPixel(index, 11));// Let's use this guy for TOA storage!
+          hit.setTOT((int)plane.GetPixel(index, 12)); // TOT
 
           if (simpPlane.getAnalogPixelType()) //this is analog pixel, apply threshold
           {
@@ -317,6 +332,15 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
 		continue;
 	      }
 	    }
+
+	    if (simpPlane.is_HEXABOARD)
+	      {
+		// Here we could set more selection on the pixels
+		// Or set SkiRoc specific values
+		if (hit.getAMP() == 0)
+		  continue;
+
+	      }
             simpPlane.addHit(hit);
           }
           else //purely digital pixel
@@ -325,7 +349,9 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
           }
 
         }
-      }
+
+
+
       simpEv.addPlane(simpPlane);
 #ifdef DEBUG
       cout << "Type: " << plane.Type() << endl;
@@ -336,7 +362,8 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
     }
 
     my_event_inner_operations_time.Start(true);
-    simpEv.doClustering();
+    // Don't do clustering for hexaboard. This would not make any sense
+    //simpEv.doClustering();
     my_event_inner_operations_time.Stop();
     previous_event_clustering_time = my_event_inner_operations_time.RealTime();
 
@@ -440,7 +467,7 @@ void RootMonitor::OnStartRun(unsigned param) {
   }
 
   Monitor::OnStartRun(param);
-  std::cout << "OnlineMon: Called on start run. RUN=" << param <<std::endl;
+  std::cout << "Called on start run" << param <<std::endl;
   onlinemon->UpdateStatus("Starting run..");
   char out[255];
   sprintf(out, "run%d.root",param);
@@ -486,7 +513,7 @@ int main(int argc, const char ** argv) {
   eudaq::Option<std::string> file (op, "f", "data-file", "", "filename",
       "A data file to load - setting this changes the default"
       " run control address to 'null://'");
-  eudaq::Option<int>             x(op, "x", "left",    100, "pos");
+  eudaq::Option<int>             x(op, "x", "left",    500, "pos");
   eudaq::Option<int>             y(op, "y", "top",       0, "pos");
   eudaq::Option<int>             w(op, "w", "width",  1400, "pos");
   eudaq::Option<int>             h(op, "g", "height",  700, "pos", "The initial position of the window");
@@ -497,7 +524,7 @@ int main(int argc, const char ** argv) {
   eudaq::Option<unsigned>        corr_width(op, "cw", "corr_width",500, "Width of the track correlation window");
   eudaq::Option<unsigned>        corr_planes(op, "cp", "corr_planes",  5, "Minimum amount of planes for track reconstruction in the correlation");
   eudaq::Option<bool>            track_corr(op, "tc", "track_correlation", false, "Using (EXPERIMENTAL) track correlation(true) or cluster correlation(false)");
-  eudaq::Option<int>             update(op, "u", "update",  1000, "update every ms");
+  eudaq::Option<int>             update(op, "u", "update",  2000, "update every ms");
   eudaq::Option<int>             offline(op, "o", "offline",  0, "running is offlinemode - analyse until event <num>");
   eudaq::Option<std::string>     configfile(op, "c", "config_file"," ", "filename","Config file to use for onlinemon");
   eudaq::OptionFlag do_rootatend (op, "rf","root","Write out root-file after each run");
@@ -517,25 +544,13 @@ int main(int argc, const char ** argv) {
       cout<<"Global gROOT Object not found" <<endl;
       exit(-1);
     }
-    if (gStyle!=NULL)
-    {
-      gStyle->SetPalette(1);
-      gStyle->SetNumberContours(99);
-      gStyle->SetOptStat(1111);
-      gStyle->SetStatH(static_cast<Float_t>(0.15));
-    }
-    else
-    {
-      cout<<"Global gStyle Object not found" <<endl;
-      exit(-1);
-    }
 
     // start the GUI
     //    cout<< "DEBUG: LIMIT VALUE " << (unsigned)limit.Value();
     TApplication theApp("App", &argc, const_cast<char**>(argv),0,0);
     RootMonitor mon(rctrl.Value(), file.Value(), x.Value(), y.Value(),
-        w.Value(), h.Value(), argc, offline.Value(), limit.Value(),
-        skipping.Value(), skip_counter.Value(), configfile.Value());
+		    w.Value(), h.Value(), argc, offline.Value(), limit.Value(),
+		    skipping.Value(), skip_counter.Value(), configfile.Value());
     mon.setWriteRoot(do_rootatend.IsSet());
     mon.autoReset(do_resetatend.IsSet());
     mon.setReduce(reduce.Value());

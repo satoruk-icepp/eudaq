@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 #
 # This script is to be run on RPI which does data-acquisition.
@@ -14,7 +14,7 @@ import threading
 import time
 import numpy as np
 
-#MYIP = '128.141.196.225'
+#MYIP = '192.168.222.3'
 MYIP = '127.0.0.1'
 PORTTCP = 55511
 
@@ -23,9 +23,9 @@ PORTUDP = 55512
 
 t1_stop = threading.Event()
 
-EventRate = 20 # Events per spill
-SpillTime = 5  # Duration of the spill in seconds
-InterSpill = 3 # Time between spills in seconds
+EventRate = 30 # Events per spill
+SpillTime = 1  # Duration of the spill in seconds
+InterSpill = 1 # Time between spills in seconds
 
 RAW_EV_SIZE = 30787
 
@@ -115,16 +115,16 @@ def clientthread(conn, sudp):
         
         print 'Command recieved:', str(data), type(data)
 
-        if str(data)=='START_RUN':
+        if str(data)[0:9]=='START_RUN':
             t1_stop.clear()
             # First, let's reply to the DAQ that we received her command
             conn.sendall('GOOD_START\n')
 
             # Now let's start the local daq code
-            pro = subprocess.Popen(['./a.out','5'], stdin=None, stdout=None, stderr=None, shell=False)
+            #pro = subprocess.Popen(['./a.out','5'], stdin=None, stdout=None, stderr=None, shell=False)
 
             # Let's take a quick nap.
-            time.sleep(0.2)
+            #time.sleep(0.2)
 
             # And start a thread to trasmit raw data to DAQ server via UDP:
             start_new_thread(sendData, (sudp,t1_stop))

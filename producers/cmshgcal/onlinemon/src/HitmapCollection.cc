@@ -42,6 +42,11 @@ void HitmapCollection::fillHistograms(const SimpleStandardPlane &simpPlane) {
   //        std::cout << "Final AVG: " << std::scientific << (double)events /
   //        (double)10000 << std::endl;
 
+
+  // Reset Charge histogram
+  // It crushes the programm.....
+  //hitmap->getHexagonsChargeHisto()->Reset("");
+    
   for (int hitpix = 0; hitpix < simpPlane.getNHits(); hitpix++) {
     const SimpleStandardHit &onehit = simpPlane.getHit(hitpix);
 
@@ -136,8 +141,11 @@ void HitmapCollection::Fill(const SimpleStandardEvent &simpev) {
 
   for (int plane = 0; plane < simpev.getNPlanes(); plane++) {
     const SimpleStandardPlane &simpPlane = simpev.getPlane(plane);
+
     fillHistograms(simpPlane);
+
   }
+    
 }
 HitmapHistos *HitmapCollection::getHitmapHistos(std::string sensor, int id) {
   SimpleStandardPlane sp(sensor, id);
@@ -156,19 +164,38 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
     }
     // cout << "HitmapCollection:: Monitor running in online-mode" << endl;
     char tree[1024], folder[1024];
-    sprintf(tree, "%s/Sensor %i/RawHitmap", p.getName().c_str(), p.getID());
+    sprintf(tree, "%s/Sensor %i/Occupancy", p.getName().c_str(), p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
-    _mon->getOnlineMon()->registerHisto(
-        tree, getHitmapHistos(p.getName(), p.getID())->getHitmapHisto(), "COLZ",
-        0);
-
+    _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsOccupancyHisto(), "COLZL TEXT");
+    
     sprintf(folder, "%s", p.getName().c_str());
 #ifdef DEBUG
     cout << "DEBUG " << p.getName().c_str() << endl;
     cout << "DEBUG " << folder << " " << tree << endl;
 #endif
+
     _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
 
+    sprintf(tree, "%s/Sensor %i/Charge", p.getName().c_str(), p.getID());
+    _mon->getOnlineMon()->registerTreeItem(tree);
+    _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsChargeHisto(), "COLZ TEXT");
+    _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
+
+    sprintf(tree, "%s/Sensor %i/Occ_TOT", p.getName().c_str(), p.getID());
+    _mon->getOnlineMon()->registerTreeItem(tree);
+    _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsOccTotHisto(), "COLZL TEXT");
+    _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
+
+    sprintf(tree, "%s/Sensor %i/Occ_TOA", p.getName().c_str(), p.getID());
+    _mon->getOnlineMon()->registerTreeItem(tree);
+    _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsOccToaHisto(), "COLZL TEXT");
+    _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
+
+    sprintf(tree, "%s/Sensor %i/RawHitmap", p.getName().c_str(), p.getID());
+    _mon->getOnlineMon()->registerTreeItem(tree);
+    _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHitmapHisto(), "COLZ", 0);
+    //_mon->getOnlineMon()->addTreeItemSummary(folder, tree);
+    
     sprintf(tree, "%s/Sensor %i/Hitmap X Projection", p.getName().c_str(),
             p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
@@ -181,11 +208,14 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
     _mon->getOnlineMon()->registerHisto(
         tree, getHitmapHistos(p.getName(), p.getID())->getHitYmapHisto());
 
-    sprintf(tree, "%s/Sensor %i/Clustermap", p.getName().c_str(), p.getID());
-    _mon->getOnlineMon()->registerTreeItem(tree);
-    _mon->getOnlineMon()->registerHisto(
-        tree, getHitmapHistos(p.getName(), p.getID())->getClusterMapHisto(),
-        "COLZ", 0);
+    if (!p.is_HEXABOARD){
+      sprintf(tree, "%s/Sensor %i/Clustermap", p.getName().c_str(), p.getID());
+      _mon->getOnlineMon()->registerTreeItem(tree);
+      _mon->getOnlineMon()->registerHisto(
+					  tree, getHitmapHistos(p.getName(), p.getID())->getClusterMapHisto(),
+					  "COLZ", 0);
+    }
+   
     if ((p.is_APIX) || (p.is_USBPIX) || (p.is_USBPIXI4)) {
       sprintf(tree, "%s/Sensor %i/LVL1Distr", p.getName().c_str(), p.getID());
       _mon->getOnlineMon()->registerTreeItem(tree);
@@ -233,34 +263,32 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
           tree, getHitmapHistos(p.getName(), p.getID())->getTOTSingleHisto());
     }
 
-    sprintf(tree, "%s/Sensor %i/Clustersize", p.getName().c_str(), p.getID());
-    _mon->getOnlineMon()->registerTreeItem(tree);
-    _mon->getOnlineMon()->registerHisto(
-        tree, getHitmapHistos(p.getName(), p.getID())->getClusterSizeHisto());
 
+    if (!p.is_HEXABOARD){
+      sprintf(tree, "%s/Sensor %i/Clustersize", p.getName().c_str(), p.getID());
+      _mon->getOnlineMon()->registerTreeItem(tree);
+      _mon->getOnlineMon()->registerHisto(
+					  tree, getHitmapHistos(p.getName(), p.getID())->getClusterSizeHisto());
+    }
     sprintf(tree, "%s/Sensor %i/NumHits", p.getName().c_str(), p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(
         tree, getHitmapHistos(p.getName(), p.getID())->getNHitsHisto());
 
-    sprintf(tree, "%s/Sensor %i/NumBadHits", p.getName().c_str(), p.getID());
-    _mon->getOnlineMon()->registerTreeItem(tree);
-    _mon->getOnlineMon()->registerHisto(
-        tree, getHitmapHistos(p.getName(), p.getID())->getNbadHitsHisto());
-    sprintf(tree, "%s/Sensor %i/NumHotPixels", p.getName().c_str(), p.getID());
-    _mon->getOnlineMon()->registerTreeItem(tree);
-    _mon->getOnlineMon()->registerHisto(
-        tree, getHitmapHistos(p.getName(), p.getID())->getNHotPixelsHisto());
-
-    sprintf(tree, "%s/Sensor %i/NumClusters", p.getName().c_str(), p.getID());
-    _mon->getOnlineMon()->registerTreeItem(tree);
-    _mon->getOnlineMon()->registerHisto(
-        tree, getHitmapHistos(p.getName(), p.getID())->getNClustersHisto());
-
-    sprintf(tree, "%s/Sensor %i/HitOcc", p.getName().c_str(), p.getID());
-    _mon->getOnlineMon()->registerTreeItem(tree);
-    _mon->getOnlineMon()->registerHisto(
-        tree, getHitmapHistos(p.getName(), p.getID())->getHitOccHisto(), "", 1);
+    if (!p.is_HEXABOARD){
+      sprintf(tree, "%s/Sensor %i/NumBadHits", p.getName().c_str(), p.getID());
+      _mon->getOnlineMon()->registerTreeItem(tree);
+      _mon->getOnlineMon()->registerHisto(
+					  tree, getHitmapHistos(p.getName(), p.getID())->getNbadHitsHisto());
+      sprintf(tree, "%s/Sensor %i/NumHotPixels", p.getName().c_str(), p.getID());
+      _mon->getOnlineMon()->registerTreeItem(tree);
+      _mon->getOnlineMon()->registerHisto(
+					  tree, getHitmapHistos(p.getName(), p.getID())->getNHotPixelsHisto());
+      
+      sprintf(tree, "%s/Sensor %i/NumClusters", p.getName().c_str(), p.getID());
+      _mon->getOnlineMon()->registerTreeItem(tree);
+      _mon->getOnlineMon()->registerHisto(
+					  tree, getHitmapHistos(p.getName(), p.getID())->getNClustersHisto());
 
     sprintf(tree, "%s/Sensor %i/Hot Pixel Map", p.getName().c_str(), p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
@@ -268,6 +296,13 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
         tree, getHitmapHistos(p.getName(), p.getID())->getHotPixelMapHisto(),
         "COLZ", 0);
 
+    }
+    if (!p.is_HEXABOARD){
+      sprintf(tree, "%s/Sensor %i/HitOcc", p.getName().c_str(), p.getID());
+      _mon->getOnlineMon()->registerTreeItem(tree);
+      _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHitOccHisto(), "", 1);
+    }
+    
     if (p.is_MIMOSA26) {
       // setup histogram showing the number of hits per section of a Mimosa26
       sprintf(tree, "%s/Sensor %i/Hitmap Sections", p.getName().c_str(),

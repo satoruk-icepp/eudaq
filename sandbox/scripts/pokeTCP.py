@@ -24,12 +24,14 @@ if __name__ == "__main__":
           s = socket.socket(af, socktype, proto)
       except socket.error as msg:
           s = None
+          print 'Cant create socket'
           continue
       try:
           s.connect(sa)
       except socket.error as msg:
           s.close()
           s = None
+          print 'Cant connect() socket'
           continue
       break
   if s is None:
