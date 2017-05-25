@@ -96,7 +96,8 @@ void HitmapCollection::Write(TFile *file) {
   if (file == NULL) {
     // cout << "HitmapCollection::Write File pointer is NULL"<<endl;
     exit(-1);
-  }
+  }  
+
   if (gDirectory != NULL) // check if this pointer exists
   {
     gDirectory->mkdir("Hitmaps");
@@ -164,11 +165,12 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
     }
     // cout << "HitmapCollection:: Monitor running in online-mode" << endl;
     char tree[1024], folder[1024];
-    sprintf(tree, "%s/Sensor %i/Occupancy", p.getName().c_str(), p.getID());
+    sprintf(tree, "%s/Sensor %i/Occ_ADC_LG", p.getName().c_str(), p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsOccupancyHisto(), "COLZL TEXT");
     
     sprintf(folder, "%s", p.getName().c_str());
+
 #ifdef DEBUG
     cout << "DEBUG " << p.getName().c_str() << endl;
     cout << "DEBUG " << folder << " " << tree << endl;
@@ -176,7 +178,7 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
 
     _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
 
-    sprintf(tree, "%s/Sensor %i/Charge", p.getName().c_str(), p.getID());
+    sprintf(tree, "%s/Sensor %i/ADC_in_last_event", p.getName().c_str(), p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsChargeHisto(), "COLZ TEXT");
     _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
@@ -196,14 +198,12 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
     _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHitmapHisto(), "COLZ", 0);
     //_mon->getOnlineMon()->addTreeItemSummary(folder, tree);
     
-    sprintf(tree, "%s/Sensor %i/Hitmap X Projection", p.getName().c_str(),
-            p.getID());
+    sprintf(tree, "%s/Sensor %i/RawHitmap X Projection", p.getName().c_str(), p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(
         tree, getHitmapHistos(p.getName(), p.getID())->getHitXmapHisto());
 
-    sprintf(tree, "%s/Sensor %i/Hitmap Y Projection", p.getName().c_str(),
-            p.getID());
+    sprintf(tree, "%s/Sensor %i/RawHitmap Y Projection", p.getName().c_str(),p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(
         tree, getHitmapHistos(p.getName(), p.getID())->getHitYmapHisto());

@@ -26,7 +26,7 @@ const char mainFrameOffset=8;
 // For zero usppression:
 //const int ped = 150;  // pedestal. It is now calculated as median from all channels in hexaboard
 const int noi = 10;   // noise
-const int thresh = 70; // ZS threshold (above pedestal)
+const int thresh = 20; // ZS threshold (above pedestal)
 
 // Size of ZS data ()per channel
 const char hitSizeZS = 17;
@@ -237,11 +237,11 @@ namespace eudaq {
 
 
       
-      for (int b=0; b<2; b++)
-	std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % b % raw[b]<<std::endl;
+      //for (int b=0; b<2; b++)
+      //std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % b % raw[b]<<std::endl;
 
-      std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % 30786 % raw[30786]<<std::endl;
-      std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % 30787 % raw[30787]<<std::endl;
+      //std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % 30786 % raw[30786]<<std::endl;
+      //std::cout<< boost::format("Pos: %d  Word in Hex: 0x%08x ") % 30787 % raw[30787]<<std::endl;
 
       // First, we need to determine how many skiRoc data is presnt
 
@@ -415,8 +415,8 @@ namespace eudaq {
 	  std::cout<<"There is something wrong with your tmp_adc.size()"<<tmp_adc.size()<<std::endl;
 
 	
-	std::cout<<" Median of all channels:\n"<<median
-		 <<"\t also, first guy:"<<tmp_adc.front()<<"  and last guy:"<<tmp_adc.back()<<std::endl;
+	//std::cout<<" Median of all channels:\n"<<median
+	//	 <<"\t also, first guy:"<<tmp_adc.front()<<"  and last guy:"<<tmp_adc.back()<<std::endl;
 
 	tmp_adc.clear();
 	

@@ -142,7 +142,7 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
       onlinemon->setRunNumber(n);
     }
 
-    cout << "ROOT output filename is: " << out << endl;
+    cout << " \n \t ** ROOT output filename is: " << out << endl;
     if (_offline <= 0)
     {
       onlinemon->setRootFileName(out);
@@ -448,6 +448,8 @@ void RootMonitor::OnStopRun()
     for (unsigned int i = 0 ; i < _colls.size(); ++i)
     {
       _colls.at(i)->Write(f);
+
+      //_colls.at()
     }
     f->Close();
   }
@@ -456,6 +458,8 @@ void RootMonitor::OnStopRun()
 
 void RootMonitor::OnStartRun(unsigned param) {
 
+  std::cout<<"Doing RootMonitor::OnStartRun() "<<std::endl;
+  
   if (onlinemon->getAutoReset())
   {
     onlinemon->UpdateStatus("Resetting..");
@@ -466,11 +470,12 @@ void RootMonitor::OnStartRun(unsigned param) {
     }
   }
 
-  Monitor::OnStartRun(param);
-  std::cout << "Called on start run" << param <<std::endl;
+  Monitor::OnStartRun(param); // This is eudaq-monitor thing
+  
+  std::cout << "\n In RootMonitor::OnStartRun(): Called on start run  RUN=" << param <<std::endl;
   onlinemon->UpdateStatus("Starting run..");
   char out[255];
-  sprintf(out, "run%d.root",param);
+  sprintf(out, "../data_root/run%d.root",param);
   rootfilename = std::string(out);
   runnumber = param;
 
@@ -482,6 +487,8 @@ void RootMonitor::OnStartRun(unsigned param) {
   // Reset the planes initializer on new run start:
   _planesInitialized = false;
 
+  onlinemon->UpdateStatus("Running");
+  
   SetStatus(eudaq::Status::LVL_OK);
 }
 
@@ -524,7 +531,7 @@ int main(int argc, const char ** argv) {
   eudaq::Option<unsigned>        corr_width(op, "cw", "corr_width",500, "Width of the track correlation window");
   eudaq::Option<unsigned>        corr_planes(op, "cp", "corr_planes",  5, "Minimum amount of planes for track reconstruction in the correlation");
   eudaq::Option<bool>            track_corr(op, "tc", "track_correlation", false, "Using (EXPERIMENTAL) track correlation(true) or cluster correlation(false)");
-  eudaq::Option<int>             update(op, "u", "update",  2000, "update every ms");
+  eudaq::Option<int>             update(op, "u", "update",  500, "update every ms");
   eudaq::Option<int>             offline(op, "o", "offline",  0, "running is offlinemode - analyse until event <num>");
   eudaq::Option<std::string>     configfile(op, "c", "config_file"," ", "filename","Config file to use for onlinemon");
   eudaq::OptionFlag do_rootatend (op, "rf","root","Write out root-file after each run");

@@ -193,7 +193,7 @@ void OnlineMonWindow::ExecuteEvent(Int_t event, Int_t /*px*/, Int_t /*py*/,
     // ECvs_right->GetCanvas()->BlockAllSignals(1);
     ECvs_right->GetCanvas()->Clear();
     ECvs_right->GetCanvas()->cd();
-    sel->Draw("COLZ");
+    sel->Draw("COLZ TEXT");
     ECvs_right->GetCanvas()->Update();
     MapSubwindows();
     MapWindow();
@@ -202,17 +202,24 @@ void OnlineMonWindow::ExecuteEvent(Int_t event, Int_t /*px*/, Int_t /*py*/,
 
 void OnlineMonWindow::Write() {
   TFile *f = new TFile(_rootfilename.c_str(), "RECREATE");
+  
+  std::cout<<"--> Doing OnlineMonWindow::Write() "<<std::endl;
+  std::cout<<" _rootfilename =  "<<_rootfilename<<std::endl;
+ 
   if (f != NULL) {
     for (unsigned int i = 0; i < _colls.size(); ++i) {
       _colls.at(i)->Write(f);
     }
     f->Close();
   } else {
-    cerr << "Can't open root file" << endl;
+    cerr << "ERR: Can't open root file" << endl;
+    std::cout<<" COUT: Can't open root file"<<std::endl;
   }
 }
 
 void OnlineMonWindow::Reset() {
+  std::cout<<"--> Doing OnlineMonWindow::Reset() "<<std::endl;
+
   UpdateStatus("Resetting..");
   for (unsigned int i = 0; i < _colls.size(); ++i) {
     _colls.at(i)->Reset();
@@ -222,7 +229,7 @@ void OnlineMonWindow::Reset() {
 
 void OnlineMonWindow::AutoReset() {
   _autoreset = button_autoreset->IsOn();
-  // cout << "AutoReset " << status << endl;
+  cout << "AutoReset " << _autoreset << endl;
 }
 
 void OnlineMonWindow::Quit() { gApplication->Terminate(0); }

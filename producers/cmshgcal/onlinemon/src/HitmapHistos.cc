@@ -5,8 +5,10 @@
  *      Author: stanitz
  */
 
+#include <TROOT.h>
 #include "HitmapHistos.hh"
 #include "OnlineMon.hh"
+#include "TCanvas.h"
 #include "TGraph.h"
 #include <cstdlib>
 
@@ -44,18 +46,20 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
   // std::endl;
 
   if (_maxX != -1 && _maxY != -1) {
-    sprintf(out, "%s/Sensor %i/Occupancy", _sensor.c_str(), _id);
-    sprintf(out2, "h_hexagons_occupancy_%s_%i", _sensor.c_str(), _id);
-    _hexagons_occupancy = get_th2poly(out,out2);  
-    sprintf(out, "%s/Sensor %i/Charge", _sensor.c_str(), _id);
+    sprintf(out, "%s %i  ADC LG Occupancy", _sensor.c_str(), _id);
+    sprintf(out2, "h_hexagons_occ_lg_%s_%i", _sensor.c_str(), _id);
+    _hexagons_occupancy = get_th2poly(out2,out);  
+    sprintf(out, "%s %i  ADC LG Charge", _sensor.c_str(), _id);
     sprintf(out2, "h_hexagons_charge_%s_%i", _sensor.c_str(), _id);
-    _hexagons_charge = get_th2poly(out,out2); 
-    sprintf(out, "%s/Sensor %i/Occ_TOT", _sensor.c_str(), _id);
+    _hexagons_charge = get_th2poly(out2,out); 
+    sprintf(out, "%s %i  TOT Occupancy", _sensor.c_str(), _id);
     sprintf(out2, "h_hexagons_occ_tot_%s_%i", _sensor.c_str(), _id);
-    _hexagons_occ_tot = get_th2poly(out,out2); 
-    sprintf(out, "%s/Sensor %i/Occ_TOA", _sensor.c_str(), _id);
+    _hexagons_occ_tot = get_th2poly(out2,out); 
+    sprintf(out, "%s %i  TOA Occupancy", _sensor.c_str(), _id);
     sprintf(out2, "h_hexagons_occ_toa_%s_%i", _sensor.c_str(), _id);
-    _hexagons_occ_toa = get_th2poly(out,out2); 
+    _hexagons_occ_toa = get_th2poly(out2,out);
+
+    
     sprintf(out, "%s %i Raw Hitmap", _sensor.c_str(), _id);
     sprintf(out2, "h_hitmap_%s_%i", _sensor.c_str(), _id);
     _hitmap = new TH2I(out2, out, _maxX + 1, 0, _maxX, _maxY + 1, 0, _maxY);
@@ -65,12 +69,12 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
     sprintf(out, "%s %i Raw Hitmap X-Projection", _sensor.c_str(), _id);
     sprintf(out2, "h_hitXmap_%s_%i", _sensor.c_str(), _id);
     _hitXmap = new TH1I(out2, out, _maxX + 1, 0, _maxX);
-    SetHistoAxisLabelx(_hitXmap, "X");
+    SetHistoAxisLabelx(_hitXmap, "SkiRoc ID");
 
     sprintf(out, "%s %i Raw Hitmap Y-Projection", _sensor.c_str(), _id);
     sprintf(out2, "h_hitYmap_%s_%i", _sensor.c_str(), _id);
     _hitYmap = new TH1I(out2, out, _maxY + 1, 0, _maxY);
-    SetHistoAxisLabelx(_hitYmap, "Y");
+    SetHistoAxisLabelx(_hitYmap, "Channel ID");
 
     sprintf(out, "%s %i Cluster Hitmap", _sensor.c_str(), _id);
     sprintf(out2, "h_clustermap_%s_%i", _sensor.c_str(), _id);
@@ -130,10 +134,10 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
     SetHistoAxisLabelx(_clusterSize, "Cluster Size");
 
     sprintf(out, "%s %i Number of Hits", _sensor.c_str(), _id);
-    sprintf(out2, "h_nHits_%s_%i", _sensor.c_str(), _id);
-    _nHits = new TH1I(out2, out, 500, 0, 40);
-    SetHistoAxisLabelx(_nHits, "n_Hits");
-    //_nHits.SetStats(1);
+    sprintf(out2, "h_raw_nHits_%s_%i", _sensor.c_str(), _id);
+    _nHits = new TH1I(out2, out, 20, 0, 20);
+    SetHistoAxisLabelx(_nHits, "Number of Hits above ZS");
+    //_nHits->SetStats(1);
 
     sprintf(out, "%s %i Number of Invalid Hits", _sensor.c_str(), _id);
     sprintf(out2, "h_nbadHits_%s_%i", _sensor.c_str(), _id);
@@ -546,29 +550,46 @@ void HitmapHistos::Write() {
   _hitmap->Write();
   _hitXmap->Write();
   _hitYmap->Write();
-  _totSingle->Write();
-  _lvl1Distr->Write();
-  _clusterMap->Write();
-  _totCluster->Write();
-  _lvl1Cluster->Write();
-  _lvl1Width->Write();
-  _hitOcc->Write();
-  _clusterSize->Write();
-  _nClusters->Write();
+  //_totSingle->Write();
+  //_lvl1Distr->Write();
+  //_clusterMap->Write();
+  //_totCluster->Write();
+  //_lvl1Cluster->Write();
+  //_lvl1Width->Write();
+  //_hitOcc->Write();
+  //_clusterSize->Write();
+  //_nClusters->Write();
   _nHits->Write();
-  _nbadHits->Write();
-  _HotPixelMap->Write();
-  _nHotPixels->Write();
-  _clusterXWidth->Write();
-  _clusterYWidth->Write();
-  _hitmapSections->Write();
-  _nPivotPixel->Write();
-  for (unsigned int section = 0; section < mimosa26_max_section; section++) {
-    _nClusters_section[section]->Write();
-    _nHits_section[section]->Write();
-    _nClustersize_section[section]->Write();
-    _nHotPixels_section[section]->Write();
-  }
+  //_nbadHits->Write();
+  //_HotPixelMap->Write();
+  //_nHotPixels->Write();
+  //_clusterXWidth->Write();
+  //_clusterYWidth->Write();
+  //_hitmapSections->Write();
+  //_nPivotPixel->Write();
+
+  std::cout<<"Doing HitmapHistos::Write() before canvas drawing"<<std::endl;
+  
+  gROOT->SetBatch(kTRUE);
+  TCanvas *tmpcan = new TCanvas("tmpcan","Canvas for PNGs",600,600);
+  tmpcan->cd();
+  _hexagons_occupancy->Draw("COLZ TEXT");
+  tmpcan->SaveAs("../snapshots/Occupancy_ADC_LG.png");
+
+  _hexagons_occ_tot->Draw("COLZ TEXT");
+  tmpcan->SaveAs("../snapshots/Occupancy_TOT.png");
+
+  _hexagons_occ_toa->Draw("COLZ TEXT");
+  tmpcan->SaveAs("../snapshots/Occupancy_TOA.png");
+
+  _nHits->Draw("hist");
+  tmpcan->SaveAs("../snapshots/nHits.png");
+
+  tmpcan->Close();
+  gROOT->SetBatch(kFALSE);
+
+  std::cout<<"Doing HitmapHistos::Write() after canvas drawing"<<std::endl;
+
 }
 
 int HitmapHistos::SetHistoAxisLabelx(TH1 *histo, string xlabel) {
