@@ -337,7 +337,7 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
 	      {
 		// Here we could set more selection on the pixels
 		// Or set SkiRoc specific values
-		if (hit.getAMP() == 0)
+		if (hit.getAMP() == 4) // 4 is a minimum ADC counts possible
 		  continue;
 
 	      }
