@@ -18,8 +18,11 @@ class AHCALProducer;
 
 class AHCALReader {
    public:
-      virtual void Read(std::deque<char> & buf, std::deque<eudaq::EventUP> & deqEvent) = 0;
-      virtual void buildEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) {
+      //virtual void Read(std::deque<char> & buf, std::deque<eudaq::EventUP> & deqEvent) = 0;
+      virtual void Read(std::deque<char> & buf, std::deque<eudaq::RawDataEvent *> & deqEvent) = 0;
+
+      //virtual void buildEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) { }
+      virtual void buildEvents(std::deque<eudaq::RawDataEvent *> & deqEvent, bool dumpAll) {
       }
       virtual void OnStart(int runNo) {
       }
@@ -29,8 +32,7 @@ class AHCALReader {
       }
 
       AHCALReader(AHCALProducer *r)
-            :
-                  _producer(r) {
+            : _producer(r) {
       }
       virtual ~AHCALReader() {
       }
@@ -53,13 +55,20 @@ class AHCALProducer: public eudaq::Producer {
       };
 
       AHCALProducer(const std::string & name, const std::string & runcontrol);
-      void DoConfigure() override final;
-      void DoStartRun() override final;
-      void DoStopRun() override final;
-      void DoTerminate() override final;
-      void DoReset() override final {
-      }
-      void Exec() override final;
+      //void DoConfigure() override final;
+      virtual void OnConfigure(const Configuration &param) override final;
+
+      // void DoStartRun() override final;
+      virtual void OnStartRun(unsigned /*runnumber*/) override final;
+
+      //void DoStopRun() override final;
+      virtual void OnStopRun() override final;
+
+      //void DoTerminate() override final;
+      virtual void OnTerminate() override final;
+
+      //void DoReset() override final { }
+      virtual void Exec() final;
 
       void SetReader(AHCALReader *r) {
          _reader = r;
@@ -71,7 +80,8 @@ class AHCALProducer: public eudaq::Producer {
       void SendCommand(const char *command, int size = 0);
 
       void OpenRawFile(unsigned param, bool _writerawfilename_timestamp);
-      void sendallevents(std::deque<eudaq::EventUP> &deqEvent, int minimumsize);
+      //void sendallevents(std::deque<eudaq::EventUP> &deqEvent, int minimumsize);
+      void sendallevents(std::deque<eudaq::RawDataEvent *> &deqEvent, int minimumsize);
 
       AHCALProducer::EventBuildingMode getEventMode() const;
       AHCALProducer::EventNumbering getEventNumberingPreference() const;

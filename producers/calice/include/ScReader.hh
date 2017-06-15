@@ -8,14 +8,16 @@ namespace eudaq {
 
 class ScReader: public AHCALReader {
    public:
-      virtual void Read(std::deque<char> & buf, std::deque<eudaq::EventUP> & deqEvent) override;
+      //virtual void Read(std::deque<char> & buf, std::deque<eudaq::EventUP> & deqEvent) override;
+      virtual void Read(std::deque<char> & buf, std::deque<eudaq::RawDataEvent *> & deqEvent) override;
+
       virtual void OnStart(int runNo) override;
       virtual void OnStop(int waitQueueTimeS) override;
       virtual void OnConfigLED(std::string _fname) override; //chose configuration file for LED runs
-      virtual void buildEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) override;
+      //virtual void buildEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) override;
+      virtual void buildEvents(std::deque<eudaq::RawDataEvent *> &EventQueue, bool dumpAll) override;
 
-      virtual std::deque<eudaq::RawDataEvent *> NewEvent_createRawDataEvent(std::deque<eudaq::RawDataEvent *> deqEvent, bool tempcome, int LdaRawcycle,
-            bool newForced);
+      //virtual std::deque<eudaq::RawDataEvent *> NewEvent_createRawDataEvent(std::deque<eudaq::RawDataEvent *> deqEvent, bool tempcome, int LdaRawcycle, bool newForced);
       virtual void readTemperature(std::deque<char>& buf);
 
       void appendOtherInfo(eudaq::RawDataEvent * ev);
@@ -83,11 +85,16 @@ class ScReader: public AHCALReader {
    private:
       void printLDATimestampTriggers(std::map<int, LDATimeData> &TSData);
       void printLDAROCInfo(std::ostream &out);
-      void buildROCEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll);
-      void buildTRIGIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll);
-      void buildBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll);
-      void buildValidatedBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll);
-      void insertDummyEvent(std::deque<eudaq::EventUP> &EventQueue, int eventNumber, int triggerid, bool triggeridFlag);
+      //void buildROCEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll);
+      void buildROCEvents(std::deque<eudaq::RawDataEvent *> &EventQueue, bool dumpAll);
+      //void buildTRIGIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll);
+      void buildTRIGIDEvents(std::deque<eudaq::RawDataEvent *> &EventQueue, bool dumpAll);
+      //void buildBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll);
+      void buildBXIDEvents(std::deque<eudaq::RawDataEvent *> &EventQueue, bool dumpAll);
+      //void buildValidatedBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll);
+      void buildValidatedBXIDEvents(std::deque<eudaq::RawDataEvent *> &EventQueue, bool dumpAll);
+      //void insertDummyEvent(std::deque<eudaq::EventUP> &EventQueue, int eventNumber, int triggerid, bool triggeridFlag);
+      void insertDummyEvent(std::deque<eudaq::RawDataEvent *> &EventQueue, int eventNumber, int triggerid, bool triggeridFlag);
       void prepareEudaqRawPacket(eudaq::RawDataEvent * ev);
 
       static const unsigned char C_TSTYPE_START_ACQ = 0x01;

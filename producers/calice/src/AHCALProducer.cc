@@ -62,14 +62,16 @@ AHCALProducer::AHCALProducer(const std::string & name, const std::string & runco
             _writeRaw(true),
             _StartWaitSeconds(0)
 {
-   m_id_stream = eudaq::cstr2hash(name.c_str());
+   //m_id_stream = eudaq::cstr2hash(name.c_str());
 }
 
-void AHCALProducer::DoTerminate() {
+void AHCALProducer::OnTerminate() { //DoTerminate() {
    _terminated = true;
 }
-void AHCALProducer::DoConfigure() {
-   const eudaq::Configuration &param = *GetConfiguration();
+//virtual void AHCALProducer::DoConfigure() {
+void AHCALProducer::OnConfigure(const eudaq::Configuration & param) {
+
+   //const eudaq::Configuration &param = *GetConfiguration();
    std::cout << " START AHCAL CONFIGURATION " << std::endl;
    // run rype: LED run or normal run ""
    _fileLEDsettings = param.Get("FileLEDsettings", "");
@@ -125,11 +127,13 @@ void AHCALProducer::DoConfigure() {
    //_configured = true;
 
    std::cout << " END AHCAL congfiguration " << std::endl;
-
+   SetStatus(eudaq::Status::LVL_OK, "Configured (" + param.Name() + ")");
 }
 
-void AHCALProducer::DoStartRun() {
-   _runNo = GetRunNumber();
+//void AHCALProducer::DoStartRun() {
+void AHCALProducer::OnStartRun(unsigned param) {
+   //_runNo = GetRunNumber();
+   _runNo = param;
    _eventNo = -1;
    _BORE_sent = false;
    // raw file open
@@ -149,9 +153,11 @@ void AHCALProducer::DoStartRun() {
 //      ev->SetBORE();
 //      SendEvent(std::move(ev));
    std::cout << "Start Run: " << _runNo << std::endl;
+   SendEvent(RawDataEvent::BORE("CaliceObject", _runNo));
+   _eventNo++; //count the BERO event
    _running = true;
    _stopped = false;
-
+   SetStatus(eudaq::Status::LVL_OK, "Running");
 }
 
 void AHCALProducer::OpenRawFile(unsigned param, bool _writerawfilename_timestamp) {
@@ -178,7 +184,8 @@ void AHCALProducer::OpenRawFile(unsigned param, bool _writerawfilename_timestamp
    _rawFile.open(_rawFilename);
 }
 
-void AHCALProducer::DoStopRun() {
+//void AHCALProducer::DoStopRun() {
+void AHCALProducer::OnStopRun() {
    std::cout << "AHCALProducer::DoStopRu:  Stop run" << std::endl;
    _reader->OnStop(_waitsecondsForQueuedEvents);
    _running = false;
@@ -198,6 +205,8 @@ void AHCALProducer::DoStopRun() {
    //auto ev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
    //ev->SetEORE();
    //SendEvent(std::move(ev));
+   SendEvent(RawDataEvent::EORE("CaliceObject", _runNo, _eventNo));
+   SetStatus(eudaq::Status::LVL_OK, "");
 }
 
 bool AHCALProducer::OpenConnection()
@@ -270,7 +279,8 @@ void AHCALProducer::SendCommand(const char *command, int size) {
 //      return 0;
 //   }
 
-void AHCALProducer::sendallevents(std::deque<eudaq::EventUP> & deqEvent, int minimumsize) {
+//void AHCALProducer::sendallevents(std::deque<eudaq::EventUP> & deqEvent, int minimumsize) {
+void AHCALProducer::sendallevents(std::deque<eudaq::RawDataEvent *> &deqEvent, int minimumsize) {
    while (deqEvent.size() > minimumsize) {
 
       //std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -279,21 +289,28 @@ void AHCALProducer::sendallevents(std::deque<eudaq::EventUP> & deqEvent, int min
       if (deqEvent.front()) {
          if (!_BORE_sent) {
             _BORE_sent = true;
-            deqEvent.front()->SetBORE();
+            //deqEvent.front()->SetBORE();
             deqEvent.front()->SetTag("FirstROCStartTS", dynamic_cast<ScReader*>(_reader)->getRunTimesStatistics().first_TS);
          }
-         if ((minimumsize == 0) && (deqEvent.size() == 1))
-            deqEvent.front()->SetEORE();
+         //if ((minimumsize == 0) && (deqEvent.size() == 0)) //the last event
+         //  deqEvent.front()->SetEORE();
 
 //            if (deqEvent.front()->GetEventN() != (_eventNo + 1)) {
 //               std::cout << "SENDEVENTS: Run " + to_string(_runNo) + " Event " + to_string(deqEvent.front()->GetEventN()) + " not in sequence. Expected " + to_string(_eventNo + 1) << std::endl;
 //               EUDAQ_WARN("Run " + to_string(_runNo) + " Event " + to_string(deqEvent.front()->GetEventN()) + " not in sequence. Expected " + to_string(_eventNo + 1));
 //            }
-         _eventNo = deqEvent.front()->GetEventN();
-         SendEvent(std::move(deqEvent.front()));
+         //_eventNo = deqEvent.front()->GetEventN();
+         //SendEvent(std::move(deqEvent.front()));
+
+         //EUDAQ1.6 style of sending events
+         //deqEvent.front()->Print(std::cout); std::cout << std::endl;
+         SendEvent(*(deqEvent.front()));
+         delete deqEvent.front();
+         deqEvent.pop_front();
+
       }
 
-      deqEvent.pop_front();
+      //deqEvent.pop_front();
    }
 
 //      eudaq::EventUP ev = deqEvent.front();
@@ -334,12 +351,12 @@ void AHCALProducer::sendallevents(std::deque<eudaq::EventUP> & deqEvent, int min
 
 void AHCALProducer::Exec() {
    std::cout << " Main loop " << std::endl;
-   StartCommandReceiver();
+   //StartCommandReceiver();//EUDAQ2
    deque<char> bufRead;
    // deque for events: add one event when new acqId is arrived: to be determined in reader
 //      deque<eudaq::RawDataEvent *> deqEvent2;
-   std::deque<eudaq::EventUP> deqEvent;
-
+   //std::deque<eudaq::EventUP> deqEvent;
+   std::deque<eudaq::RawDataEvent *> deqEvent;
    const int bufsize = 4 * 1024;
    // copy to C array, then to vector
    char buf[bufsize]; //buffer to read from TCP socket

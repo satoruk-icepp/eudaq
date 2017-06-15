@@ -126,7 +126,7 @@ void ScReader::OnStop(int waitQueueTimeS) {
    //    usleep(000);
 }
 
-void ScReader::Read(std::deque<char> & buf, std::deque<eudaq::EventUP> & deqEvent) {
+void ScReader::Read(std::deque<char> & buf, std::deque<eudaq::RawDataEvent *> & deqEvent) {
    static const unsigned char magic_sc[2] = { 0xac, 0xdc };    // find slow control info
    static const unsigned char magic_led[2] = { 0xda, 0xc1 };    // find LED voltages info
    static const unsigned char magic_data[2] = { 0xcd, 0xcd };    // find data
@@ -406,37 +406,38 @@ void ScReader::Read(std::deque<char> & buf, std::deque<eudaq::EventUP> & deqEven
    } // throw if data short
 }
 
-std::deque<eudaq::RawDataEvent *> ScReader::NewEvent_createRawDataEvent(std::deque<eudaq::RawDataEvent *> deqEvent, bool TempFlag, int LdaRawcycle,
-      bool newForced) {
-   if (deqEvent.size() == 0
-         || (!TempFlag && ((_cycleNo + 256) % 256) != LdaRawcycle)
-         || newForced) {
-// new event arrived: create RawDataEvent
-      if (!newForced) _cycleNo++;
-      eudaq::RawDataEvent *nev = new eudaq::RawDataEvent("CaliceObject", 0, _runNo, _trigID);
-      string s = "EUDAQDataScCAL";
-      nev->AddBlock(0, s.c_str(), s.length());
-      s = "i:CycleNr,i:BunchXID,i:EvtNr,i:ChipID,i:NChannels,i:TDC14bit[NC],i:ADC14bit[NC]";
-      nev->AddBlock(1, s.c_str(), s.length());
-      unsigned int times[1];
-      struct timeval tv;
-      ::gettimeofday(&tv, NULL);
-      times[0] = tv.tv_sec;
-      nev->AddBlock(2, times, sizeof(times));
-      nev->AddBlock(3, vector<int>()); // dummy block to be filled later with slowcontrol files
-      nev->AddBlock(4, vector<int>()); // dummy block to be filled later with LED information (only if LED run)
-      nev->AddBlock(5, vector<int>()); // dummy block to be filled later with temperature
-      nev->AddBlock(6, vector<uint32_t>()); // dummy block to be filled later with cycledata(start, stop, trigger)
+//std::deque<eudaq::RawDataEvent *> ScReader::NewEvent_createRawDataEvent(std::deque<eudaq::RawDataEvent *> deqEvent, bool TempFlag, int LdaRawcycle,
+//      bool newForced) {
+//   if (deqEvent.size() == 0
+//         || (!TempFlag && ((_cycleNo + 256) % 256) != LdaRawcycle)
+//         || newForced) {
+//// new event arrived: create RawDataEvent
+//      if (!newForced) _cycleNo++;
+//      eudaq::RawDataEvent *nev = new eudaq::RawDataEvent("CaliceObject", 0, _runNo, _trigID);
+//      string s = "EUDAQDataScCAL";
+//      nev->AddBlock(0, s.c_str(), s.length());
+//      s = "i:CycleNr,i:BunchXID,i:EvtNr,i:ChipID,i:NChannels,i:TDC14bit[NC],i:ADC14bit[NC]";
+//      nev->AddBlock(1, s.c_str(), s.length());
+//      unsigned int times[1];
+//      struct timeval tv;
+//      ::gettimeofday(&tv, NULL);
+//      times[0] = tv.tv_sec;
+//      nev->AddBlock(2, times, sizeof(times));
+//      nev->AddBlock(3, vector<int>()); // dummy block to be filled later with slowcontrol files
+//      nev->AddBlock(4, vector<int>()); // dummy block to be filled later with LED information (only if LED run)
+//      nev->AddBlock(5, vector<int>()); // dummy block to be filled later with temperature
+//      nev->AddBlock(6, vector<uint32_t>()); // dummy block to be filled later with cycledata(start, stop, trigger)
+//
+//      nev->SetTag("DAQquality", 1);
+//      nev->SetTag("TriggerValidated", 0);
+//
+//      deqEvent.push_back(nev);
+//   }
+//   return deqEvent;
+//}
 
-      nev->SetTag("DAQquality", 1);
-      nev->SetTag("TriggerValidated", 0);
-
-      deqEvent.push_back(nev);
-   }
-   return deqEvent;
-}
-
-void ScReader::buildEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) {
+//void ScReader::buildEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) {
+void ScReader::buildEvents(std::deque<eudaq::RawDataEvent *> &EventQueue, bool dumpAll) {
    if (_producer->getDebugKeepBuffered()) return;
    std::lock_guard<std::mutex> lock(_eventBuildingQueueMutex); //minimal lock for pushing new event
    switch (_producer->getEventMode()) {
@@ -504,7 +505,8 @@ void ScReader::prepareEudaqRawPacket(eudaq::RawDataEvent * ev) {
    appendOtherInfo(ev);
 }
 
-void ScReader::buildValidatedBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) {
+//void ScReader::buildValidatedBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) {
+void ScReader::buildValidatedBXIDEvents(std::deque<eudaq::RawDataEvent *> &EventQueue, bool dumpAll) {
    int keptEventCount = dumpAll ? 0 : 3; //how many ROCs to keep in the data maps
    //      keptEventCount = 100000;
    while (_LDAAsicData.size() > keptEventCount) { //at least 2 finished ROC
@@ -575,19 +577,22 @@ void ScReader::buildValidatedBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, 
             while ((++_lastBuiltEventNr < (rawTrigId - _producer->getLdaTrigidOffset()))
                   && (_producer->getInsertDummyPackets())) {
                //std::cout << "WARNING EB: inserting a dummy trigger: " << _lastBuiltEventNr << ", because " << _LDATimestampData[roc].TriggerIDs[i] << " is next" << std::endl;
-               insertDummyEvent(EventQueue, -1, _lastBuiltEventNr, false);
+               insertDummyEvent(EventQueue, _lastBuiltEventNr, _lastBuiltEventNr, false);
             }
 
-            eudaq::EventUP nev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
-            eudaq::RawDataEvent *nev_raw = dynamic_cast<RawDataEvent*>(nev.get());
-            prepareEudaqRawPacket(nev_raw);
+            RawDataEvent *nev = new RawDataEvent("CaliceObject", _runNo, _lastBuiltEventNr);            //event number will be changed
+            // eudaq::EventUP nev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
+            // eudaq::RawDataEvent *nev_raw = dynamic_cast<RawDataEvent*>(nev.get());
+            prepareEudaqRawPacket(nev);            //prepareEudaqRawPacket (nev_raw);
             nev->SetTag("ROC", roc);
             nev->SetTag("BXID", bxid);
             nev->SetTag("ROCStartTS", startTS);
-            nev->SetTriggerN(rawTrigId - _producer->getLdaTrigidOffset());
+            nev->SetTag("TriggerN", rawTrigId - _producer->getLdaTrigidOffset());
+            //nev->SetTriggerN(rawTrigId - _producer->getLdaTrigidOffset());
             if (startTS && (!_producer->getIgnoreLdaTimestamps())) {
-               nev->SetTimestampBegin(startTS + _producer->getAhcalbxid0Offset() + bxid * _producer->getAhcalbxidWidth() - 1);
-               nev->SetTimestampEnd(startTS + _producer->getAhcalbxid0Offset() + (bxid + 1) * _producer->getAhcalbxidWidth() + 1);
+               nev->setTimeStamp(startTS + _producer->getAhcalbxid0Offset() + bxid * _producer->getAhcalbxidWidth() - 1);
+               //nev->SetTimestampBegin(startTS + _producer->getAhcalbxid0Offset() + bxid * _producer->getAhcalbxidWidth() - 1);
+               //nev->SetTimestampEnd(startTS + _producer->getAhcalbxid0Offset() + (bxid + 1) * _producer->getAhcalbxidWidth() + 1);
             }
             std::vector<uint32_t> cycledata;
             cycledata.push_back((uint32_t) (startTS));
@@ -596,26 +601,25 @@ void ScReader::buildValidatedBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, 
             cycledata.push_back((uint32_t) (stopTS >> 32));
             cycledata.push_back((uint32_t) (std::get<1>(trigIt->second)));
             cycledata.push_back((uint32_t) (std::get<1>(trigIt->second) >> 32));
-            nev_raw->AppendBlock(6, cycledata);
+            nev->AppendBlock(6, cycledata);               //            nev_raw->AppendBlock(6, cycledata);
 
-            switch (_producer->getEventNumberingPreference()) {
-               case AHCALProducer::EventNumbering::TRIGGERID:
-                  nev->SetFlagBit(eudaq::Event::Flags::FLAG_TRIG);
-                  nev->ClearFlagBit(eudaq::Event::Flags::FLAG_TIME);
-                  break;
-               case AHCALProducer::EventNumbering::TIMESTAMP:
-                  default:
-                  nev->SetFlagBit(eudaq::Event::Flags::FLAG_TIME);
-                  nev->ClearFlagBit(eudaq::Event::Flags::FLAG_TRIG);
-                  break;
-            }
+//            switch (_producer->getEventNumberingPreference()) {
+//               case AHCALProducer::EventNumbering::TRIGGERID:
+//                  nev->SetFlagBit(eudaq::Event::Flags::FLAG_TRIG);
+//                  nev->ClearFlagBit(eudaq::Event::Flags::FLAG_TIME);
+//                  break;
+//               case AHCALProducer::EventNumbering::TIMESTAMP:
+//                  default:
+//                  nev->SetFlagBit(eudaq::Event::Flags::FLAG_TIME);
+//                  nev->ClearFlagBit(eudaq::Event::Flags::FLAG_TRIG);
+//                  break;
+//            }
             for (auto & minipacket : sameBxidPackets.second) {
                if (minipacket.size()) {
                   if (triggerBxids.count(bxid) > 1) {
-                     std::cout <<
-                           nev_raw->AddBlock(nev_raw->NumBlocks(), minipacket);
+                     std::cout << nev->AddBlock(nev->NumBlocks(), minipacket);
                   } else {
-                     nev_raw->AddBlock(nev_raw->NumBlocks(), std::move(minipacket));
+                     nev->AddBlock(nev->NumBlocks(), std::move(minipacket));
                   }
                }
             }
@@ -632,7 +636,7 @@ void ScReader::buildValidatedBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, 
    }
 }
 
-void ScReader::buildBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) {
+void ScReader::buildBXIDEvents(std::deque<eudaq::RawDataEvent *> &EventQueue, bool dumpAll) {
    int keptEventCount = dumpAll ? 0 : 3; //how many ROCs to keep in the data maps
 //      keptEventCount = 100000;
    while (_LDAAsicData.size() > keptEventCount) { //at least 2 finished ROC
@@ -683,9 +687,10 @@ void ScReader::buildBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dump
          _RunTimesStatistics.builtBXIDs++;
          //std::cout << "bxid: " << sameBxidPackets.first << "\tsize: " << sameBxidPackets.second.size() << std::endl;
          ++_lastBuiltEventNr;
-         eudaq::EventUP nev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
-         eudaq::RawDataEvent *nev_raw = dynamic_cast<RawDataEvent*>(nev.get());
-         prepareEudaqRawPacket(nev_raw);
+         //eudaq::EventUP nev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
+         //eudaq::RawDataEvent *nev_raw = dynamic_cast<RawDataEvent*>(nev.get());
+         RawDataEvent *nev = new RawDataEvent("CaliceObject", _runNo, _lastBuiltEventNr);            //event number will be changed
+         prepareEudaqRawPacket(nev);
          nev->SetTag("ROC", roc);
          nev->SetTag("BXID", bxid);
          if (_LDATimestampData.count(roc)) {
@@ -704,16 +709,17 @@ void ScReader::buildBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dump
                cycledata.push_back((uint32_t) 0);
                cycledata.push_back((uint32_t) 0);
             }
-            nev_raw->AppendBlock(6, cycledata);
+            nev->AppendBlock(6, cycledata);
          }
 
          if (startTS && (!_producer->getIgnoreLdaTimestamps())) {
-            nev->SetTimestampBegin(startTS + _producer->getAhcalbxid0Offset() + bxid * _producer->getAhcalbxidWidth() - 1);
-            nev->SetTimestampEnd(startTS + _producer->getAhcalbxid0Offset() + (bxid + 1) * _producer->getAhcalbxidWidth() + 1);
+            nev->setTimeStamp(startTS + _producer->getAhcalbxid0Offset() + bxid * _producer->getAhcalbxidWidth() - 1);
+            //nev->SetTimestampBegin(startTS + _producer->getAhcalbxid0Offset() + bxid * _producer->getAhcalbxidWidth() - 1);
+            //nev->SetTimestampEnd(startTS + _producer->getAhcalbxid0Offset() + (bxid + 1) * _producer->getAhcalbxidWidth() + 1);
          }
          for (auto & minipacket : sameBxidPackets.second) {
             if (minipacket.size()) {
-               nev_raw->AddBlock(nev_raw->NumBlocks(), std::move(minipacket));
+               nev->AddBlock(nev->NumBlocks(), std::move(minipacket));
             }
          }
          EventQueue.push_back(std::move(nev));
@@ -725,7 +731,7 @@ void ScReader::buildBXIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dump
    }
 }
 
-void ScReader::buildROCEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) {
+void ScReader::buildROCEvents(std::deque<eudaq::RawDataEvent *> &EventQueue, bool dumpAll) {
    int keptEventCount = dumpAll ? 0 : 3; //how many ROCs to keep in the data maps
    //      keptEventCount = 100000;
    while (_LDAAsicData.size() > keptEventCount) { //at least 2 finished ROC
@@ -734,15 +740,16 @@ void ScReader::buildROCEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpA
          insertDummyEvent(EventQueue, _lastBuiltEventNr, -1, false);
       int roc = _LDAAsicData.begin()->first; //_LDAAsicData.begin()->first;
       std::vector<std::vector<int> > &data = _LDAAsicData.begin()->second;
-      eudaq::EventUP nev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
-      eudaq::RawDataEvent *nev_raw = dynamic_cast<RawDataEvent*>(nev.get());
-      prepareEudaqRawPacket(nev_raw);
+      RawDataEvent *nev = new RawDataEvent("CaliceObject", _runNo, _lastBuiltEventNr);            //event number will be changed
+      //eudaq::EventUP nev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
+      //eudaq::RawDataEvent *nev_raw = dynamic_cast<RawDataEvent*>(nev.get());
+      prepareEudaqRawPacket(nev);
       nev->SetTag("ROC", roc);
 
 //         nev->SetEventN(roc);
       for (std::vector<std::vector<int> >::iterator idata = data.begin(); idata != data.end(); ++idata) {
          if (idata->size()) {
-            nev_raw->AddBlock(nev_raw->NumBlocks(), std::move(*idata));
+            nev->AddBlock(nev->NumBlocks(), std::move(*idata));
          }
       }
       //nev->Print(std::cout, 0);
@@ -750,7 +757,8 @@ void ScReader::buildROCEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpA
          nev->SetTag("ROCStartTS", _LDATimestampData[roc].TS_Start);
          if (_LDATimestampData[roc].TS_Start && _LDATimestampData[roc].TS_Stop) {
             //save timestamp only if both timestamps are present. Otherwise there was something wrong in the data
-            nev->SetTimestamp(_LDATimestampData[roc].TS_Start, _LDATimestampData[roc].TS_Stop, true);
+            nev->setTimeStamp(_LDATimestampData[roc].TS_Start);
+            //nev->SetTimestamp(_LDATimestampData[roc].TS_Start, _LDATimestampData[roc].TS_Stop, true);
          } else {
             if (_producer->getColoredTerminalMessages()) std::cout << "\033[31m";
             std::cout << "ERROR EB: one of the timestamp is incorrect in ROC " << roc << ". Start=" << _LDATimestampData[roc].TS_Start << " STOP="
@@ -774,7 +782,7 @@ void ScReader::buildROCEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpA
             cycledata.push_back((uint32_t) 0);
             cycledata.push_back((uint32_t) 0);
          }
-         nev_raw->AppendBlock(6, cycledata);
+         nev->AppendBlock(6, cycledata);
          _LDATimestampData.erase(roc);
       } else {
          if (!_producer->getIgnoreLdaTimestamps()) {
@@ -789,7 +797,7 @@ void ScReader::buildROCEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpA
    }
 }
 
-void ScReader::buildTRIGIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool dumpAll) {
+void ScReader::buildTRIGIDEvents(std::deque<eudaq::RawDataEvent *> &EventQueue, bool dumpAll) {
    if (dumpAll) {
       std::cout << "dumping all remaining events. Size " << _LDAAsicData.size() << std::endl;
       //printLDAROCInfo(std::cout);
@@ -817,27 +825,32 @@ void ScReader::buildTRIGIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool du
             while ((++_lastBuiltEventNr < (_LDATimestampData[roc].TriggerIDs[i] - _producer->getLdaTrigidOffset()))
                   && (_producer->getInsertDummyPackets())) {
                //std::cout << "WARNING EB: inserting a dummy trigger: " << _lastBuiltEventNr << ", because " << _LDATimestampData[roc].TriggerIDs[i] << " is next" << std::endl;
-               insertDummyEvent(EventQueue, -1, _lastBuiltEventNr, true);
+               insertDummyEvent(EventQueue, _lastBuiltEventNr, _lastBuiltEventNr, true);
             }
             int trigid = _LDATimestampData[roc].TriggerIDs[i];
 
             std::vector<std::vector<int> > &data = _LDAAsicData.begin()->second;
-            eudaq::EventUP nev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
-            eudaq::RawDataEvent *nev_raw = dynamic_cast<RawDataEvent*>(nev.get());
-            prepareEudaqRawPacket(nev_raw);
+            RawDataEvent *nev = new RawDataEvent("CaliceObject", _runNo, _lastBuiltEventNr);            //event number will be changed
+            //eudaq::EventUP nev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
+            //eudaq::RawDataEvent *nev_raw = dynamic_cast<RawDataEvent*>(nev.get());
+            prepareEudaqRawPacket(nev);
             switch (_producer->getEventNumberingPreference()) {
                case AHCALProducer::EventNumbering::TIMESTAMP:
-                  nev->SetTriggerN(trigid - _producer->getLdaTrigidOffset(), false);
-                  nev->SetTimestampBegin(_LDATimestampData[roc].TS_Triggers[i] - _producer->getAhcalbxidWidth());
-                  nev->SetTimestampEnd(_LDATimestampData[roc].TS_Triggers[i] + _producer->getAhcalbxidWidth());
+                  //nev->SetTriggerN(trigid - _producer->getLdaTrigidOffset(), false);
+                  nev->setTimeStamp(_LDATimestampData[roc].TS_Triggers[i] - _producer->getAhcalbxidWidth());
+                  //nev->SetTimestampBegin(_LDATimestampData[roc].TS_Triggers[i] - _producer->getAhcalbxidWidth());
+                  //nev->SetTimestampEnd(_LDATimestampData[roc].TS_Triggers[i] + _producer->getAhcalbxidWidth());
                   break;
                case AHCALProducer::EventNumbering::TRIGGERID:
-                  default:
-                  nev->SetTriggerN(trigid - _producer->getLdaTrigidOffset(), true);
+
+               default:
+                  nev->SetTag("TriggerN", trigid - _producer->getLdaTrigidOffset());
+                  //nev->SetTriggerN(trigid - _producer->getLdaTrigidOffset(), true);
                   if (!_producer->getIgnoreLdaTimestamps()) {
-                     nev->SetTimestampBegin(_LDATimestampData[roc].TS_Triggers[i] - _producer->getAhcalbxidWidth());
-                     nev->SetTimestampEnd(_LDATimestampData[roc].TS_Triggers[i] + _producer->getAhcalbxidWidth());
-                     nev->ClearFlagBit(eudaq::Event::Flags::FLAG_TIME);
+                     nev->setTimeStamp(_LDATimestampData[roc].TS_Triggers[i] - _producer->getAhcalbxidWidth());
+                     //nev->SetTimestampBegin(_LDATimestampData[roc].TS_Triggers[i] - _producer->getAhcalbxidWidth());
+                     //nev->SetTimestampEnd(_LDATimestampData[roc].TS_Triggers[i] + _producer->getAhcalbxidWidth());
+                     //nev->ClearFlagBit(eudaq::Event::Flags::FLAG_TIME);
                   }
                   break;
             }
@@ -849,7 +862,7 @@ void ScReader::buildTRIGIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool du
                //std::cout << "DEBUG EB: ScReader::buildTRIGIDEvents: moving data for trigger " << trigid << std::endl;
                for (std::vector<std::vector<int> >::iterator idata = data.begin(); idata != data.end(); ++idata) {
                   if (idata->size()) {
-                     nev_raw->AddBlock(nev_raw->NumBlocks(), std::move(*idata));
+                     nev->AddBlock(nev->NumBlocks(), std::move(*idata));
                   }
                }
             } else {
@@ -857,7 +870,7 @@ void ScReader::buildTRIGIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool du
                //std::cout << "DEBUG EB: ScReader::buildTRIGIDEvents: copying data for trigger " << trigid << std::endl;
                for (std::vector<std::vector<int> >::const_iterator idata = data.begin(); idata != data.end(); ++idata) {
                   if (idata->size()) {
-                     nev_raw->AddBlock(nev_raw->NumBlocks(), *idata);
+                     nev->AddBlock(nev->NumBlocks(), *idata);
                   }
                }
             }
@@ -875,7 +888,7 @@ void ScReader::buildTRIGIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool du
                cycledata.push_back((uint32_t) 0);
                cycledata.push_back((uint32_t) 0);
             }
-            nev_raw->AppendBlock(6, cycledata);
+            nev->AppendBlock(6, cycledata);
             EventQueue.push_back(std::move(nev));
          }
          _LDATimestampData.erase(roc);
@@ -891,13 +904,16 @@ void ScReader::buildTRIGIDEvents(std::deque<eudaq::EventUP> &EventQueue, bool du
    }
 }
 
-void ScReader::insertDummyEvent(std::deque<eudaq::EventUP> &EventQueue, int eventNumber, int triggerid, bool triggeridFlag) {
+void ScReader::insertDummyEvent(std::deque<eudaq::RawDataEvent *> &EventQueue, int eventNumber, int triggerid, bool triggeridFlag) {
    std::cout << "WARNING: inserting dummy Event nr. " << eventNumber << ", triggerID " << triggerid << std::endl;
-   eudaq::EventUP nev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
-   eudaq::RawDataEvent *nev_raw = dynamic_cast<RawDataEvent*>(nev.get());
-   prepareEudaqRawPacket(nev_raw);
-   if (eventNumber > 0) nev->SetEventN(eventNumber);
-   if (triggerid > 0) nev->SetTriggerN(triggerid, triggeridFlag);
+   RawDataEvent *nev = new RawDataEvent("CaliceObject", _runNo, eventNumber);            //event number will be changed
+
+   //eudaq::EventUP nev = eudaq::RawDataEvent::MakeUnique("CaliceObject");
+   //eudaq::RawDataEvent *nev_raw = dynamic_cast<RawDataEvent*>(nev.get());
+   prepareEudaqRawPacket(nev);
+   //if (eventNumber > 0) nev->SetEventN(eventNumber);
+   //if (triggerid > 0) nev->SetTriggerN(triggerid, triggeridFlag);
+   nev->SetTag("Dummy", 1);
    EventQueue.push_back(std::move(nev));
 }
 
