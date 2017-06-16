@@ -20,15 +20,16 @@ typedef uint32_t WORD;
 #define CAEN_V1290_ADDRESSMODE cvA32_U_DATA
 
 #define CAEN_V1290_OUTPUT_BUFFER           0x0000
-#define CAEN_V1290_SW_CLEAR_REG            0x1016
-#define CAEN_V1290_SW_RESET_REG            0x1014
-#define CAEN_V1290_MICROHANDREG            0x1030
+#define CAEN_V1290_SW_EVRESET_REG          0x1018   
+#define CAEN_V1290_SW_CLEAR_REG            0x1016   
+#define CAEN_V1290_SW_RESET_REG            0x1014   
+#define CAEN_V1290_MICROHANDREG            0x1030   
 #define CAEN_V1290_MICROREG                0x102E
 #define CAEN_V1290_EVT_FIFO                0x1038
 #define CAEN_V1290_EVT_FIFO_STATUS         0x103E
 #define CAEN_V1290_FW_VER_REG              0x1026
 #define CAEN_V1290_STATUS_REG              0x1002
-#define CAEN_V1290_CON_REG                 0x1000
+#define CAEN_V1290_CON_REG                 0x1000   
 
 #define CAEN_V1290_TRMATCH_OPCODE          0x0000
 #define CAEN_V1290_WINWIDT_OPCODE          0x1000
@@ -39,6 +40,7 @@ typedef uint32_t WORD;
 #define CAEN_V1290_EDGEDET_OPCODE          0x2200
 #define CAEN_V1290_READ_EDGEDET_OPCODE     0x2300
 #define CAEN_V1290_TIMERESO_OPCODE         0x2400
+#define CAEN_V1290_READTIMERESO_OPCODE     0x2600
 #define CAEN_V1290_MAXHITS_OPCODE          0x3300
 
 #define CAEN_V1290_ENCHAN_OPCODE           0x4000
@@ -49,6 +51,8 @@ typedef uint32_t WORD;
 #define CAEN_V1290_EMPTYEVEN_BITMASK       0x0008
 #define CAEN_V1290_RDY_BITMASK             0x0001
 #define CAEN_V1290_FULL_BITMASK            0x0004
+#define CAEN_V1290_TRGMATCH_BITMASK        0x0008
+#define CAEN_V1290_TERMON_BITMASK          0x0020
 #define CAEN_V1290_ERROR0_BITMASK          0x0040
 #define CAEN_V1290_ERROR1_BITMASK          0x0080
 #define CAEN_V1290_ERROR2_BITMASK          0x0100
@@ -60,6 +64,7 @@ typedef uint32_t WORD;
 #define CAEN_V1290_ENABLE_TEST_MODE_OPCODE         0xC500
 #define CAEN_V1290_DISABLE_TEST_MODE_OPCODE        0xC600
 #define CAEN_V1290_SOFTWARETRIGGERREG      0x101A
+#define CAEN_V1290_SETTESTOUTPUT           0xC700
 
 class CAEN_V1290 {
 public:
@@ -166,8 +171,8 @@ public:
   int DisableTDCTestMode();
   int SoftwareTrigger();
 
-private:
   int CheckStatusAfterRead();
+private:
   int OpWriteTDC(WORD data);
   int OpReadTDC(WORD* data);
   

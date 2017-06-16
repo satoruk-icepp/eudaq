@@ -10,8 +10,10 @@ int Unpacker::Unpack (std::vector<WORD> Words) {
   for (size_t i = 0; i<Words.size(); i++) {
     uint32_t currentWord = Words[i];
     
-    if (DEBUG_UNPACKER) 
-      std::cout << "TDC WORD: " << currentWord <<std::endl;
+    if (DEBUG_UNPACKER) {
+      std::cout << "TDC WORD: " << currentWord << std::endl;
+      std::cout << "TDC first 4 bits: " << (currentWord>>28) << std::endl;
+    }
     
     if (currentWord>>28 == 10 ) { //TDC BOE
       unsigned int tdcEvent= (currentWord>>5) & 0x3FFFFF; 
@@ -43,8 +45,14 @@ int Unpacker::Unpack (std::vector<WORD> Words) {
       break;
     }
    
-    else
+    else if (currentWord>>28 == 4){
+      unsigned int errorFlag = currentWord & 0x7FFF;
+      std::cout << "TDC Error has occured with error flag: " << errorFlag << std::endl;
       break;
+    } else {
+      std::cout<<"NOTHING meaningful ... "<<std::endl;
+      break;
+    }
   }
 
   return 0 ;
