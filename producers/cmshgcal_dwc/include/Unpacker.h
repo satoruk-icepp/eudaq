@@ -12,9 +12,6 @@
 
 #include "CAEN_v1290.h"
 
-
-#define WORDSIZE 4
-
 enum CHANNEL_INDEX {
  UNDEFINED = -1,
 
@@ -39,11 +36,11 @@ enum CHANNEL_INDEX {
  Y4_DOWN
 };
 
-
-
+#define WORDSIZE 4
 
 struct tdcData {
   int event;
+  int ID;
   std::map<unsigned int, unsigned int> timeOfArrivals;
 } ;
 
@@ -51,12 +48,13 @@ struct tdcData {
 
 class Unpacker {
   public: 
-    std::map<unsigned int, unsigned int> ConvertTDCData(std::vector<WORD>);
+    
+    tdcData ConvertTDCData(std::vector<WORD>);
     
   private:
     int Unpack (std::vector<WORD>) ;
     std::map<unsigned int, std::vector<unsigned int> > timeStamps;   //like in September 2016 test-beam: minimum of all read timestamps
-
+    tdcData currentData;
 };
 
 #endif

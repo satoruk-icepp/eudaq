@@ -1,18 +1,18 @@
 SET(wirechamber_name "WireChamberProducer.exe")
 
-SET(sourcefilesWireChambers src/CAEN_v1290.cc src/Unpacker.cc src/WireChamberTriggerController.cc src/IpbusHwController.cc)
+SET(sourcefilesWireChambers src/CAEN_v1290.cc src/Unpacker.cc)
 
 add_definitions(-DLINUX)		#necessary for compilation on LINUX
 add_definitions(-std=c++11)
 
 find_package(CACTUS REQUIRED)
 find_package(ROOT REQUIRED)
-INCLUDE_DIRECTORIES( include ${UHAL_LOG_INCLUDE_PREFIX} ${UHAL_GRAMMARS_INCLUDE_PREFIX} ${EXTERN_BOOST_INCLUDE_PREFIX} ${EXTERN_PUGIXML_INCLUDE_PREFIX} ${UHAL_UHAL_INCLUDE_PREFIX} ${ROOT_INCLUDE_DIR})
-LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${EXTERN_BOOST_LIB_PREFIX} ${EXTERN_PUGIXML_LIB_PREFIX} ${UHAL_LOG_LIB_PREFIX} ${UHAL_GRAMMARS_LIB_PREFIX} ${UHAL_UHAL_LIB_PREFIX} )
+INCLUDE_DIRECTORIES( include ${EXTERN_BOOST_INCLUDE_PREFIX} ${ROOT_INCLUDE_DIR})
+LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${EXTERN_BOOST_LIB_PREFIX} )
 
 ADD_EXECUTABLE(${wirechamber_name} src/WireChamberProducer.cxx ${sourcefilesWireChambers})
 
-TARGET_LINK_LIBRARIES(${wirechamber_name} EUDAQ ${EUDAQ_THREADS_LIB} boost_timer boost_thread boost_filesystem boost_regex boost_system boost_thread boost_program_options cactus_extern_pugixml cactus_uhal_log cactus_uhal_grammars cactus_uhal_uhal libCAENComm.so libCAENDigitizer.so libCAENVME.so)
+TARGET_LINK_LIBRARIES(${wirechamber_name} EUDAQ ${EUDAQ_THREADS_LIB} boost_timer boost_thread boost_filesystem boost_regex boost_system boost_thread boost_program_options libCAENComm.so libCAENDigitizer.so libCAENVME.so)
 
 
 INSTALL(TARGETS ${wirechamber_name}
