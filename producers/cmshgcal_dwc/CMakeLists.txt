@@ -5,7 +5,6 @@ SET(sourcefilesWireChambers src/CAEN_v1290.cc src/Unpacker.cc)
 add_definitions(-DLINUX)		#necessary for compilation on LINUX
 add_definitions(-std=c++11)
 
-find_package(CACTUS REQUIRED)
 find_package(ROOT REQUIRED)
 INCLUDE_DIRECTORIES( include ${EXTERN_BOOST_INCLUDE_PREFIX} ${ROOT_INCLUDE_DIR})
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${EXTERN_BOOST_LIB_PREFIX} )

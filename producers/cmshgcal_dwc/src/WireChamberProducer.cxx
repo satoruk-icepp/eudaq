@@ -11,11 +11,11 @@
 #include <string>
 #include <vector>
 
-#include <boost/crc.hpp>
-#include <boost/cstdint.hpp>
-#include <boost/timer/timer.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/format.hpp>
+//#include <boost/crc.hpp>
+//#include <boost/cstdint.hpp>
+//#include <boost/timer/timer.hpp>
+//#include <boost/thread/thread.hpp>
+//#include <boost/format.hpp>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -184,9 +184,12 @@ class WireChamberProducer : public eudaq::Producer {
       
       //First: Make instance of threads to read out the DWC TDCs in parallel
       std::vector<WORD> data;
-      boost::thread TDC_thread = boost::thread(readTDCThread, tdc, std::ref(data));
-      TDC_thread.join();
       
+      //boost::thread TDC_thread = boost::thread(readTDCThread, tdc, std::ref(data));
+      //TDC_thread.join();
+      tdc->Read(data);
+      
+
       if (stopping) continue;
 
       tdcData unpacked = tdc_unpacker->ConvertTDCData(data);
