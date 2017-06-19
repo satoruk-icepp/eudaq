@@ -11,7 +11,7 @@ LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${EXTERN_BOOST_LIB_PREFIX} )
 
 ADD_EXECUTABLE(${wirechamber_name} src/WireChamberProducer.cxx ${sourcefilesWireChambers})
 
-TARGET_LINK_LIBRARIES(${wirechamber_name} EUDAQ ${EUDAQ_THREADS_LIB} boost_timer boost_thread boost_filesystem boost_regex boost_system boost_thread boost_program_options libCAENComm.so libCAENDigitizer.so libCAENVME.so)
+TARGET_LINK_LIBRARIES(${wirechamber_name} EUDAQ ${EUDAQ_THREADS_LIB} libCAENComm.so libCAENDigitizer.so libCAENVME.so)
 
 
 INSTALL(TARGETS ${wirechamber_name}
