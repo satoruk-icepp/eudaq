@@ -16,7 +16,7 @@ int Unpacker::Unpack (std::vector<WORD> Words) {
     #endif
     
     if (currentWord>>28 == 10 ) { //TDC BOE
-      unsigned int tdcEvent= (currentWord>>5) & 0xFFFFFF; 
+      unsigned int tdcEvent= (currentWord) & 0xFFFFFF; 
       currentData.event = tdcEvent;
       #ifdef DEBUG_UNPACKER 
         std::cout << "[CAEN_V12490][Unpack] | TDC 1190 BOE: event " << tdcEvent+1 << std::endl;
