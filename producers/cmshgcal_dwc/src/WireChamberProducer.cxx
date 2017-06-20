@@ -179,24 +179,25 @@ class WireChamberProducer : public eudaq::Producer {
         continue;
       }
       
-      //we get here, there is data to record      
-      m_ev++;
-      
-      //First: Make instance of threads to read out the DWC TDCs in parallel
-      std::vector<WORD> data;
-      
-      //boost::thread TDC_thread = boost::thread(readTDCThread, tdc, std::ref(data));
-      //TDC_thread.join();
-      tdc->Read(data);
-      
-
       if (stopping) continue;
+      
+      //boost::thread TDC_thread = boost::thread(readTDCThread, tdc, std::ref(dataStream));
+      //TDC_thread.join();
+      tdc->Read(dataStream);
+      
+      if (dataStream.size() == 0)
+        continue;
 
-      tdcData unpacked = tdc_unpacker->ConvertTDCData(data);
+
+      
+      //if we get here, there is relevant data in the output FIFO buffer to process.
+      m_ev++;
+
+      tdcData unpacked = tdc_unpacker->ConvertTDCData(dataStream);
 
       //making an EUDAQ event
       eudaq::RawDataEvent ev(EVENT_TYPE,m_run,m_ev);
-      ev.AddBlock(1, data);
+      ev.AddBlock(1, dataStream);
 
       if (N_DWCs>=1) {
         dwc_XUP_timestamp[0] = (channel_map[X1_UP] >= 0) ? unpacked.timeOfArrivals[channel_map[X1_UP]] : -999;
@@ -253,6 +254,9 @@ class WireChamberProducer : public eudaq::Producer {
     //set on configuration
     CAEN_V1290* tdc;
     Unpacker* tdc_unpacker;
+
+    std::vector<WORD> dataStream;
+
 
     std::map<CHANNEL_INDEX, unsigned int> channel_map;
 
