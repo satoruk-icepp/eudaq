@@ -253,22 +253,30 @@ class WireChamberProducer : public eudaq::Producer {
 
 
       std::cout<<"+++ Event: "<<m_ev<<" +++"<<std::endl;
-      std::cout<<"DWC1: "<<dwc_XUP_timestamp[0]<<" ";
-      std::cout<<dwc_XDOWN_timestamp[0]<<" ";
-      std::cout<<dwc_YUP_timestamp[0]<<" ";
-      std::cout<<dwc_YDOWN_timestamp[0]<<"   ";
-      std::cout<<"DWC2: "<<dwc_XUP_timestamp[1]<<" ";
-      std::cout<<dwc_XDOWN_timestamp[1]<<" ";
-      std::cout<<dwc_YUP_timestamp[1]<<" ";
-      std::cout<<dwc_YDOWN_timestamp[1]<<std::endl;
-      std::cout<<"DWC3: "<<dwc_XUP_timestamp[2]<<" ";
-      std::cout<<dwc_XDOWN_timestamp[2]<<" ";
-      std::cout<<dwc_YUP_timestamp[2]<<" ";
-      std::cout<<dwc_YDOWN_timestamp[2]<<"   ";
-      std::cout<<"DWC4: "<<dwc_XUP_timestamp[3]<<" ";
-      std::cout<<dwc_XDOWN_timestamp[3]<<" ";
-      std::cout<<dwc_YUP_timestamp[3]<<" ";
-      std::cout<<dwc_YDOWN_timestamp[3]<<std::endl<<std::endl;
+      if (N_DWCs>=1) {
+        std::cout<<"DWC1: "<<dwc_XUP_timestamp[0]<<" ";
+        std::cout<<dwc_XDOWN_timestamp[0]<<" ";
+        std::cout<<dwc_YUP_timestamp[0]<<" ";
+        std::cout<<dwc_YDOWN_timestamp[0]<<"   "; 
+      } else std::cout<<std::endl;
+      if (N_DWCs>=2) {
+        std::cout<<"DWC2: "<<dwc_XUP_timestamp[1]<<" ";
+        std::cout<<dwc_XDOWN_timestamp[1]<<" ";
+        std::cout<<dwc_YUP_timestamp[1]<<" ";
+        std::cout<<dwc_YDOWN_timestamp[1]<<std::endl;
+      } else std::cout<<std::endl;
+      if (N_DWCs>=3) {
+        std::cout<<"DWC3: "<<dwc_XUP_timestamp[2]<<" ";
+        std::cout<<dwc_XDOWN_timestamp[2]<<" ";
+        std::cout<<dwc_YUP_timestamp[2]<<" ";
+        std::cout<<dwc_YDOWN_timestamp[2]<<"   ";
+      } else std::cout<<std::endl;
+      if (N_DWCs>=4) {
+        std::cout<<"DWC4: "<<dwc_XUP_timestamp[3]<<" ";
+        std::cout<<dwc_XDOWN_timestamp[3]<<" ";
+        std::cout<<dwc_YUP_timestamp[3]<<" ";
+        std::cout<<dwc_YDOWN_timestamp[3]<<std::endl<<std::endl;
+      }
       outTree->Fill();
       
       //Adding the event to the EUDAQ format
