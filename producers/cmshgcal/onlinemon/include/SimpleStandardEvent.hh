@@ -23,8 +23,8 @@ typedef unsigned long long uint64_t
 
 #include "include/SimpleStandardPlane.hh"
 
-    inline bool
-    operator==(SimpleStandardPlane const &a, SimpleStandardPlane const &b) {
+inline bool
+operator==(SimpleStandardPlane const &a, SimpleStandardPlane const &b) {
   return (a.getName() == b.getName() && a.getID() == b.getID());
 }
 
@@ -32,7 +32,7 @@ inline bool
 operator<(SimpleStandardPlane const &a,
           SimpleStandardPlane const &b) { // Needed to use struct in a map
   return a.getName() < b.getName() ||
-         (a.getName() == b.getName() && a.getID() < b.getID());
+		       (a.getName() == b.getName() && a.getID() < b.getID());
 }
 
 class SimpleStandardEvent {

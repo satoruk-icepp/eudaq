@@ -42,6 +42,10 @@
 #include "OnlineMon.hh"
 
 using namespace std;
+// Enable this for debug options:
+#ifndef DEBUG
+#define DEBUG
+#endif
 
 RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & datafile, int /*x*/, int /*y*/, int /*w*/,
 			 int /*h*/, int argc, int offline, const unsigned lim, const unsigned skip_, const unsigned int skip_with_counter,
@@ -58,7 +62,9 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
     }
   }
 
-  hmCollection = new HitmapCollection();
+  hexaCollection = new HexagonCollection();
+  
+  //hmCollection = new HitmapCollection();
   corrCollection = new CorrelationCollection();
   MonitorPerformanceCollection *monCollection =new MonitorPerformanceCollection();
   eudaqCollection = new EUDAQMonitorCollection();
@@ -66,13 +72,15 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
   cout << "--- Done ---"<<endl<<endl;
 
   // put collections into the vector
-  _colls.push_back(hmCollection);
+  _colls.push_back(hexaCollection);
+  //_colls.push_back(hmCollection);
   _colls.push_back(corrCollection);
   _colls.push_back(monCollection);
   _colls.push_back(eudaqCollection);
   // set the root Monitor
   if (_offline <= 0) {
-    hmCollection->setRootMonitor(this);
+    hexaCollection->setRootMonitor(this);
+    //hmCollection->setRootMonitor(this);
     corrCollection->setRootMonitor(this);
     monCollection->setRootMonitor(this);
     eudaqCollection->setRootMonitor(this);
@@ -179,23 +187,20 @@ void RootMonitor::setReduce(const unsigned int red) {
 }
 
 void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
-#ifdef DEBUG
-  cout << "Called onEvent " << ev.GetEventNumber()<< endl;
-  cout << "Number of Planes " << ev.NumPlanes()<< endl;
-#endif
-  _checkEOF.EventReceived();
-
-  //    cout << "Called onEvent " << ev.GetEventNumber()<< endl;
+  cout << "\t Called RootMonitor::onEvent " << ev.GetEventNumber()<< endl;
+  //cout << "Number of Planes " << ev.NumPlanes()<< endl;
 
   //start timing to measure processing time
   my_event_processing_time.Start(true);
+
+  _checkEOF.EventReceived();
 
   bool reduce=false; //do we use Event reduction
   bool skip_dodgy_event=false; // do we skip this event because we consider it dodgy
 
   if (_offline > 0) //are we in offline mode , activated with -o
   {
-    if (_offline <(int)  ev.GetEventNumber())
+    if (_offline < (int)ev.GetEventNumber())
     {
       TFile *f = new TFile(rootfilename.c_str(),"RECREATE");
       if (f!=NULL)
@@ -299,17 +304,17 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
       }
       SimpleStandardPlane simpPlane(sensorname,plane.ID(),plane.XSize(),plane.YSize(), plane.TLUEvent(),plane.PivotPixel(),&mon_configdata);
 
-      unsigned int lvl1 = 2;
+      unsigned int lvl1 = 9+3;
       // if (lvl1 > 2 && plane.HitPixels(lvl1) > 0) std::cout << "LVLHits: " << lvl1 << ": " << plane.HitPixels(lvl1) << std::endl;
 
       for (unsigned int index = 0; index < plane.HitPixels(lvl1); index++)
         {
           SimpleStandardHit hit((int)plane.GetX(index,lvl1),(int)plane.GetY(index,lvl1));
 
-	  const int avg = (plane.GetPixel(index, 1) + plane.GetPixel(index, 2) + plane.GetPixel(index, 3))/3; 
+	  const int avg = (plane.GetPixel(index, 11) + plane.GetPixel(index, 12) + plane.GetPixel(index, 13))/3; 
           hit.setAMP(avg); // Average amplitude over 3 time samples around maximum 
-          hit.setLVL1((int)plane.GetPixel(index, 11));// Let's use this guy for TOA storage!
-          hit.setTOT((int)plane.GetPixel(index, 12)); // TOT
+          hit.setLVL1((int)plane.GetPixel(index, 18));// Let's use this guy for TOA storage!
+          hit.setTOT((int)plane.GetPixel(index, 19)); // TOT
 
           if (simpPlane.getAnalogPixelType()) //this is analog pixel, apply threshold
           {
@@ -350,8 +355,6 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
 
         }
 
-
-
       simpEv.addPlane(simpPlane);
 #ifdef DEBUG
       cout << "Type: " << plane.Type() << endl;
@@ -382,9 +385,10 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
     //stop the Stop watch
     my_event_processing_time.Stop();
 #ifdef DEBUG
-    cout << "Analysing"<<   " "<< my_event_processing_time.RealTime()<<endl;
+    cout << "\t RootMonitor::OnEvent(). Analysing time: "<< my_event_processing_time.RealTime()<<endl;
 #endif
     previous_event_analysis_time=my_event_processing_time.RealTime();
+
     //Filling
     my_event_processing_time.Start(true); //start the stopwatch again
     for (unsigned int i = 0 ; i < _colls.size(); ++i)
@@ -404,6 +408,9 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
         my_event_inner_operations_time.Stop();
         previous_event_correlation_time = my_event_inner_operations_time.RealTime();
       }
+      else if (_colls.at(i) == hexaCollection)
+        _colls.at(i)->Fill(ev);
+      
       else
         _colls.at(i)->Fill(simpEv);
 
@@ -422,7 +429,7 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
   } // end of reduce if
   my_event_processing_time.Stop();
 #ifdef DEBUG
-  cout << "Filling " << " "<< my_event_processing_time.RealTime()<<endl;
+  cout << "\t RootMonitor::OnEvent(). Filling time: "<< my_event_processing_time.RealTime()<<endl;
   cout << "----------------------------------------"  <<endl<<endl;
 #endif
   previous_event_fill_time=my_event_processing_time.RealTime();
@@ -430,6 +437,22 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
   if (ev.IsBORE())
   {
     std::cout << "This is a BORE" << std::endl;
+  }
+
+  m_tmp_time1 += my_event_processing_time.RealTime();
+
+  myStopWatch.Stop();
+  double tmp_ev_time = myStopWatch.RealTime();
+  m_tmp_time2 += tmp_ev_time;
+  std::cout<<"\t another per-event time: "<<tmp_ev_time<<std::endl;
+
+  myStopWatch.Start(true);
+
+  const int nEvForTiming = 20;
+  if (ev.GetEventNumber()%nEvForTiming==0){
+    std::cout<<"\t Time per "<<nEvForTiming<<"  is: "<<m_tmp_time1 <<"  another t="<<m_tmp_time2<<std::endl;    
+    m_tmp_time1=0;
+    m_tmp_time2=0;
   }
 
 }
@@ -442,6 +465,8 @@ void RootMonitor::autoReset(const bool reset) {
 
 void RootMonitor::OnStopRun()
 {
+  Monitor::OnStopRun();
+
   if (_writeRoot)
   {
     TFile *f = new TFile(rootfilename.c_str(),"RECREATE");
@@ -488,6 +513,8 @@ void RootMonitor::OnStartRun(unsigned param) {
   _planesInitialized = false;
 
   onlinemon->UpdateStatus("Running");
+
+  myStopWatch.Start(true);
   
   SetStatus(eudaq::Status::LVL_OK);
 }

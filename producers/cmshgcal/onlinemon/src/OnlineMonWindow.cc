@@ -30,7 +30,15 @@
 #define S_ISREG(mode) (((mode)&S_IFMT) == S_IFREG)
 #endif
 
+// Enable this for debug options:
+#ifndef DEBUG
+#define DEBUG
+#endif
+
 using namespace std;
+
+//std::clock_t start;
+//double duration;
 
 // the constructor
 OnlineMonWindow::OnlineMonWindow(const TGWindow *p, UInt_t w, UInt_t h)
@@ -187,7 +195,7 @@ void OnlineMonWindow::ExecuteEvent(Int_t event, Int_t /*px*/, Int_t /*py*/,
   {
 #ifdef DEBUG
     cout << "Being in ExecuteEvent " << sel->ClassName() << endl;
-    cout << "CLick at " << px << "/" << py << "With event " << event << endl;
+    //cout << "CLick at " << px << "/" << py << "With event " << event << endl;
 #endif
     _activeHistos.clear();
     // ECvs_right->GetCanvas()->BlockAllSignals(1);
@@ -354,6 +362,8 @@ void OnlineMonWindow::registerHisto(std::string tree, TH1 *h, std::string op,
 
 void OnlineMonWindow::autoUpdate() {
 
+  myStopWatch.Start(true);
+  
   _reduceUpdate++;
   unsigned int activeHistoSize = _activeHistos.size();
   if (_reduceUpdate > activeHistoSize) {
@@ -379,6 +389,8 @@ void OnlineMonWindow::autoUpdate() {
       // fCanvas->Modified();
       fCanvas->Update();
     }
+
+      
     UpdateEventNumber(_eventnum);
     UpdateRunNumber(_runnum);
     UpdateTotalEventNumber(_analysedEvents);
@@ -387,6 +399,11 @@ void OnlineMonWindow::autoUpdate() {
     MapWindow();
 
     _reduceUpdate = 0;
+    
+    myStopWatch.Stop();
+    
+    //std::cout<<"APZ Timer. OnlineMonWindow::autoUpdate() t = "<< myStopWatch.RealTime() <<" sec"<<std::endl;
+
   }
 
   // cout << "...updated" << endl;
@@ -401,13 +418,7 @@ void OnlineMonWindow::ChangeReduce(Long_t /*num*/) {
 }
 
 OnlineMonWindow::~OnlineMonWindow() { gApplication->Terminate(0); }
-/*
-   void registerSensor(std::string name, int id) {
 
-
-
-   }
- */
 
 void OnlineMonWindow::actorMenu(TGListTreeItem * /*item*/, Int_t btn, Int_t x,
                                 Int_t y) {

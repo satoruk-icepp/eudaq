@@ -100,7 +100,11 @@ protected:
   RootMonitor *rmon;
   int snapshot_sequence;
 #endif
-public:
+  
+ private:
+  TStopwatch myStopWatch;
+  
+ public:
   OnlineMonWindow(const TGWindow *p, UInt_t w, UInt_t h);
   //#ifndef __CINT__
   // void setRootMonitor(RootMonitor *mon) {_mon = mon;}

@@ -12,6 +12,7 @@
 #include <TFile.h>
 // Project includes
 #include "SimpleStandardEvent.hh"
+#include "eudaq/StandardEvent.hh"
 
 class RootMonitor;
 
@@ -20,6 +21,7 @@ const unsigned int HITMAP_COLLECTION_TYPE = 1;
 const unsigned int CORRELATION_COLLECTION_TYPE = 2;
 const unsigned int MONITORPERFORMANCE_COLLECTION_TYPE = 3;
 const unsigned int EUDAQMONITOR_COLLECTION_TYPE = 4;
+const unsigned int HEXAGON_COLLECTION_TYPE = 5;
 const unsigned int UNKNOWN_COLLECTION_TYPE = 9999;
 
 //!BaseCollection class
@@ -41,12 +43,12 @@ const unsigned int UNKNOWN_COLLECTION_TYPE = 9999;
  have
  */
 class BaseCollection {
-protected:
+ protected:
   unsigned int _reduce;
   RootMonitor *_mon;
   unsigned int CollectionType;
 
-public:
+ public:
   //!Constructor
   /*!This sets the parameter _reduce to 1, _mon to NULL and CollectionType to
    * UNKNOWN_COLLECTION_TYPE*/
@@ -66,6 +68,7 @@ public:
   /*!This is a pure virtual function which fills the monitor's histograms with
    * the new data*/
   virtual void Fill(const SimpleStandardEvent &simpev) = 0;
+  virtual void Fill(const eudaq::StandardEvent &ev) = 0;
 
   //!Reset
   /*!This resets all the histograms ready for a new run*/

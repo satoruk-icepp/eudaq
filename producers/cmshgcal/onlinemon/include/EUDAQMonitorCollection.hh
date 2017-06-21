@@ -41,6 +41,7 @@ public:
   void bookHistograms(const SimpleStandardEvent &simpev);
   void setRootMonitor(RootMonitor *mon) { _mon = mon; }
   void Fill(const SimpleStandardEvent &simpev);
+  void Fill(const eudaq::StandardEvent &ev) { ; }
   EUDAQMonitorHistos *getEUDAQMonitorHistos();
 
 private:

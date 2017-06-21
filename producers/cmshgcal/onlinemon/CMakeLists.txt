@@ -13,6 +13,8 @@ SET (HgcOnlineMon_SOURCES
   src/EUDAQMonitorHistos.cc
   src/EventSanityChecker.cc
   src/GraphWindow.cc
+  src/HexagonCollection.cc
+  src/HexagonHistos.cc
   src/HitmapCollection.cc
   src/HitmapHistos.cc
   src/MonitorPerformanceCollection.cc
