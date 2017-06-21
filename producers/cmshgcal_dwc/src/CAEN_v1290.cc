@@ -1,7 +1,7 @@
 #include "CAEN_v1290.h"
 
 
-#define CAENV1290_DEBUG 
+//#define CAENV1290_DEBUG 
 
 int CAEN_V1290::Init() {
   int status=0;
@@ -9,10 +9,6 @@ int CAEN_V1290::Init() {
   
   if (handle_<0) {
     std::cout<<"Handle is negative --> Init has failed."<<std::endl;
-    return ERR_CONF_NOT_FOUND;
-  }
-  if (!IsConfigured()) {
-    std::cout<<"Device has not been configured --> Init has failed."<<std::endl;
     return ERR_CONF_NOT_FOUND;
   }
 
@@ -33,8 +29,17 @@ int CAEN_V1290::Init() {
     std::cout << "[CAEN_VX2718]::[ERROR]::Cannot open VX2718 board." << std::endl;
     return ERR_OPEN;
   }  
-  //std::cout<<"The handle of the CAENV2718 optical link is: "<<handle_<<std::endl;
+  return 0;
+}
 
+int CAEN_V1290::SetupModule() {
+  int status=0;
+  std::cout<< "[CAEN_V1290]::[INFO]::++++++ CAEN V1290 MODULE SETUP ++++++"<<std::endl;
+
+  if (!IsConfigured()) {
+    std::cout<<"Device configuration has not been defined --> Module setup has failed."<<std::endl;
+    return ERR_CONF_NOT_FOUND;
+  }
   //Read Version to check connection
   WORD data=0;
   
@@ -327,7 +332,6 @@ int CAEN_V1290::Read(std::vector<WORD> &v) {
         int eventID = (data>>12) & 0xFFF;
         int wordCount = (data) & 0xFFF;
         std::cout << "[CAEN_V1290]::[DEBUG]::WE FOUND THE TDC TRAILER of nr. " << TDCnr << " with eventID " << eventID << " and word count " << wordCount << std::endl;     
-
       #endif
     } else if (wordType == CAEN_V1290_TDCERROR ) {
       std::cout << "[CAEN_V1290]::[ERROR]::TDC ERROR!" << std::endl; 
@@ -335,13 +339,13 @@ int CAEN_V1290::Read(std::vector<WORD> &v) {
       return ERR_READ;
     } else if (wordType == CAEN_V1290_TDCMEASURE ) {
       v.push_back(data);
-      //#ifdef CAENV1290_DEBUG
+      #ifdef CAENV1290_DEBUG
         int measurement = data & 0x1fffff;
         int channel = (data>>21) & 0x1f;
         int trailing = (data>>26) & 0x1;
         float tdc_time = (float)measurement*25./1000.;
         std::cout << "[CAEN_V1290]::[INFO]::HIT CHANNEL " << channel << " TYPE " << trailing << " TIME " << tdc_time << std::endl; 
-      //#endif
+      #endif
     } else if (wordType == CAEN_V1290_GLBTRTIMETAG ) {
     } else {
       std::cout << "[CAEN_V1290]::[ERROR]::UNKNOWN WORD TYPE!" << std::endl; 

@@ -10,6 +10,7 @@
 #include <vector>
 #include <algorithm> 
 
+#include "eudaq/Logger.hh"
 #include "CAEN_v1290.h"
 
 enum CHANNEL_INDEX {

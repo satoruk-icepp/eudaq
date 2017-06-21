@@ -1,6 +1,6 @@
 #include "Unpacker.h"
 
-#define DEBUG_UNPACKER
+//#define DEBUG_UNPACKER
 
 #include <string>
 
@@ -27,7 +27,6 @@ int Unpacker::Unpack (std::vector<WORD> Words) {
     else if (currentWord>>28 == 0) {//TDC DATUM
       unsigned int channel = (currentWord>>21) & 0x1f;   //looks at the bits 22 - 27
       unsigned int tdcReadout = currentWord & 0xFFFFFFF;  //looks at bits 1 - 21
-      std::cout<<"CHANNEL = "<<channel<<std::endl;
 
       #ifdef DEBUG_UNPACKER
         std::cout << "[CAEN_V12490][Unpack] | tdc 1190 board channel " << channel +" tdcReadout " << tdcReadout <<std::endl;
@@ -43,7 +42,9 @@ int Unpacker::Unpack (std::vector<WORD> Words) {
     }
     
     else if (currentWord>>28 == 8) { //TDC EOE 
-      std::cout << "[CAEN_V12490][Unpack] | TDC 1190 BOE: end of event " << std::endl;
+      #ifdef DEBUG_UNPACKER
+        std::cout << "[CAEN_V12490][Unpack] | TDC 1190 BOE: end of event " << std::endl;
+      #endif
       break;
     }
    
@@ -71,13 +72,15 @@ tdcData Unpacker::ConvertTDCData(std::vector<WORD> Words) {
   //unpack the stream
   Unpack(Words);
   
+  for (int ch=0; ch<16; ch++) {
+    currentData.timeOfArrivals[ch] = -1;  //fill all 16 channels with dummy values  
+  } 
+
   for(std::map<unsigned int, std::vector<unsigned int> >::iterator channelTimeStamps = timeStamps.begin(); channelTimeStamps != timeStamps.end(); ++channelTimeStamps) {
-    unsigned int this_channel = channelTimeStamps->first; 
-    currentData.timeOfArrivals[this_channel] = -1;    //no arrival
+    if (channelTimeStamps->second.size() == 0) continue;
     
-    if (channelTimeStamps->second.size() > 0) {
-      currentData.timeOfArrivals[this_channel] = *min_element(channelTimeStamps->second.begin(), channelTimeStamps->second.end());
-    }
+    unsigned int this_channel = channelTimeStamps->first; 
+    currentData.timeOfArrivals[this_channel] = *min_element(channelTimeStamps->second.begin(), channelTimeStamps->second.end());
   }
 
   return currentData;

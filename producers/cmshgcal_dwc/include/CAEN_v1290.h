@@ -155,6 +155,7 @@ public:
   
 
   virtual int Init();
+  virtual int SetupModule();
   virtual int Clear();
   virtual int ClearBusy() {return 0;};
   virtual int BufferClear(); //reset the buffers
