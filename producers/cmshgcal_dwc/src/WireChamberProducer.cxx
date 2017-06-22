@@ -30,15 +30,12 @@ class WireChamberProducer : public eudaq::Producer {
       std::cout<<"Initialisation of the DWC Producer..."<<std::endl;
       tdc = new CAEN_V1290();
       tdc->Init();
-      tdc_unpacker = new Unpacker();
+      tdc_unpacker = NULL;
       outTree=NULL;
     }
 
   virtual void OnConfigure(const eudaq::Configuration & config) {
     std::cout << "Configuring: " << config.Name() << std::endl;
-
-    //Setup the the wire chambers objects for filling
-    N_DWCs = config.Get("NumberOfWireChambers", 4);
 
     CAEN_V1290::CAEN_V1290_Config_t _config;
 
@@ -58,44 +55,13 @@ class WireChamberProducer : public eudaq::Producer {
     tdc->SetupModule();
 
     //read the channel map
-    for (unsigned int channel=0; channel<16; channel++){
-      channel_map[static_cast<CHANNEL_INDEX>(channel)] = config.Get(("channel_"+std::to_string(channel)).c_str(), -1);
+    N_channels = config.Get("N_channels", 16);
+    EUDAQ_INFO("Enabled channels:");
+    for (unsigned int channel=0; channel<N_channels; channel++){
+      channels_enabled[channel] = (bool)config.Get(("channel_"+std::to_string(channel)).c_str(), -1);
+      std::cout<<"TDC channel "<<channel<<" enabled ? "<<channels_enabled[channel]<<std::endl;
     }
-
-    EUDAQ_INFO("Channel mapping:");
-    std::cout<<"X1_UP: "<<channel_map[X1_UP]<<std::endl;
-    std::cout<<"X1_DOWN: "<<channel_map[X1_DOWN]<<std::endl;
-    std::cout<<"Y1_UP: "<<channel_map[Y1_UP]<<std::endl;
-    std::cout<<"Y1_DOWN: "<<channel_map[Y1_DOWN]<<std::endl;
-    std::cout<<"X2_UP: "<<channel_map[X2_UP]<<std::endl;
-    std::cout<<"X2_DOWN: "<<channel_map[X2_DOWN]<<std::endl;
-    std::cout<<"Y2_UP: "<<channel_map[Y2_UP]<<std::endl;
-    std::cout<<"Y2_DOWN: "<<channel_map[Y2_DOWN]<<std::endl;
-    std::cout<<"X3_UP: "<<channel_map[X3_UP]<<std::endl;
-    std::cout<<"X3_DOWN: "<<channel_map[X3_DOWN]<<std::endl;
-    std::cout<<"Y3_UP: "<<channel_map[Y3_UP]<<std::endl;
-    std::cout<<"Y3_DOWN: "<<channel_map[Y3_DOWN]<<std::endl;
-    std::cout<<"X4_UP: "<<channel_map[X4_UP]<<std::endl;
-    std::cout<<"X4_DOWN: "<<channel_map[X4_DOWN]<<std::endl;
-    std::cout<<"Y4_UP: "<<channel_map[Y4_UP]<<std::endl;
-    std::cout<<"Y4_DOWN: "<<channel_map[Y4_DOWN]<<std::endl<<std::endl;
-
   
-    //time resolution
-    if (_config.timeResolution == CAEN_V1290::CAEN_V1290_800PS_RESO)
-      picoSecondsPerTimestamp = 800; //in ps;
-    else if(_config.timeResolution == CAEN_V1290::CAEN_V1290_200PS_RESO)
-      picoSecondsPerTimestamp = 200;
-    else if(_config.timeResolution == CAEN_V1290::CAEN_V1290_100PS_RESO)
-      picoSecondsPerTimestamp = 100;
-    else if(_config.timeResolution == CAEN_V1290::CAEN_V1290_25PS_RESO)
-      picoSecondsPerTimestamp = 25;
-
-    //conversion slope:
-    conversionSlope = config.Get("conversionSlope", 0.2);
-
-    defaultTimestamp = config.Get("defaultTimestamp", -999);
-
     //setup the synchronisation board
     int mode = config.Get("AcquisitionMode", 0);
     /*
@@ -121,35 +87,27 @@ class WireChamberProducer : public eudaq::Producer {
   
     tdc->BufferClear();
 
-    dwc_XUP_timestamp.clear();
-    dwc_XDOWN_timestamp.clear();
-    dwc_YUP_timestamp.clear();
-    dwc_YDOWN_timestamp.clear();
-    for (size_t i=0; i<N_DWCs; i++) {
-      dwc_XUP_timestamp.push_back(defaultTimestamp);
-      dwc_XDOWN_timestamp.push_back(defaultTimestamp);
-      dwc_YUP_timestamp.push_back(defaultTimestamp);
-      dwc_YDOWN_timestamp.push_back(defaultTimestamp);
-      recoX.push_back(defaultTimestamp);
-      recoY.push_back(defaultTimestamp);
+    dwc_timestamps.clear();
+    channels.clear();
+    for (size_t channel=0; channel<N_channels; channel++) {
+      channels.push_back(-1);
+      dwc_timestamps.push_back(defaultTimestamp);
     }
 
-    // It must send a BORE to the Data Collector
-    eudaq::RawDataEvent bore(eudaq::RawDataEvent::BORE(EVENT_TYPE, m_run));
-    SendEvent(bore);
+    if (tdc_unpacker != NULL) delete tdc_unpacker;
+    tdc_unpacker = new Unpacker(N_channels);
 
     if (outTree != NULL) delete outTree;
     outTree = new TTree("DelayWireChambers", "DelayWireChambers");
     outTree->Branch("run", &m_run);
     outTree->Branch("event", &m_ev);
-    outTree->Branch("channelXUP_timestamps", &dwc_XUP_timestamp);
-    outTree->Branch("channelXDOWN_timestamps", &dwc_XDOWN_timestamp);
-    outTree->Branch("channelYUP_timestamps", &dwc_YUP_timestamp);
-    outTree->Branch("channelYDOWN_timestamps", &dwc_YDOWN_timestamp);
-    outTree->Branch("recoX", &recoX);
-    outTree->Branch("recoY", &recoY);
+    outTree->Branch("channels", &channels);
+    outTree->Branch("dwc_timestamps", &dwc_timestamps);
     
 
+    // It must send a BORE to the Data Collector
+    eudaq::RawDataEvent bore(eudaq::RawDataEvent::BORE(EVENT_TYPE, m_run));
+    SendEvent(bore);
     SetStatus(eudaq::Status::LVL_OK, "Running");
     started=true;
   }
@@ -214,69 +172,15 @@ class WireChamberProducer : public eudaq::Producer {
       eudaq::RawDataEvent ev(EVENT_TYPE,m_run,m_ev);
       ev.AddBlock(1, dataStream);
 
-  
-      if (N_DWCs>=1) {
-        dwc_XUP_timestamp[0] = (channel_map[X1_UP] >= 0) ? unpacked.timeOfArrivals[channel_map[X1_UP]] : defaultTimestamp;
-        dwc_XDOWN_timestamp[0] = (channel_map[X1_DOWN] >= 0) ? unpacked.timeOfArrivals[channel_map[X1_DOWN]] : defaultTimestamp;
-        dwc_YUP_timestamp[0] = (channel_map[Y1_UP] >= 0) ? unpacked.timeOfArrivals[channel_map[Y1_UP]] : defaultTimestamp;
-        dwc_YDOWN_timestamp[0] = (channel_map[Y1_DOWN] >= 0) ? unpacked.timeOfArrivals[channel_map[Y1_DOWN]] : defaultTimestamp;
-        recoX[0] = (dwc_XUP_timestamp[0]!=defaultTimestamp && dwc_XDOWN_timestamp[0]!=defaultTimestamp) ? conversionSlope*(dwc_XDOWN_timestamp[0]-dwc_XUP_timestamp[0])*0.001*picoSecondsPerTimestamp : defaultTimestamp;    
-        recoY[0] = (dwc_YUP_timestamp[0]!=defaultTimestamp && dwc_YDOWN_timestamp[0]!=defaultTimestamp) ? conversionSlope*(dwc_YDOWN_timestamp[0]-dwc_YUP_timestamp[0])*0.001*picoSecondsPerTimestamp : defaultTimestamp;    
-      }
-
-      if (N_DWCs>=2) {
-        dwc_XUP_timestamp[1] = (channel_map[X2_UP] >= 0) ? unpacked.timeOfArrivals[channel_map[X2_UP]] : defaultTimestamp;
-        dwc_XDOWN_timestamp[1] = (channel_map[X2_DOWN] >= 0) ? unpacked.timeOfArrivals[channel_map[X2_DOWN]] : defaultTimestamp;
-        dwc_YUP_timestamp[1] = (channel_map[Y2_UP] >= 0) ? unpacked.timeOfArrivals[channel_map[Y2_UP]] : defaultTimestamp;
-        dwc_YDOWN_timestamp[1] = (channel_map[Y2_DOWN] >= 0) ? unpacked.timeOfArrivals[channel_map[Y2_DOWN]] : defaultTimestamp;
-        recoX[1] = (dwc_XUP_timestamp[1]!=defaultTimestamp && dwc_XDOWN_timestamp[1]!=defaultTimestamp) ? conversionSlope*(dwc_XDOWN_timestamp[1]-dwc_XUP_timestamp[1])*0.001*picoSecondsPerTimestamp : defaultTimestamp;    
-        recoY[1] = (dwc_YUP_timestamp[1]!=defaultTimestamp && dwc_YDOWN_timestamp[1]!=defaultTimestamp) ? conversionSlope*(dwc_YDOWN_timestamp[1]-dwc_YUP_timestamp[1])*0.001*picoSecondsPerTimestamp : defaultTimestamp;    
-      }
-  
-      if (N_DWCs>=3) {
-        dwc_XUP_timestamp[2] = (channel_map[X3_UP] >= 0) ? unpacked.timeOfArrivals[channel_map[X3_UP]] : defaultTimestamp;
-        dwc_XDOWN_timestamp[2] = (channel_map[X3_DOWN] >= 0) ? unpacked.timeOfArrivals[channel_map[X3_DOWN]] : defaultTimestamp;
-        dwc_YUP_timestamp[2] = (channel_map[Y3_UP] >= 0) ? unpacked.timeOfArrivals[channel_map[Y3_UP]] : defaultTimestamp;
-        dwc_YDOWN_timestamp[2] = (channel_map[Y3_DOWN] >= 0) ? unpacked.timeOfArrivals[channel_map[Y3_DOWN]] : defaultTimestamp;
-        recoX[2] = (dwc_XUP_timestamp[2]!=defaultTimestamp && dwc_XDOWN_timestamp[2]!=defaultTimestamp) ? conversionSlope*(dwc_XDOWN_timestamp[2]-dwc_XUP_timestamp[2])*0.001*picoSecondsPerTimestamp : defaultTimestamp;    
-        recoY[2] = (dwc_YUP_timestamp[2]!=defaultTimestamp && dwc_YDOWN_timestamp[2]!=defaultTimestamp) ? conversionSlope*(dwc_YDOWN_timestamp[2]-dwc_YUP_timestamp[2])*0.001*picoSecondsPerTimestamp : defaultTimestamp;    
-      }
-  
-      if (N_DWCs>=4) {
-        dwc_XUP_timestamp[3] = (channel_map[X4_UP] >= 0) ? unpacked.timeOfArrivals[channel_map[X4_UP]] : defaultTimestamp;
-        dwc_XDOWN_timestamp[3] = (channel_map[X4_DOWN] >= 0) ? unpacked.timeOfArrivals[channel_map[X4_DOWN]] : defaultTimestamp;
-        dwc_YUP_timestamp[3] = (channel_map[Y4_UP] >= 0) ? unpacked.timeOfArrivals[channel_map[Y4_UP]] : defaultTimestamp;
-        dwc_YDOWN_timestamp[3] = (channel_map[Y4_DOWN] >= 0) ? unpacked.timeOfArrivals[channel_map[Y4_DOWN]] : defaultTimestamp;      
-        recoX[3] = (dwc_XUP_timestamp[3]!=defaultTimestamp && dwc_XDOWN_timestamp[3]!=defaultTimestamp) ? conversionSlope*(dwc_XDOWN_timestamp[3]-dwc_XUP_timestamp[3])*0.001*picoSecondsPerTimestamp : defaultTimestamp;    
-        recoY[3] = (dwc_YUP_timestamp[3]!=defaultTimestamp && dwc_YDOWN_timestamp[3]!=defaultTimestamp) ? conversionSlope*(dwc_YDOWN_timestamp[3]-dwc_YUP_timestamp[3])*0.001*picoSecondsPerTimestamp : defaultTimestamp;    
+      for (int channel=0; channel<N_channels; channel++) {
+        channels[channel] = channel;
+        dwc_timestamps[channel] = channels_enabled[channel]  ? unpacked.timeOfArrivals[channel] : defaultTimestamp;
       }
 
 
       std::cout<<"+++ Event: "<<m_ev<<" +++"<<std::endl;
-      if (N_DWCs>=1) {
-        std::cout<<"DWC1: "<<dwc_XUP_timestamp[0]<<" ";
-        std::cout<<dwc_XDOWN_timestamp[0]<<" ";
-        std::cout<<dwc_YUP_timestamp[0]<<" ";
-        std::cout<<dwc_YDOWN_timestamp[0]<<"   "; 
-      } else std::cout<<std::endl;
-      if (N_DWCs>=2) {
-        std::cout<<"DWC2: "<<dwc_XUP_timestamp[1]<<" ";
-        std::cout<<dwc_XDOWN_timestamp[1]<<" ";
-        std::cout<<dwc_YUP_timestamp[1]<<" ";
-        std::cout<<dwc_YDOWN_timestamp[1]<<std::endl;
-      } else std::cout<<std::endl;
-      if (N_DWCs>=3) {
-        std::cout<<"DWC3: "<<dwc_XUP_timestamp[2]<<" ";
-        std::cout<<dwc_XDOWN_timestamp[2]<<" ";
-        std::cout<<dwc_YUP_timestamp[2]<<" ";
-        std::cout<<dwc_YDOWN_timestamp[2]<<"   ";
-      } else std::cout<<std::endl;
-      if (N_DWCs>=4) {
-        std::cout<<"DWC4: "<<dwc_XUP_timestamp[3]<<" ";
-        std::cout<<dwc_XDOWN_timestamp[3]<<" ";
-        std::cout<<dwc_YUP_timestamp[3]<<" ";
-        std::cout<<dwc_YDOWN_timestamp[3]<<std::endl<<std::endl;
-      }
+      for (int channel=0; channel<N_channels; channel++) std::cout<<" "<<dwc_timestamps[channel]; std::cout<<std::endl;
+      
       outTree->Fill();
       
       //Adding the event to the EUDAQ format
@@ -289,7 +193,6 @@ class WireChamberProducer : public eudaq::Producer {
     unsigned m_run, m_ev;
     bool stopping, done, started;
 
-    unsigned int N_DWCs;
     std::string dataFilePrefix;
 
     //set on configuration
@@ -298,24 +201,17 @@ class WireChamberProducer : public eudaq::Producer {
 
     std::vector<WORD> dataStream;
 
-
-    std::map<CHANNEL_INDEX, int> channel_map;
+    int N_channels;
+    std::map<int, bool> channels_enabled;
 
     //generated for each run
     TTree* outTree;
 
-    std::vector<int> dwc_XUP_timestamp;  //e.g. x min
-    std::vector<int> dwc_XDOWN_timestamp;  //e.g. x max
-    std::vector<int> dwc_YUP_timestamp;  //e.g. y min
-    std::vector<int> dwc_YDOWN_timestamp;  //e.g. y max
-    
-    double picoSecondsPerTimestamp;
-
-    double conversionSlope;
+    std::vector<int> dwc_timestamps; 
+    std::vector<int> channels;  
 
     int defaultTimestamp;
-    std::vector<double> recoX;
-    std::vector<double> recoY;
+
 };
 
 // The main function that will create a Producer instance and run it

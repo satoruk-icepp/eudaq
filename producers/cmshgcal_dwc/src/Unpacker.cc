@@ -72,7 +72,7 @@ tdcData Unpacker::ConvertTDCData(std::vector<WORD> Words) {
   //unpack the stream
   Unpack(Words);
   
-  for (int ch=0; ch<16; ch++) {
+  for (int ch=0; ch<N_channels; ch++) {
     currentData.timeOfArrivals[ch] = -1;  //fill all 16 channels with dummy values  
   } 
 
