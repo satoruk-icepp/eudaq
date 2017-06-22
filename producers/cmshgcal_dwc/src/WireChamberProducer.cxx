@@ -58,8 +58,8 @@ class WireChamberProducer : public eudaq::Producer {
     N_channels = config.Get("N_channels", 16);
     EUDAQ_INFO("Enabled channels:");
     for (unsigned int channel=0; channel<N_channels; channel++){
-      channels_enabled[channel] = (bool)config.Get(("channel_"+std::to_string(channel)).c_str(), -1);
-      std::cout<<"TDC channel "<<channel<<" enabled ? "<<channels_enabled[channel]<<std::endl;
+      channels_enabled[channel] = (config.Get(("channel_"+std::to_string(channel)).c_str(), -1)==1) ? true : false;
+      std::cout<<"TDC channel "<<channel<<" connected ? "<<channels_enabled[channel]<<std::endl;
     }
   
     //setup the synchronisation board
@@ -174,7 +174,7 @@ class WireChamberProducer : public eudaq::Producer {
 
       for (int channel=0; channel<N_channels; channel++) {
         channels[channel] = channel;
-        dwc_timestamps[channel] = channels_enabled[channel]  ? unpacked.timeOfArrivals[channel] : defaultTimestamp;
+        dwc_timestamps[channel] = channels_enabled[channel] ? unpacked.timeOfArrivals[channel] : defaultTimestamp;
       }
 
 
