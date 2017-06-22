@@ -61,6 +61,8 @@ class WireChamberProducer : public eudaq::Producer {
       channels_enabled[channel] = (config.Get(("channel_"+std::to_string(channel)).c_str(), -1)==1) ? true : false;
       std::cout<<"TDC channel "<<channel<<" connected ? "<<channels_enabled[channel]<<std::endl;
     }
+
+    defaultTimestamp = config.Get("defaultTimestamp", -999);
   
     //setup the synchronisation board
     int mode = config.Get("AcquisitionMode", 0);
