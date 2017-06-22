@@ -26,10 +26,10 @@ int Unpacker::Unpack (std::vector<WORD> Words) {
     
     else if (currentWord>>28 == 0) {//TDC DATUM
       unsigned int channel = (currentWord>>21) & 0x1f;   //looks at the bits 22 - 27
-      unsigned int tdcReadout = currentWord & 0xFFFFFFF;  //looks at bits 1 - 21
+      unsigned int measurement = currentWord & 0x1fffff;  //looks at bits 1 - 21
 
       #ifdef DEBUG_UNPACKER
-        std::cout << "[CAEN_V12490][Unpack] | tdc 1190 board channel " << channel +" tdcReadout " << tdcReadout <<std::endl;
+        std::cout << "[CAEN_V12490][Unpack] | tdc 1190 board channel " << channel +" measurement " << measurement <<std::endl;
       #endif
 
       //check if channel exists, if not create it
@@ -37,7 +37,7 @@ int Unpacker::Unpack (std::vector<WORD> Words) {
         timeStamps[channel] = std::vector<unsigned int>();
       }
 
-      timeStamps[channel].push_back(tdcReadout);
+      timeStamps[channel].push_back(measurement);
       continue;
     }
     
