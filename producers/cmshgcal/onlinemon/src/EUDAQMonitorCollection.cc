@@ -5,7 +5,7 @@
  *      Author: stanitz
  */
 
-#include "../include/EUDAQMonitorCollection.hh"
+#include "EUDAQMonitorCollection.hh"
 #include "OnlineMon.hh"
 
 EUDAQMonitorCollection::EUDAQMonitorCollection() : BaseCollection() {

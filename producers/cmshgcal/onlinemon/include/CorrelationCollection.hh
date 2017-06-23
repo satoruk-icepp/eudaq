@@ -83,6 +83,7 @@ protected:
 public:
   CorrelationCollection();
   void Fill(const SimpleStandardEvent &simpev);
+  void Fill(const eudaq::StandardEvent &ev) { ; }
   unsigned int FillWithTracks(const SimpleStandardEvent &simpev);
   virtual void Reset();
   void setRootMonitor(RootMonitor *mon);

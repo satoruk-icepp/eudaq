@@ -1,13 +1,13 @@
 // -*- mode: c -*-
 /*
- * HitmapHistos.hh
+ * HexagonHistos.hh
  *
  *  Created on: Jun 16, 2011
  *      Author: stanitz
  */
 
-#ifndef HITMAPHISTOS_HH_
-#define HITMAPHISTOS_HH_
+#ifndef HEXAGONHISTOS_HH_
+#define HEXAGONHISTOS_HH_
 
 #include <TH2I.h>
 #include <TH2Poly.h>
@@ -15,14 +15,13 @@
 
 #include <map>
 
-#include "SimpleStandardEvent.hh"
-#include "HexagonHistos.hh"
+#include "eudaq/StandardEvent.hh"
 
 using namespace std;
 
 class RootMonitor;
 
-class HitmapHistos {
+class HexagonHistos {
 protected:
   string _sensor;
   int _id;
@@ -37,34 +36,20 @@ protected:
   TH2I *_hitmap;
   TH1I *_hitXmap;
   TH1I *_hitYmap;
-  TH2I *_clusterMap;
+
   TH2D *_HotPixelMap;
-  TH1I *_lvl1Distr;
-  TH1I *_lvl1Width;
-  TH1I *_lvl1Cluster;
-  TH1I *_totSingle;
-  TH1I *_totCluster;
-  TH1F *_hitOcc;
-  TH1I *_clusterSize;
-  TH1I *_nClusters;
+  //TH1F *_hitOcc;
   TH1I *_nHits;
-  TH1I *_clusterXWidth;
-  TH1I *_clusterYWidth;
   TH1I *_nbadHits;
   TH1I *_nHotPixels;
-  TH1I *_nPivotPixel;
-  TH1I *_hitmapSections;
-  TH1I **_nHits_section;
-  TH1I **_nClusters_section;
-  TH1I **_nClustersize_section;
-  TH1I **_nHotPixels_section;
 
+  TH2I *_waveformLG, *_waveformHG;
+  TProfile *_waveformNormLG, *_waveformNormHG;
+  
 public:
-  HitmapHistos(SimpleStandardPlane p, RootMonitor *mon);
+  HexagonHistos(eudaq::StandardPlane p, RootMonitor *mon);
 
-  void Fill(const SimpleStandardHit &hit);
-  void Fill(const SimpleStandardPlane &plane);
-  void Fill(const SimpleStandardCluster &cluster);
+  void Fill(const eudaq::StandardPlane &plane);
   void Reset();
 
   void Calculate(const int currentEventNum);
@@ -77,40 +62,24 @@ public:
   TH2I *getHitmapHisto() { return _hitmap; }
   TH1I *getHitXmapHisto() { return _hitXmap; }
   TH1I *getHitYmapHisto() { return _hitYmap; }
-  TH1I *getHitmapSectionsHisto() { return _hitmapSections; }
-  TH2I *getClusterMapHisto() { return _clusterMap; }
   TH2D *getHotPixelMapHisto() { return _HotPixelMap; }
-  TH1I *getLVL1Histo() { return _lvl1Distr; }
-  TH1I *getLVL1WidthHisto() { return _lvl1Width; }
-  TH1I *getLVL1ClusterHisto() { return _lvl1Cluster; }
-  TH1I *getTOTSingleHisto() { return _totSingle; }
-  TH1I *getTOTClusterHisto() { return _totCluster; }
-  TH1F *getHitOccHisto() {
-    if (_wait)
-      return NULL;
-    else
-      return _hitOcc;
-  }
-  TH1I *getClusterSizeHisto() { return _clusterSize; }
+
+  //TH1F *getHitOccHisto() {
+  //if (_wait)
+  //  return NULL;
+  //else
+  //  return _hitOcc;
+  //}
   TH1I *getNHitsHisto() { return _nHits; }
-  TH1I *getNClustersHisto() { return _nClusters; }
-  TH1I *getClusterWidthXHisto() { return _clusterXWidth; }
-  TH1I *getClusterWidthYHisto() { return _clusterYWidth; }
   TH1I *getNbadHitsHisto() { return _nbadHits; }
-  TH1I *getSectionsNHitsHisto(unsigned int section) {
-    return _nHits_section[section];
-  }
-  TH1I *getSectionsNClusterHisto(unsigned int section) {
-    return _nClusters_section[section];
-  }
-  TH1I *getSectionsNClusterSizeHisto(unsigned int section) {
-    return _nClustersize_section[section];
-  }
-  TH1I *getSectionsNHotPixelsHisto(unsigned int section) {
-    return _nHotPixels_section[section];
-  }
-  TH1I *getNHotPixelsHisto() { return _nHotPixels; }
-  TH1I *getNPivotPixelHisto() { return _nPivotPixel; }
+
+  TH2I *getWaveformLGHisto() {return _waveformLG;}
+  TH2I *getWaveformHGHisto() {return _waveformHG;}
+
+  TProfile *getWaveformLGProfile() {return _waveformNormLG;}
+  TProfile *getWaveformHGProfile() {return _waveformNormHG;}
+
+  
   void setRootMonitor(RootMonitor *mon) { _mon = mon; }
 
 private:
@@ -128,18 +97,12 @@ private:
   TH2Poly* get_th2poly(string name, string title);
 
   RootMonitor *_mon;
-  unsigned int mimosa26_max_section;
-  // check what kind sensor we're dealing with
-  // for the filling this eliminates a string comparison
+
   bool is_HEXABOARD;
-  bool is_MIMOSA26;
-  bool is_APIX;
-  bool is_USBPIX;
-  bool is_USBPIXI4;
-  bool is_DEPFET;
 };
 
-/*
+
+
 static const int ch_to_bin_map[133] = {
   104,104,81,92,103,113,121,
   58,69,80,91,102,112,120,126,
@@ -285,9 +248,8 @@ static const  char sc_to_ch_map[381] = { //381 = 127*3
   127,2,34
  }; 
 
-*/
 #ifdef __CINT__
-#pragma link C++ class HitmapHistos - ;
+#pragma link C++ class HexagonHistos - ;
 #endif
 
-#endif /* HITMAPHISTOS_HH_ */
+#endif /* HEXAGONHISTOS_HH_ */

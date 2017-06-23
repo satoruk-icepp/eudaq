@@ -1,66 +1,43 @@
 // -*- mode: c -*-
-/*
- * HitmapHistos.cc
- *
- *  Created on: Jun 16, 2011
- *      Author: stanitz
- */
 
 #include <TROOT.h>
-#include "HitmapHistos.hh"
+#include "HexagonHistos.hh"
 #include "OnlineMon.hh"
 #include "TCanvas.h"
 #include "TGraph.h"
 #include <cstdlib>
+#include <sstream>
 
-HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
-    : _sensor(p.getName()), _id(p.getID()), _maxX(p.getMaxX()),
-      _maxY(p.getMaxY()), _wait(false),
-      _hexagons_occ_adc(NULL), _hexagons_charge(NULL), _hexagons_occ_tot(NULL), _hexagons_occ_toa(NULL), 
-      _hitmap(NULL), _hitXmap(NULL),
-      _hitYmap(NULL), _clusterMap(NULL), _lvl1Distr(NULL), _lvl1Width(NULL),
-      _lvl1Cluster(NULL), _totSingle(NULL), _totCluster(NULL), _hitOcc(NULL),
-      _nClusters(NULL), _nHits(NULL), _clusterXWidth(NULL),
-      _clusterYWidth(NULL), _nbadHits(NULL), _nHotPixels(NULL),
-      _hitmapSections(NULL), is_MIMOSA26(false), is_APIX(false),
-      is_USBPIX(false), is_USBPIXI4(false), is_HEXABOARD(false){
+HexagonHistos::HexagonHistos(eudaq::StandardPlane p, RootMonitor *mon)
+  :_sensor(p.Sensor()), _id(p.ID()), _maxX(p.XSize()),  _maxY(p.YSize()), _wait(false),
+   _hexagons_occ_adc(NULL), _hexagons_occ_tot(NULL), _hexagons_occ_toa(NULL), _hexagons_charge(NULL),
+   _hitmap(NULL), _hitXmap(NULL),  _hitYmap(NULL),
+  _nHits(NULL), _nbadHits(NULL), _nHotPixels(NULL),
+  _waveformLG(NULL), _waveformHG(NULL), _waveformNormLG(NULL), _waveformNormHG(NULL){
+
+
   char out[1024], out2[1024];
 
   _mon = mon;
-  mimosa26_max_section = _mon->mon_configdata.getMimosa26_max_sections();
-  if (_sensor == std::string("MIMOSA26")) {
-    is_MIMOSA26 = true;
-  } else if (_sensor == std::string("APIX")) {
-    is_APIX = true;
-  } else if (_sensor == std::string("USBPIX")) {
-    is_USBPIX = true;
-  } else if (_sensor == std::string("USBPIXI4")) {
-    is_USBPIXI4 = true;
-  } else if (_sensor == std::string("USBPIXI4B")) {
-    is_USBPIXI4 = true;
-  } else if (_sensor == std::string("HexaBoard")) {
-    is_HEXABOARD = true;
-  }
-  is_DEPFET = p.is_DEPFET;
 
-  // std::cout << "HitmapHistos::Sensorname: " << _sensor << " "<< _id<<
+  // std::cout << "HexagonHistos::Sensorname: " << _sensor << " "<< _id<<
   // std::endl;
 
   if (_maxX != -1 && _maxY != -1) {
     sprintf(out, "%s %i  ADC HG Occupancy", _sensor.c_str(), _id);
     sprintf(out2, "h_hexagons_occ_adc_%s_%i", _sensor.c_str(), _id);
-    _hexagons_occ_adc = get_th2poly(out2,out);  
+    _hexagons_occ_adc = get_th2poly(out2,out);
     sprintf(out, "%s %i  ADC HG Charge", _sensor.c_str(), _id);
     sprintf(out2, "h_hexagons_charge_%s_%i", _sensor.c_str(), _id);
-    _hexagons_charge = get_th2poly(out2,out); 
+    _hexagons_charge = get_th2poly(out2,out);
     sprintf(out, "%s %i  TOT Occupancy", _sensor.c_str(), _id);
     sprintf(out2, "h_hexagons_occ_tot_%s_%i", _sensor.c_str(), _id);
-    _hexagons_occ_tot = get_th2poly(out2,out); 
+    _hexagons_occ_tot = get_th2poly(out2,out);
     sprintf(out, "%s %i  TOA Occupancy", _sensor.c_str(), _id);
     sprintf(out2, "h_hexagons_occ_toa_%s_%i", _sensor.c_str(), _id);
     _hexagons_occ_toa = get_th2poly(out2,out);
 
-    
+
     sprintf(out, "%s %i Raw Hitmap", _sensor.c_str(), _id);
     sprintf(out2, "h_hitmap_%s_%i", _sensor.c_str(), _id);
     _hitmap = new TH2I(out2, out, _maxX + 1, 0, _maxX, _maxY + 1, 0, _maxY);
@@ -77,18 +54,20 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
     _hitYmap = new TH1I(out2, out, _maxY + 1, 0, _maxY);
     SetHistoAxisLabelx(_hitYmap, "Channel ID");
 
+    /*
     sprintf(out, "%s %i Cluster Hitmap", _sensor.c_str(), _id);
     sprintf(out2, "h_clustermap_%s_%i", _sensor.c_str(), _id);
     _clusterMap = new TH2I(out2, out, _maxX + 1, 0, _maxX, _maxY + 1, 0, _maxY);
     SetHistoAxisLabels(_clusterMap, "X", "Y");
     // std::cout << "Created Histogram " << out2 << std::endl;
-
+    */
     sprintf(out, "%s %i hot Pixel Map", _sensor.c_str(), _id);
     sprintf(out2, "h_hotpixelmap_%s_%i", _sensor.c_str(), _id);
     _HotPixelMap =
         new TH2D(out2, out, _maxX + 1, 0, _maxX, _maxY + 1, 0, _maxY);
     SetHistoAxisLabels(_HotPixelMap, "X", "Y");
 
+    /*
     sprintf(out, "%s %i LVL1 Pixel Distribution", _sensor.c_str(), _id);
     sprintf(out2, "h_lvl1_%s_%i", _sensor.c_str(), _id);
     _lvl1Distr = new TH1I(out2, out, 16, 0, 16);
@@ -100,39 +79,15 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
     sprintf(out, "%s %i LVL1 Clusterwidth", _sensor.c_str(), _id);
     sprintf(out2, "h_lvl1width_%s_%i", _sensor.c_str(), _id);
     _lvl1Width = new TH1I(out2, out, 16, 0, 16);
+    */
 
-    sprintf(out, "%s %i TOT Single Pixels", _sensor.c_str(), _id);
-    sprintf(out2, "h_totsingle_%s_%i", _sensor.c_str(), _id);
-    if (p.is_USBPIXI4) {
-      _totSingle = new TH1I(out2, out, 16, 0, 15);
-    } else if (p.is_DEPFET) {
-      _totSingle = new TH1I(out2, out, 255, -127, 127);
-    } else {
-      _totSingle = new TH1I(out2, out, 256, 0, 255);
-#ifdef EUDAQ_LIB_ROOT6
-      _totSingle->SetCanExtend(TH1::kAllAxes);
-#else
-      _totSingle->SetBit(TH1::kCanRebin);
-#endif
-    }
 
-    sprintf(out, "%s %i TOT Clusters", _sensor.c_str(), _id);
-    sprintf(out2, "h_totcluster_%s_%i", _sensor.c_str(), _id);
-    if (p.is_USBPIXI4)
-      _totCluster = new TH1I(out2, out, 80, 0, 79);
-    else
-      _totCluster = new TH1I(out2, out, 256, 0, 255);
+    //sprintf(out, "%s %i Hitoccupancy", _sensor.c_str(), _id);
+    //sprintf(out2, "h_hitocc%s_%i", _sensor.c_str(), _id);
 
-    sprintf(out, "%s %i Hitoccupancy", _sensor.c_str(), _id);
-    sprintf(out2, "h_hitocc%s_%i", _sensor.c_str(), _id);
+    //_hitOcc = new TH1F(out2, out, 250, 0.01, 1);
+    //SetHistoAxisLabelx(_hitOcc, "Frequency");
 
-    _hitOcc = new TH1F(out2, out, 250, 0.01, 1);
-    SetHistoAxisLabelx(_hitOcc, "Frequency");
-
-    sprintf(out, "%s %i Clustersize", _sensor.c_str(), _id);
-    sprintf(out2, "h_clustersize_%s_%i", _sensor.c_str(), _id);
-    _clusterSize = new TH1I(out2, out, 10, 0, 10);
-    SetHistoAxisLabelx(_clusterSize, "Cluster Size");
 
     sprintf(out, "%s %i Number of Hits", _sensor.c_str(), _id);
     sprintf(out2, "h_raw_nHits_%s_%i", _sensor.c_str(), _id);
@@ -150,93 +105,40 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
     _nHotPixels = new TH1I(out2, out, 50, 0, 50);
     SetHistoAxisLabelx(_nHotPixels, "n_{HotPixels}");
 
-    sprintf(out, "%s %i Number of Clusters", _sensor.c_str(), _id);
-    sprintf(out2, "h_nClusters_%s_%i", _sensor.c_str(), _id);
-    _nClusters = new TH1I(out2, out, 500, 0, 99);
-    SetHistoAxisLabelx(_nClusters, "n_{Clusters}");
+    // ---------
+    // Waveforms
+    // ---------
+    sprintf(out, "%s %i Waveform LG", _sensor.c_str(), _id);
+    sprintf(out2, "h_waveform_LG_%s_%i", _sensor.c_str(), _id);
+    _waveformLG = new TH2I(out2, out, 18, 0, 9, 200, 0, 3000);
+    SetHistoAxisLabels(_waveformLG, "Time Sample of 25 ns", "ADC LG");
 
-    sprintf(out, "%s %i Clustersize in X", _sensor.c_str(), _id);
-    sprintf(out2, "h_clustersizeX_%s_%i", _sensor.c_str(), _id);
-    _clusterXWidth = new TH1I(out2, out, 20, 0, 19);
+    sprintf(out, "%s %i Waveform HG", _sensor.c_str(), _id);
+    sprintf(out2, "h_waveform_HG_%s_%i", _sensor.c_str(), _id);
+    _waveformHG = new TH2I(out2, out, 18, 0, 9, 200, 0, 4000);
+    SetHistoAxisLabels(_waveformHG, "Time Sample of 25 ns", "ADC HG");
 
-    sprintf(out, "%s %i Clustersize in Y", _sensor.c_str(), _id);
-    sprintf(out2, "h_clustersizeY_%s_%i", _sensor.c_str(), _id);
-    _clusterYWidth = new TH1I(out2, out, 20, 0, 19);
 
-    sprintf(out, "%s %i Hitmap Sections", _sensor.c_str(), _id);
-    sprintf(out2, "h_hitmapSections_%s_%i", _sensor.c_str(), _id);
-    _hitmapSections = new TH1I(out2, out, mimosa26_max_section, _id, _id + 1);
+    sprintf(out, "%s %i Waveform LG Norm", _sensor.c_str(), _id);
+    sprintf(out2, "p_waveform_LG_%s_%i", _sensor.c_str(), _id);
+    _waveformNormLG = new TProfile(out2, out, 18, 0, 9, 0, 1);
+    SetHistoAxisLabels(_waveformNormLG, "Time Sample of 25 ns", "Normalized");
 
-    sprintf(out, "%s %i Pivot Pixel Usage", _sensor.c_str(), _id);
-    sprintf(out2, "h_pivotpixel_%s_%i", _sensor.c_str(), _id);
-    _nPivotPixel = new TH1I(out2, out, 930, 0, 9300);
+    sprintf(out, "%s %i Waveform HG Norm", _sensor.c_str(), _id);
+    sprintf(out2, "p_waveform_HG_%s_%i", _sensor.c_str(), _id);
+    _waveformNormHG = new TProfile(out2, out, 18, 0, 9, 0, 1);
+    SetHistoAxisLabels(_waveformNormHG, "Time Sample of 25 ns", "Normalized");
 
-    for (unsigned int section = 0; section < mimosa26_max_section; section++) {
-      sprintf(out, "%i%c", _id, (section + 65));
-      _hitmapSections->GetXaxis()->SetBinLabel(section + 1, out);
-    }
 
-    _nHits_section = new TH1I *[mimosa26_max_section];
-    _nClusters_section = new TH1I *[mimosa26_max_section];
-    _nClustersize_section = new TH1I *[mimosa26_max_section];
-    _nHotPixels_section = new TH1I *[mimosa26_max_section];
-
-    for (unsigned int section = 0; section < mimosa26_max_section; section++) {
-      sprintf(out, "%s %i Number of Hits in Section %i ", _sensor.c_str(), _id,
-              section);
-      sprintf(out2, "h_hits_section%i_%s_%i", section, _sensor.c_str(), _id);
-      _nHits_section[section] = new TH1I(out2, out, 50, 0, 50);
-      if (_nHits_section[section] == NULL) {
-        cout << "Error allocating Histogram" << out << endl;
-        exit(-1);
-      } else {
-        _nHits_section[section]->GetXaxis()->SetTitle("Hits");
-      }
-
-      sprintf(out, "%s %i Number of Clusters in Section %i ", _sensor.c_str(),
-              _id, section);
-      sprintf(out2, "h_clusters_section%i_%s_%i", section, _sensor.c_str(),
-              _id);
-      _nClusters_section[section] = new TH1I(out2, out, 50, 0, 50);
-      if (_nClusters_section[section] == NULL) {
-        cout << "Error allocating Histogram" << out << endl;
-        exit(-1);
-      } else {
-        _nClusters_section[section]->GetXaxis()->SetTitle("Clusters");
-      }
-
-      sprintf(out, "%s %i Cluster size in Section %i ", _sensor.c_str(), _id,
-              section);
-      sprintf(out2, "h_clustersize_section%i_%s_%i", section, _sensor.c_str(),
-              _id);
-      _nClustersize_section[section] = new TH1I(out2, out, 10, 0, 10);
-      if (_nClustersize_section[section] == NULL) {
-        cout << "Error allocating Histogram" << out << endl;
-        exit(-1);
-      } else {
-        _nClustersize_section[section]->GetXaxis()->SetTitle("Cluster Size");
-      }
-
-      sprintf(out, "%s %i Number of Hot Pixels in Section %i ", _sensor.c_str(),
-              _id, section);
-      sprintf(out2, "h_hotpixels_section%i_%s_%i", section, _sensor.c_str(),
-              _id);
-      _nHotPixels_section[section] = new TH1I(out2, out, 50, 0, 50);
-      if (_nHotPixels_section[section] == NULL) {
-        cout << "Error allocating Histogram" << out << endl;
-        exit(-1);
-      } else {
-        _nHotPixels_section[section]->GetXaxis()->SetTitle("Hot Pixels");
-      }
-    }
     // make a plane array for calculating e..g hotpixels and occupancy
 
     plane_map_array = new int *[_maxX];
+
     if (plane_map_array != NULL) {
       for (int j = 0; j < _maxX; j++) {
         plane_map_array[j] = new int[_maxY];
         if (plane_map_array[j] == NULL) {
-          cout << "HitmapHistos :Error in memory allocation" << endl;
+          cout << "HexagonHistos :Error in memory allocation" << endl;
           exit(-1);
         }
       }
@@ -246,11 +148,11 @@ HitmapHistos::HitmapHistos(SimpleStandardPlane p, RootMonitor *mon)
   } else {
     std::cout << "No max sensorsize known!" << std::endl;
   }
-  
+
   Set_SkiToHexaboard_ChannelMap();
 }
 
-int HitmapHistos::zero_plane_array() {
+int HexagonHistos::zero_plane_array() {
   for (int i = 0; i < _maxX; i++) {
     for (int j = 0; j < _maxY; j++) {
       plane_map_array[i][j] = 0;
@@ -259,295 +161,122 @@ int HitmapHistos::zero_plane_array() {
   return 0;
 }
 
-void HitmapHistos::Fill(const SimpleStandardHit &hit) {
-  int pixel_x = hit.getX();
-  int pixel_y = hit.getY();
 
-  bool pixelIsHot = false;
-  if (_HotPixelMap->GetBinContent(pixel_x + 1, pixel_y + 1) >
-      _mon->mon_configdata.getHotpixelcut())
-    pixelIsHot = true;
-
-  if (_hexagons_occ_adc != NULL && _hexagons_occ_tot != NULL && _hexagons_occ_toa != NULL && !pixelIsHot) {
-    int ch  = _ski_to_ch_map.find(make_pair(pixel_x,pixel_y))->second;
-    
-    if (ch < 0 || ch > 127){
-      std::cout<<" There is a problem with channel number\n pixel_x = "
-	       <<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<std::endl;      
-      ch=999;
-    }
-    
-    else {
-      //if(bin<-1 || bin > 133){      
-      //std::cout<<" There is a problem with bin number\n pixel_x = "
-      //	 <<" pixel_x = "<<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<"  bin="<<bin<<std::endl;
-
-      // Loop over the bins and Fill the one matched to our channel 
-      for (int icell = 0; icell < 133 ; icell++) {
-	int bin = ch_to_bin_map[icell];
-	if (bin == ch){
-	  //std::cout<<" pixel_x = "<<pixel_x <<"  pixel_y="<<pixel_y<<"  channel = "<<ch<<"  icell="<<icell<<std::endl;
-	  
-	  char buffer_bin[3]; sprintf(buffer_bin,"%d", (char)(icell+1));
-	  string bin_name = "Sensor_"+string(buffer_bin);
-
-	  if (hit.getAMP() > 100)
-	    _hexagons_occ_adc->Fill(bin_name.c_str(), 1);
-
-
-	  if (hit.getTOT()!=4)
-	    _hexagons_occ_tot->Fill(bin_name.c_str(), 1);
-	  
-	  if (hit.getLVL1()!=4)
-	    _hexagons_occ_toa->Fill(bin_name.c_str(), 1);
-	  
-
-	}
-      }
-    }
-  }
-
-  if (_hitmap != NULL && !pixelIsHot)
-    _hitmap->Fill(pixel_x, pixel_y);
-  if (_hitXmap != NULL && !pixelIsHot)
-    _hitXmap->Fill(pixel_x);
-  if (_hitYmap != NULL && !pixelIsHot)
-    _hitYmap->Fill(pixel_y);
-  if ((is_MIMOSA26) && (_hitmapSections != NULL) && (!pixelIsHot))
-  //&& _hitOcc->GetEntries()>0) // only fill histogram when occupancies and
-  //hotpixels have been determined
-  {
-    char sectionid[3];
-    sprintf(sectionid, "%i%c", _id,
-            (pixel_x / _mon->mon_configdata.getMimosa26_section_boundary()) +
-                65); // determine section label
-    _hitmapSections->Fill(sectionid,
-                          1); // add one hit to the corresponding section bin
-    // tab[pixel_x/_mon->mon_configdata.getMimosa26_section_boundary()]++;
-  }
-  /*else
-    {
-    bool MIMOSA, PIXEL, HITMAP;
-    MIMOSA = true;
-    PIXEL = true;
-    HITMAP = true;
-
-    if (!is_MIMOSA26)
-    cout << "MIMOSA IS FALSE" << endl;
-    if (_hitmapSections == NULL)
-    cout << "_hitmapSections IS NULL" << endl;
-    if (pixelIsHot)
-    cout << "pixelIsHot IS TRUE" << endl;
-
-    }*/
-
-  if ((pixel_x < _maxX) && (pixel_y < _maxY)) {
-    plane_map_array[pixel_x][pixel_y] = plane_map_array[pixel_x][pixel_y] + 1;
-  }
-  // if (_sensor == std::string("APIX")) {
-  // if (_sensor == std::string("APIX") || _sensor == std::string("USBPIX") ||
-  // _sensor == std::string("USBPIXI4") ) {
-  if ((is_APIX) || (is_USBPIX) || (is_USBPIXI4) || is_DEPFET) {
-    if (_totSingle != NULL)
-      _totSingle->Fill(hit.getTOT());
-    if (_lvl1Distr != NULL)
-      _lvl1Distr->Fill(hit.getLVL1());
-  }
-}
-
-void HitmapHistos::Fill(const SimpleStandardPlane &plane) {
+void HexagonHistos::Fill(const eudaq::StandardPlane &plane) {
   // std::cout<< "FILL with a plane." << std::endl;
+
   if (_nHits != NULL)
-    _nHits->Fill(plane.getNHits());
-  if ((_nbadHits != NULL) && (plane.getNBadHits() > 0)) {
-    _nbadHits->Fill(plane.getNBadHits());
+    _nHits->Fill(plane.HitPixels());
+  if ((_nbadHits != NULL)) {
+    _nbadHits->Fill(0);
   }
-  if (_nClusters != NULL)
-    _nClusters->Fill(plane.getNClusters());
 
 
-  
-  if (is_HEXABOARD){
+  // This one needs to be reset every event:
+  if (_hexagons_charge != NULL && plane.HitPixels()>0) {
+    //_hexagons_charge->Reset("");
+    for (int icell = 0; icell < 133 ; icell++)
+      _hexagons_charge->SetBinContent(icell+1, 0);
+  }
 
-    /*
-    if (_hexagons_charge != NULL  && plane.getNHits()>1) {
+
+  for (unsigned int pix = 0; pix < plane.HitPixels(); pix++)
+    {
+
+      //std::cout<<" We are getting a pixel with pix="<<pix<<std::endl;
+
+      // Average of three TS around Maximum:
+      const int avg_lg = (plane.GetPixel(pix, 2) + plane.GetPixel(pix, 3) + plane.GetPixel(pix, 4))/3;
+      const int avg_hg = (plane.GetPixel(pix, 11) + plane.GetPixel(pix, 12) + plane.GetPixel(pix, 13))/3;
+      const int toa = plane.GetPixel(pix, 18);
+      const int tot = plane.GetPixel(pix, 19);
+
+
+      const int pixel_x = plane.GetX(pix);
+      const int pixel_y = plane.GetY(pix);
+      const int ch  = _ski_to_ch_map.find(make_pair(pixel_x,pixel_y))->second;
+
+      if (_waveformHG!=NULL && _waveformLG!=NULL
+	  &&_waveformNormHG!=NULL && _waveformNormLG!=NULL){
+	const int normLG = std::max(plane.GetPixel(pix, 3), plane.GetPixel(pix, 4));
+	const int normHG = std::max(plane.GetPixel(pix, 12), plane.GetPixel(pix, 13));
+	for (int ts=0; ts<9; ts++){
+	  _waveformLG->Fill(ts, plane.GetPixel(pix, ts));
+	  _waveformHG->Fill(ts, plane.GetPixel(pix, 9+ts));
+
+	  _waveformNormLG->Fill(ts, (float)plane.GetPixel(pix, ts)/normLG);
+	  _waveformNormHG->Fill(ts, (float)plane.GetPixel(pix, 9+ts)/normHG);
+	}
+      }
+
+      if (_hitmap != NULL)
+	_hitmap->Fill(pixel_x, pixel_y);
+      if (_hitXmap != NULL)
+	_hitXmap->Fill(pixel_x);
+      if (_hitYmap != NULL)
+	_hitYmap->Fill(pixel_y);
+
+      // Loop over the bins and Fill the one matched to our channel
       for (int icell = 0; icell < 133 ; icell++) {
-	_hexagons_charge->SetBinContent(icell+1, 0); 
-	
+
 	const int bin = ch_to_bin_map[icell];
-	
-	for (int hitpix = 0; hitpix < plane.getNHits(); hitpix++) {
-	  const SimpleStandardHit &hit = plane.getHit(hitpix);
-	  
-	  const int pixel_x = hit.getX();
-	  const int pixel_y = hit.getY();
-	  const int ch  = _ski_to_ch_map.find(make_pair(pixel_x,pixel_y))->second;
-	  
-	  if (bin == ch)
-	    _hexagons_charge->SetBinContent(icell+1, hit.getAMP()); 
+
+	//std::cout<<" pixel_x = "<<pixel_x <<"  pixel_y="<<pixel_y
+	//	 <<"  channel = "<<ch<<"  icell="<<icell<<"  bin="<<bin<<std::endl;
+	if (bin == ch){
+	  //std::cout<<"Our bin matched the channel: "<<bin<<std::endl;
+
+	  if (_hexagons_charge!=NULL)
+	    _hexagons_charge->SetBinContent(icell+1, avg_hg);
+
+	  //char buffer_bin[3]; sprintf(buffer_bin,"%d", (char)(icell+1));
+	  std::ostringstream oss;  oss << "Sensor_" << icell+1;
+          const string bin_name = oss.str();
+
+          if (avg_hg > 100 && _hexagons_occ_adc!=NULL)
+            _hexagons_occ_adc->Fill(bin_name.c_str(), 1);
+
+          if (tot!=4 &&_hexagons_occ_tot!=NULL)
+            _hexagons_occ_tot->Fill(bin_name.c_str(), 1);
+
+          if (toa!=4 && _hexagons_occ_toa!=NULL)
+            _hexagons_occ_toa->Fill(bin_name.c_str(), 1);
+
 	}
       }
     }
-    */
-  }
-  
-  // we fill the information for the individual mimosa sections, and do a
-  // zero-suppression,in case not all sections have hits/clusters
-  if (is_MIMOSA26) {
-    _nPivotPixel->Fill(plane.getPivotPixel());
-    for (unsigned int section = 0; section < mimosa26_max_section; section++) {
-      if (_nHits_section[section] != NULL) {
-        if (plane.getNSectionHits(section) > 0) {
-          _nHits_section[section]->Fill(plane.getNSectionHits(section));
-          // std::cout<< "Section " << section << " filling with " <<
-          // plane.getNSectionHits(section) << std::endl;
-        }
-      }
-      if (_nClusters_section[section] != NULL) {
-        if (plane.getNSectionClusters(section) > 0) {
-          _nClusters_section[section]->Fill(plane.getNSectionClusters(section));
-        }
-      }
-    }
-  }
+
 }
 
-void HitmapHistos::Fill(const SimpleStandardCluster &cluster) {
-  if (_clusterMap != NULL)
-    _clusterMap->Fill(cluster.getX(), cluster.getY());
-  if (_clusterSize != NULL)
-    _clusterSize->Fill(cluster.getNPixel());
-  if (is_MIMOSA26) {
-    unsigned int nsection =
-        cluster.getX() /
-        _mon->mon_configdata.getMimosa26_section_boundary(); // get to which
-                                                             // section in
-                                                             // Mimosa the
-                                                             // cluster belongs
-    if ((nsection < mimosa26_max_section) &&
-        (_nClustersize_section[nsection] != NULL)) // check if valid address
-    {
-      if (cluster.getNPixel() > 0) {
-        _nClustersize_section[nsection]->Fill(cluster.getNPixel());
-      }
-    }
-  }
-
-  if ((is_APIX) || (is_USBPIX) || (is_USBPIXI4)) {
-    if (_lvl1Width != NULL)
-      _lvl1Width->Fill(cluster.getLVL1Width());
-    if (_totCluster != NULL)
-      _totCluster->Fill(cluster.getTOT());
-    if (_lvl1Cluster != NULL)
-      _lvl1Cluster->Fill(cluster.getFirstLVL1());
-    if (_clusterXWidth != NULL)
-      _clusterXWidth->Fill(cluster.getWidthX());
-    if (_clusterYWidth != NULL)
-      _clusterYWidth->Fill(cluster.getWidthY());
-  }
-}
-
-void HitmapHistos::Reset() {
+void HexagonHistos::Reset() {
   _hexagons_occ_adc->Reset("");
-  _hexagons_charge->Reset("");
   _hexagons_occ_tot->Reset("");
   _hexagons_occ_toa->Reset("");
+  _hexagons_charge->Reset("");
   _hitmap->Reset();
   _hitXmap->Reset();
   _hitYmap->Reset();
-  _totSingle->Reset();
-  _lvl1Distr->Reset();
-  _clusterMap->Reset();
-  _totCluster->Reset();
-  _lvl1Cluster->Reset();
-  _lvl1Width->Reset();
-  _hitOcc->Reset();
-  _clusterSize->Reset();
-  _nClusters->Reset();
+
   _nHits->Reset();
   _nbadHits->Reset();
   _nHotPixels->Reset();
   _HotPixelMap->Reset();
-  _clusterYWidth->Reset();
-  _clusterXWidth->Reset();
-  _hitmapSections->Reset();
-  _nPivotPixel->Reset();
-  for (unsigned int section = 0; section < mimosa26_max_section; section++) {
-    _nClusters_section[section]->Reset();
-    _nHits_section[section]->Reset();
-    _nClustersize_section[section]->Reset();
-    _nHotPixels_section[section]->Reset();
-  }
+
+  _waveformLG->Reset();
+  _waveformHG->Reset();
+  _waveformNormLG->Reset();
+  _waveformNormHG->Reset();
   // we have to reset the aux array as well
   zero_plane_array();
 }
 
-void HitmapHistos::Calculate(const int currentEventNum) {
+void HexagonHistos::Calculate(const int currentEventNum) {
   _wait = true;
-  _hitOcc->SetBins(currentEventNum / 10, 0, 1);
-  _hitOcc->Reset();
-
-  int nHotpixels = 0;
-  std::vector<unsigned int> nHotpixels_section;
-  double Hotpixelcut = _mon->mon_configdata.getHotpixelcut();
-  double bin = 0;
-  double occupancy = 0;
-  if (is_MIMOSA26) // probalbly initialize vector
-  {
-    nHotpixels_section.reserve(_mon->mon_configdata.getMimosa26_max_sections());
-    for (unsigned int i = 0;
-         i < _mon->mon_configdata.getMimosa26_max_sections(); i++) {
-      nHotpixels_section[i] = 0;
-    }
-  }
-
-  for (int x = 0; x < _maxX; ++x) {
-    for (int y = 0; y < _maxY; ++y) {
-
-      bin = plane_map_array[x][y];
-
-      if (bin != 0) {
-        occupancy =
-            bin /
-            (double)currentEventNum; // FIXME it's not occupancy, it's frequency
-        _hitOcc->Fill(occupancy);
-        // only count as hotpixel if occupancy larger than minimal occupancy for
-        // a single hit
-        if (occupancy > Hotpixelcut && ((1. / (double)(currentEventNum)) <
-                                        _mon->mon_configdata.getHotpixelcut()))
-        // if (occupancy>Hotpixelcut && )
-        {
-          nHotpixels++;
-          _HotPixelMap->SetBinContent(x + 1, y + 1,
-                                      occupancy); // ROOT start from 1
-          if (is_MIMOSA26) {
-            nHotpixels_section
-                [x / _mon->mon_configdata.getMimosa26_section_boundary()]++;
-          }
-        }
-      }
-    }
-  }
-  if (nHotpixels > 0) {
-    _nHotPixels->Fill(nHotpixels);
-    if (is_MIMOSA26) {
-      for (unsigned int section = 0;
-           section < _mon->mon_configdata.getMimosa26_max_sections();
-           section++) {
-        if ((nHotpixels_section[section] > 0)) {
-          _nHotPixels_section[section]->Fill(nHotpixels_section[section]);
-          // cout<<"nHotPixels is being filled for plane " << _id << " with " <<
-          // ++counter_nhotpixels_being_filled << " time in section " <<
-          //      section << endl;
-        }
-      }
-    }
-  }
 
   _wait = false;
 }
 
-void HitmapHistos::Write() {
+void HexagonHistos::Write() {
   _hexagons_occ_adc->Write();
   _hexagons_occ_tot->Write();
   _hexagons_occ_toa->Write();
@@ -573,21 +302,27 @@ void HitmapHistos::Write() {
   //_hitmapSections->Write();
   //_nPivotPixel->Write();
 
-  std::cout<<"Doing HitmapHistos::Write() before canvas drawing"<<std::endl;
+  _waveformLG->Write();
+  _waveformHG->Write();
+
+  _waveformNormLG->Write();
+  _waveformNormHG->Write();
+
+  std::cout<<"Doing HexagonHistos::Write() before canvas drawing"<<std::endl;
 
   /*
   gSystem->Sleep(100);
-  
+
   gROOT->SetBatch(kTRUE);
   TCanvas *tmpcan = new TCanvas("tmpcan","Canvas for PNGs",600,600);
   tmpcan->cd();
-  
+
   _hexagons_occ_adc->Draw("COLZ TEXT");
   tmpcan->SaveAs("../snapshots/Occupancy_ADC_HG.png");
 
   _hexagons_occ_tot->Draw("COLZ TEXT");
   tmpcan->SaveAs("../snapshots/Occupancy_TOT.png");
-   
+
   _hexagons_occ_toa->Draw("COLZ TEXT");
   tmpcan->SaveAs("../snapshots/Occupancy_TOA.png");
 
@@ -595,36 +330,36 @@ void HitmapHistos::Write() {
   tmpcan->SaveAs("../snapshots/nHits.png");
 
   tmpcan->Close();
-  gROOT->SetBatch(kFALSE); 
+  gROOT->SetBatch(kFALSE);
 
   */
-  
-  std::cout<<"Doing HitmapHistos::Write() after canvas drawing"<<std::endl;
+
+  std::cout<<"Doing HexagonHistos::Write() after canvas drawing"<<std::endl;
 
 }
 
-int HitmapHistos::SetHistoAxisLabelx(TH1 *histo, string xlabel) {
+int HexagonHistos::SetHistoAxisLabelx(TH1 *histo, string xlabel) {
   if (histo != NULL) {
     histo->GetXaxis()->SetTitle(xlabel.c_str());
   }
   return 0;
 }
 
-int HitmapHistos::SetHistoAxisLabels(TH1 *histo, string xlabel, string ylabel) {
+int HexagonHistos::SetHistoAxisLabels(TH1 *histo, string xlabel, string ylabel) {
   SetHistoAxisLabelx(histo, xlabel);
   SetHistoAxisLabely(histo, ylabel);
 
   return 0;
 }
 
-int HitmapHistos::SetHistoAxisLabely(TH1 *histo, string ylabel) {
+int HexagonHistos::SetHistoAxisLabely(TH1 *histo, string ylabel) {
   if (histo != NULL) {
     histo->GetYaxis()->SetTitle(ylabel.c_str());
   }
   return 0;
 }
 
-void HitmapHistos::Set_SkiToHexaboard_ChannelMap(){
+void HexagonHistos::Set_SkiToHexaboard_ChannelMap(){
 
   for(int c=0; c<127; c++){
     int row = c*3;
@@ -632,8 +367,7 @@ void HitmapHistos::Set_SkiToHexaboard_ChannelMap(){
   }
 }
 
-TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
-   //hitmapoly = new TH2Poly(out2, out, _maxX + 1, 0, _maxX, _maxY + 1, 0, _maxY);
+TH2Poly* HexagonHistos::get_th2poly(string name, string title) {
    TH2Poly* hitmapoly = new TH2Poly(name.c_str(), title.c_str(), 25, -7.14598, 7.14598, 25, -6.1886, 6.188);
    SetHistoAxisLabels(hitmapoly, "X [cm]", "Y [cm]");
    Double_t Graph_fx1[4] = {
@@ -651,7 +385,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_1");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx2[4] = {
    6.171528,
    6.496345,
@@ -667,7 +401,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_2");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx3[4] = {
    5.197076,
    5.521893,
@@ -683,7 +417,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_3");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx4[6] = {
    5.197076,
    5.521893,
@@ -703,7 +437,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_4");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx5[6] = {
    5.197076,
    5.521893,
@@ -723,7 +457,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_5");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx6[6] = {
    5.197076,
    5.521893,
@@ -743,7 +477,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_6");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx7[4] = {
    5.197076,
    5.521893,
@@ -759,7 +493,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_7");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx8[4] = {
    4.222624,
    4.547442,
@@ -775,7 +509,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_8");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx9[6] = {
    4.222624,
    4.547442,
@@ -795,7 +529,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_9");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx10[6] = {
    4.222624,
    4.547442,
@@ -815,7 +549,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_10");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx11[6] = {
    4.222624,
    4.547442,
@@ -835,7 +569,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_11");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx12[6] = {
    4.222624,
    4.547441,
@@ -855,7 +589,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_12");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx13[6] = {
    4.222624,
    4.547441,
@@ -875,7 +609,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_13");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx14[6] = {
    4.222624,
    4.547441,
@@ -895,7 +629,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_14");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx15[4] = {
    4.222624,
    4.547441,
@@ -911,7 +645,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_15");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx16[4] = {
    3.248173,
    3.57299,
@@ -927,7 +661,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_16");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx17[6] = {
    3.248173,
    3.57299,
@@ -947,7 +681,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_17");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx18[6] = {
    3.248173,
    3.57299,
@@ -967,7 +701,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_18");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx19[6] = {
    3.248173,
    3.57299,
@@ -987,7 +721,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_19");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx20[6] = {
    3.248173,
    3.57299,
@@ -1007,7 +741,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_20");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx21[6] = {
    3.248173,
    3.57299,
@@ -1027,7 +761,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_21");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx22[6] = {
    3.248172,
    3.57299,
@@ -1047,7 +781,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_22");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx23[6] = {
    3.248172,
    3.57299,
@@ -1067,7 +801,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_23");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx24[6] = {
    3.248172,
    3.57299,
@@ -1087,7 +821,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_24");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx25[6] = {
    3.248172,
    3.57299,
@@ -1107,7 +841,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_25");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx26[4] = {
    3.248172,
    3.57299,
@@ -1123,7 +857,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_26");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx27[4] = {
    2.273721,
    2.598538,
@@ -1139,7 +873,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_27");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx28[6] = {
    2.273721,
    2.598538,
@@ -1159,7 +893,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_28");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx29[6] = {
    2.273721,
    2.598538,
@@ -1179,7 +913,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_29");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx30[6] = {
    2.273721,
    2.598538,
@@ -1199,7 +933,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_30");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx31[6] = {
    2.273721,
    2.598538,
@@ -1219,7 +953,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_31");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx32[6] = {
    2.273721,
    2.598538,
@@ -1239,7 +973,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_32");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx33[6] = {
    2.273721,
    2.598538,
@@ -1259,7 +993,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_33");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx34[6] = {
    2.273721,
    2.598538,
@@ -1279,7 +1013,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_34");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx35[6] = {
    2.273721,
    2.598538,
@@ -1299,7 +1033,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_35");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx36[6] = {
    2.273721,
    2.598538,
@@ -1319,7 +1053,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_36");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx37[6] = {
    2.273721,
    2.598538,
@@ -1339,7 +1073,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_37");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx38[4] = {
    2.273721,
    3.57299,
@@ -1355,7 +1089,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_38");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx39[6] = {
    1.299269,
    1.624086,
@@ -1375,7 +1109,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_39");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx40[6] = {
    1.299269,
    1.624086,
@@ -1395,7 +1129,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_40");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx41[6] = {
    1.299269,
    1.624086,
@@ -1415,7 +1149,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_41");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx42[6] = {
    1.299269,
    1.624086,
@@ -1435,7 +1169,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_42");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx43[6] = {
    1.299269,
    1.624086,
@@ -1455,7 +1189,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_43");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx44[6] = {
    1.299269,
    1.624086,
@@ -1475,7 +1209,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_44");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx45[6] = {
    1.299269,
    1.624086,
@@ -1495,7 +1229,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_45");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx46[6] = {
    1.299269,
    1.624086,
@@ -1515,7 +1249,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_46");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx47[6] = {
    1.299269,
    1.624086,
@@ -1535,7 +1269,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_47");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx48[6] = {
    1.299269,
    1.624086,
@@ -1555,7 +1289,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_48");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx49[6] = {
    1.299269,
    1.624086,
@@ -1575,7 +1309,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_49");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx50[4] = {
    0.3248173,
    0.6496345,
@@ -1591,7 +1325,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_50");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx51[6] = {
    0.3248173,
    0.6496345,
@@ -1611,7 +1345,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_51");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx52[6] = {
    0.3248173,
    0.6496345,
@@ -1631,7 +1365,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_52");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx53[6] = {
    0.3248173,
    0.6496345,
@@ -1651,7 +1385,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_53");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx54[6] = {
    0.3248173,
    0.6496345,
@@ -1671,7 +1405,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_54");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx55[6] = {
    0.3248173,
    0.6496345,
@@ -1691,7 +1425,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_55");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx56[6] = {
    0.3248172,
    0.6496345,
@@ -1711,7 +1445,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_56");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx57[6] = {
    0.3248172,
    0.6496345,
@@ -1731,7 +1465,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_57");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx58[6] = {
    0.3248172,
    0.6496345,
@@ -1751,7 +1485,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_58");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx59[6] = {
    0.3248172,
    0.6496345,
@@ -1771,7 +1505,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_59");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx60[6] = {
    0.3248172,
    0.6496345,
@@ -1791,7 +1525,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_60");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx61[4] = {
    0.3248172,
    1.624086,
@@ -1807,7 +1541,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_61");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx62[6] = {
    -0.6496345,
    -0.3248172,
@@ -1827,7 +1561,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_62");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx63[6] = {
    -0.6496345,
    -0.3248172,
@@ -1847,7 +1581,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_63");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx64[6] = {
    -0.6496345,
    -0.3248172,
@@ -1867,7 +1601,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_64");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx65[6] = {
    -0.6496345,
    -0.3248172,
@@ -1887,7 +1621,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_65");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx66[6] = {
    -0.6496345,
    -0.3248172,
@@ -1907,7 +1641,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_66");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx67[6] = {
    -0.6496345,
    -0.3248173,
@@ -1927,7 +1661,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_67");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx68[6] = {
    -0.6496345,
    -0.3248173,
@@ -1947,7 +1681,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_68");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx69[6] = {
    -0.6496345,
    -0.3248173,
@@ -1967,7 +1701,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_69");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx70[6] = {
    -0.6496345,
    -0.3248173,
@@ -1987,7 +1721,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_70");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx71[6] = {
    -0.6496345,
    -0.3248173,
@@ -2007,7 +1741,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_71");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx72[6] = {
    -0.6496345,
    -0.3248173,
@@ -2027,7 +1761,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_72");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx73[4] = {
    -1.624086,
    -1.299269,
@@ -2043,7 +1777,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_73");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx74[6] = {
    -1.624086,
    -1.299269,
@@ -2063,7 +1797,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_74");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx75[6] = {
    -1.624086,
    -1.299269,
@@ -2083,7 +1817,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_75");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx76[6] = {
    -1.624086,
    -1.299269,
@@ -2103,7 +1837,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_76");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx77[6] = {
    -1.624086,
    -1.299269,
@@ -2123,7 +1857,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_77");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx78[6] = {
    -1.624086,
    -1.299269,
@@ -2143,7 +1877,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_78");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx79[6] = {
    -1.624086,
    -1.299269,
@@ -2163,7 +1897,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_79");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx80[6] = {
    -1.624086,
    -1.299269,
@@ -2183,7 +1917,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_80");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx81[6] = {
    -1.624086,
    -1.299269,
@@ -2203,7 +1937,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_81");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx82[6] = {
    -1.624086,
    -1.299269,
@@ -2223,7 +1957,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_82");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx83[6] = {
    -1.624086,
    -1.299269,
@@ -2243,7 +1977,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_83");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx84[4] = {
    -1.624086,
    -0.3248173,
@@ -2259,7 +1993,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_84");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx85[6] = {
    -2.598538,
    -2.273721,
@@ -2279,7 +2013,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_85");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx86[6] = {
    -2.598538,
    -2.273721,
@@ -2299,7 +2033,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_86");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx87[6] = {
    -2.598538,
    -2.273721,
@@ -2319,7 +2053,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_87");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx88[6] = {
    -2.598538,
    -2.273721,
@@ -2339,7 +2073,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_88");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx89[6] = {
    -2.598538,
    -2.273721,
@@ -2359,7 +2093,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_89");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx90[6] = {
    -2.598538,
    -2.273721,
@@ -2379,7 +2113,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_90");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx91[6] = {
    -2.598538,
    -2.273721,
@@ -2399,7 +2133,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_91");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx92[6] = {
    -2.598538,
    -2.273721,
@@ -2419,7 +2153,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_92");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx93[6] = {
    -2.598538,
    -2.273721,
@@ -2439,7 +2173,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_93");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx94[6] = {
    -2.598538,
    -2.273721,
@@ -2459,7 +2193,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_94");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx95[6] = {
    -2.598538,
    -2.273721,
@@ -2479,7 +2213,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_95");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx96[4] = {
    -3.57299,
    -3.248172,
@@ -2495,7 +2229,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_96");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx97[6] = {
    -3.57299,
    -3.248172,
@@ -2515,7 +2249,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_97");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx98[6] = {
    -3.57299,
    -3.248172,
@@ -2535,7 +2269,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_98");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx99[6] = {
    -3.57299,
    -3.248172,
@@ -2555,7 +2289,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_99");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx100[6] = {
    -3.57299,
    -3.248172,
@@ -2575,7 +2309,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_100");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx101[6] = {
    -3.57299,
    -3.248173,
@@ -2595,7 +2329,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_101");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx102[6] = {
    -3.57299,
    -3.248173,
@@ -2615,7 +2349,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_102");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx103[6] = {
    -3.57299,
    -3.248173,
@@ -2635,7 +2369,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_103");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx104[6] = {
    -3.57299,
    -3.248173,
@@ -2655,7 +2389,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_104");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx105[6] = {
    -3.57299,
    -3.248173,
@@ -2675,7 +2409,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_105");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx106[6] = {
    -3.57299,
    -3.248173,
@@ -2695,7 +2429,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_106");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx107[4] = {
    -3.57299,
    -2.273721,
@@ -2711,7 +2445,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_107");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx108[4] = {
    -4.222624,
    -3.57299,
@@ -2727,7 +2461,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_108");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx109[6] = {
    -4.547441,
    -4.222624,
@@ -2747,7 +2481,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_109");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx110[6] = {
    -4.547441,
    -4.222624,
@@ -2767,7 +2501,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_110");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx111[6] = {
    -4.547441,
    -4.222624,
@@ -2787,7 +2521,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_111");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx112[6] = {
    -4.547441,
    -4.222624,
@@ -2807,7 +2541,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_112");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx113[6] = {
    -4.547442,
    -4.222624,
@@ -2827,7 +2561,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_113");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx114[6] = {
    -4.547442,
    -4.222624,
@@ -2847,7 +2581,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_114");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx115[6] = {
    -4.547442,
    -4.222624,
@@ -2867,7 +2601,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_115");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx116[6] = {
    -4.547442,
    -4.222624,
@@ -2887,7 +2621,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_116");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx117[6] = {
    -4.547442,
    -4.222624,
@@ -2907,7 +2641,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_117");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx118[4] = {
    -3.57299,
    -3.248173,
@@ -2923,7 +2657,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_118");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx119[4] = {
    -5.197076,
    -4.547441,
@@ -2939,7 +2673,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_119");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx120[6] = {
    -5.521893,
    -5.197076,
@@ -2959,7 +2693,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_120");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx121[6] = {
    -5.521893,
    -5.197076,
@@ -2979,7 +2713,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_121");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx122[6] = {
    -5.521893,
    -5.197076,
@@ -2999,7 +2733,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_122");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx123[6] = {
    -5.521893,
    -5.197076,
@@ -3019,7 +2753,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_123");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx124[6] = {
    -5.521893,
    -5.197076,
@@ -3039,7 +2773,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_124");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx125[6] = {
    -5.521893,
    -5.197076,
@@ -3059,7 +2793,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_125");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx126[4] = {
    -4.547442,
    -4.222624,
@@ -3075,7 +2809,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_126");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx127[4] = {
    -6.171528,
    -5.521893,
@@ -3091,7 +2825,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_127");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx128[6] = {
    -6.496345,
    -6.171528,
@@ -3111,7 +2845,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_128");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx129[6] = {
    -6.496345,
    -6.171528,
@@ -3131,7 +2865,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_129");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx130[6] = {
    -6.496345,
    -6.171528,
@@ -3151,7 +2885,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_130");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx131[4] = {
    -5.521893,
    -5.197076,
@@ -3167,7 +2901,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_131");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx132[4] = {
    -7.14598,
    -6.496345,
@@ -3183,7 +2917,7 @@ TH2Poly* HitmapHistos::get_th2poly(string name, string title) {
    graph->SetTitle("Sensor_132");
    graph->SetFillColor(1);
    hitmapoly->AddBin(graph);
-   
+
    Double_t Graph_fx133[4] = {
    -6.496345,
    -6.171528,

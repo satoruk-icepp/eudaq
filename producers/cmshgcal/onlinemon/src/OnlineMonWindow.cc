@@ -30,7 +30,15 @@
 #define S_ISREG(mode) (((mode)&S_IFMT) == S_IFREG)
 #endif
 
+// Enable this for debug options:
+//#ifndef DEBUG
+//#define DEBUG
+//#endif
+
 using namespace std;
+
+//std::clock_t start;
+//double duration;
 
 // the constructor
 OnlineMonWindow::OnlineMonWindow(const TGWindow *p, UInt_t w, UInt_t h)
@@ -187,13 +195,13 @@ void OnlineMonWindow::ExecuteEvent(Int_t event, Int_t /*px*/, Int_t /*py*/,
   {
 #ifdef DEBUG
     cout << "Being in ExecuteEvent " << sel->ClassName() << endl;
-    cout << "CLick at " << px << "/" << py << "With event " << event << endl;
+    //cout << "CLick at " << px << "/" << py << "With event " << event << endl;
 #endif
     _activeHistos.clear();
     // ECvs_right->GetCanvas()->BlockAllSignals(1);
     ECvs_right->GetCanvas()->Clear();
     ECvs_right->GetCanvas()->cd();
-    sel->Draw("COLZ");
+    sel->Draw("COLZ TEXT");
     ECvs_right->GetCanvas()->Update();
     MapSubwindows();
     MapWindow();
@@ -202,17 +210,24 @@ void OnlineMonWindow::ExecuteEvent(Int_t event, Int_t /*px*/, Int_t /*py*/,
 
 void OnlineMonWindow::Write() {
   TFile *f = new TFile(_rootfilename.c_str(), "RECREATE");
+  
+  std::cout<<"--> Doing OnlineMonWindow::Write() "<<std::endl;
+  std::cout<<" _rootfilename =  "<<_rootfilename<<std::endl;
+ 
   if (f != NULL) {
     for (unsigned int i = 0; i < _colls.size(); ++i) {
       _colls.at(i)->Write(f);
     }
     f->Close();
   } else {
-    cerr << "Can't open root file" << endl;
+    cerr << "ERR: Can't open root file" << endl;
+    std::cout<<" COUT: Can't open root file"<<std::endl;
   }
 }
 
 void OnlineMonWindow::Reset() {
+  std::cout<<"--> Doing OnlineMonWindow::Reset() "<<std::endl;
+
   UpdateStatus("Resetting..");
   for (unsigned int i = 0; i < _colls.size(); ++i) {
     _colls.at(i)->Reset();
@@ -222,7 +237,7 @@ void OnlineMonWindow::Reset() {
 
 void OnlineMonWindow::AutoReset() {
   _autoreset = button_autoreset->IsOn();
-  // cout << "AutoReset " << status << endl;
+  cout << "AutoReset " << _autoreset << endl;
 }
 
 void OnlineMonWindow::Quit() { gApplication->Terminate(0); }
@@ -347,6 +362,8 @@ void OnlineMonWindow::registerHisto(std::string tree, TH1 *h, std::string op,
 
 void OnlineMonWindow::autoUpdate() {
 
+  myStopWatch.Start(true);
+  
   _reduceUpdate++;
   unsigned int activeHistoSize = _activeHistos.size();
   if (_reduceUpdate > activeHistoSize) {
@@ -372,6 +389,8 @@ void OnlineMonWindow::autoUpdate() {
       // fCanvas->Modified();
       fCanvas->Update();
     }
+
+      
     UpdateEventNumber(_eventnum);
     UpdateRunNumber(_runnum);
     UpdateTotalEventNumber(_analysedEvents);
@@ -380,6 +399,11 @@ void OnlineMonWindow::autoUpdate() {
     MapWindow();
 
     _reduceUpdate = 0;
+    
+    myStopWatch.Stop();
+    
+    //std::cout<<"APZ Timer. OnlineMonWindow::autoUpdate() t = "<< myStopWatch.RealTime() <<" sec"<<std::endl;
+
   }
 
   // cout << "...updated" << endl;
@@ -394,13 +418,7 @@ void OnlineMonWindow::ChangeReduce(Long_t /*num*/) {
 }
 
 OnlineMonWindow::~OnlineMonWindow() { gApplication->Terminate(0); }
-/*
-   void registerSensor(std::string name, int id) {
 
-
-
-   }
- */
 
 void OnlineMonWindow::actorMenu(TGListTreeItem * /*item*/, Int_t btn, Int_t x,
                                 Int_t y) {

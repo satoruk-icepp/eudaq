@@ -17,6 +17,12 @@ bool HitmapCollection::isPlaneRegistered(SimpleStandardPlane p) {
   return (it != _map.end());
 }
 
+bool HitmapCollection::isPlaneRegistered(eudaq::StandardPlane p) {
+  std::map<eudaq::StandardPlane, HitmapHistos *>::iterator it;
+  it = _map2.find(p);
+  return (it != _map2.end());
+}
+
 void HitmapCollection::fillHistograms(const SimpleStandardPlane &simpPlane) {
   /*
      section_counter[0] = 0;
@@ -83,6 +89,11 @@ void HitmapCollection::fillHistograms(const SimpleStandardPlane &simpPlane) {
   }
 }
 
+void HitmapCollection::fillHistograms(const eudaq::StandardPlane &pl) {
+  std::cout<<"In HitmapCollection::fillHistograms(StandardPlane)"<<std::endl;
+}
+
+
 void HitmapCollection::bookHistograms(const SimpleStandardEvent &simpev) {
   for (int plane = 0; plane < simpev.getNPlanes(); plane++) {
     SimpleStandardPlane simpPlane = simpev.getPlane(plane);
@@ -92,11 +103,23 @@ void HitmapCollection::bookHistograms(const SimpleStandardEvent &simpev) {
   }
 }
 
+void HitmapCollection::bookHistograms(const eudaq::StandardEvent &ev) {
+  std::cout<<"In HitmapCollection::bookHistograms(StandardEvent)"<<std::endl;
+
+  for (int plane = 0; plane < ev.NumPlanes(); plane++) {
+    const eudaq::StandardPlane Plane = ev.GetPlane(plane);
+    if (!isPlaneRegistered(Plane)) {
+      registerPlane(Plane);
+    }
+  }
+}
+
 void HitmapCollection::Write(TFile *file) {
   if (file == NULL) {
     // cout << "HitmapCollection::Write File pointer is NULL"<<endl;
     exit(-1);
-  }
+  }  
+
   if (gDirectory != NULL) // check if this pointer exists
   {
     gDirectory->mkdir("Hitmaps");
@@ -135,6 +158,11 @@ void HitmapCollection::Reset() {
   for (it = _map.begin(); it != _map.end(); ++it) {
     (*it).second->Reset();
   }
+  
+  std::map<eudaq::StandardPlane, HitmapHistos *>::iterator it2;
+  for (it2 = _map2.begin(); it2 != _map2.end(); ++it2) {
+    (*it2).second->Reset();
+  }
 }
 
 void HitmapCollection::Fill(const SimpleStandardEvent &simpev) {
@@ -145,11 +173,21 @@ void HitmapCollection::Fill(const SimpleStandardEvent &simpev) {
     fillHistograms(simpPlane);
 
   }
-    
 }
+
+void HitmapCollection::Fill(const eudaq::StandardEvent &ev) {
+  std::cout<<"Fill(StandardEvent)"<<std::endl;
+}
+
+
 HitmapHistos *HitmapCollection::getHitmapHistos(std::string sensor, int id) {
   SimpleStandardPlane sp(sensor, id);
   return _map[sp];
+}
+
+void HitmapCollection::registerPlane(const eudaq::StandardPlane &p) {
+  std::cout<<"In HitmapCollection::registerPlane(StandardPlane)"<<std::endl;
+
 }
 
 void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
@@ -164,11 +202,12 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
     }
     // cout << "HitmapCollection:: Monitor running in online-mode" << endl;
     char tree[1024], folder[1024];
-    sprintf(tree, "%s/Sensor %i/Occupancy", p.getName().c_str(), p.getID());
+    sprintf(tree, "%s/Sensor %i/Occ_ADC_HG", p.getName().c_str(), p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
-    _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsOccupancyHisto(), "COLZL TEXT");
+    _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsOccAdcHisto(), "COLZL TEXT");
     
     sprintf(folder, "%s", p.getName().c_str());
+
 #ifdef DEBUG
     cout << "DEBUG " << p.getName().c_str() << endl;
     cout << "DEBUG " << folder << " " << tree << endl;
@@ -176,10 +215,10 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
 
     _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
 
-    sprintf(tree, "%s/Sensor %i/Charge", p.getName().c_str(), p.getID());
-    _mon->getOnlineMon()->registerTreeItem(tree);
-    _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsChargeHisto(), "COLZ TEXT");
-    _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
+    //sprintf(tree, "%s/Sensor %i/HG_ADC_in_last_event", p.getName().c_str(), p.getID());
+    //_mon->getOnlineMon()->registerTreeItem(tree);
+    //_mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHexagonsChargeHisto(), "COLZ TEXT");
+    //_mon->getOnlineMon()->addTreeItemSummary(folder, tree);
 
     sprintf(tree, "%s/Sensor %i/Occ_TOT", p.getName().c_str(), p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
@@ -196,14 +235,12 @@ void HitmapCollection::registerPlane(const SimpleStandardPlane &p) {
     _mon->getOnlineMon()->registerHisto(tree, getHitmapHistos(p.getName(), p.getID())->getHitmapHisto(), "COLZ", 0);
     //_mon->getOnlineMon()->addTreeItemSummary(folder, tree);
     
-    sprintf(tree, "%s/Sensor %i/Hitmap X Projection", p.getName().c_str(),
-            p.getID());
+    sprintf(tree, "%s/Sensor %i/RawHitmap X Projection", p.getName().c_str(), p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(
         tree, getHitmapHistos(p.getName(), p.getID())->getHitXmapHisto());
 
-    sprintf(tree, "%s/Sensor %i/Hitmap Y Projection", p.getName().c_str(),
-            p.getID());
+    sprintf(tree, "%s/Sensor %i/RawHitmap Y Projection", p.getName().c_str(),p.getID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(
         tree, getHitmapHistos(p.getName(), p.getID())->getHitYmapHisto());

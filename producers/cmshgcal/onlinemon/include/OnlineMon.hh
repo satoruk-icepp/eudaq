@@ -1,3 +1,4 @@
+// -*- mode: c -*-
 #ifndef ONLINE_MON_H
 #define ONLINE_MON_H
 
@@ -30,6 +31,7 @@
 #include "CorrelationHistos.hh"
 #include "EUDAQMonitorHistos.hh"
 
+#include "HexagonCollection.hh"
 #include "HitmapCollection.hh"
 #include "CorrelationCollection.hh"
 #include "MonitorPerformanceCollection.hh"
@@ -86,6 +88,8 @@ public:
               const std::string &conffile = "");
   ~RootMonitor() { gApplication->Terminate(); }
   void registerSensorInGUI(std::string name, int id);
+
+  HexagonCollection *hexaCollection;
   HitmapCollection *hmCollection;
   CorrelationCollection *corrCollection;
   EUDAQMonitorCollection *eudaqCollection;
@@ -144,6 +148,8 @@ private:
   double previous_event_clustering_time;
   double previous_event_correlation_time;
   unsigned int tracksPerEvent;
+  double m_tmp_time1, m_tmp_time2, m_prevOnEventTime;
+  TStopwatch myStopWatch;
 };
 
 #ifdef __CINT__

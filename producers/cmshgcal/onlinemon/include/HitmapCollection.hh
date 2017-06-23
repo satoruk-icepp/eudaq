@@ -1,3 +1,4 @@
+// -*- mode: c -*-
 /*
  * HitmapCollection.hh
  *
@@ -19,6 +20,8 @@
 #include <map>
 #include <iostream>
 
+#include "eudaq/StandardEvent.hh"
+
 // Project Includes
 #include "SimpleStandardEvent.hh"
 #include "HitmapHistos.hh"
@@ -29,12 +32,17 @@ class HitmapCollection : public BaseCollection {
 protected:
   bool isOnePlaneRegistered;
   std::map<SimpleStandardPlane, HitmapHistos *> _map;
+  std::map<eudaq::StandardPlane, HitmapHistos *> _map2;
   bool isPlaneRegistered(SimpleStandardPlane p);
-  void fillHistograms(const SimpleStandardPlane &simpPlane);
-
+  bool isPlaneRegistered(eudaq::StandardPlane p);
+  void fillHistograms(const SimpleStandardPlane &simpPlane); 
+  void fillHistograms(const eudaq::StandardPlane &plane);
+    
 public:
   void registerPlane(const SimpleStandardPlane &p);
+  void registerPlane(const eudaq::StandardPlane &p);
   void bookHistograms(const SimpleStandardEvent &simpev);
+  void bookHistograms(const eudaq::StandardEvent &ev);
   void setRootMonitor(RootMonitor *mon) { _mon = mon; }
   HitmapCollection() : BaseCollection() {
     std::cout << " Initialising Hitmap Collection" << std::endl;
@@ -42,6 +50,7 @@ public:
     CollectionType = HITMAP_COLLECTION_TYPE;
   }
   void Fill(const SimpleStandardEvent &simpev);
+  void Fill(const eudaq::StandardEvent &ev);
   HitmapHistos *getHitmapHistos(std::string sensor, int id);
   void Reset();
   virtual void Write(TFile *file);

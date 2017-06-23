@@ -6,11 +6,13 @@ PROJECT( EUDAQ )
 
 # project version
 SET( ${PROJECT_NAME}_VERSION_MAJOR 1 )
-SET( ${PROJECT_NAME}_VERSION_MINOR 5 )
-SET( ${PROJECT_NAME}_VERSION_PATCH 0 )
+SET( ${PROJECT_NAME}_VERSION_MINOR 6 )
+SET( ${PROJECT_NAME}_VERSION_PATCH 6 )
 
 # some macros are redefined to keep compatability with CMake 2.6
 include(${PROJECT_SOURCE_DIR}/cmake/CMakeCompatibility.cmake)
+
+#MESSAGE(INFO:  "Proj source dir: ${PROJECT_SOURCE_DIR}")
 
 # Determine platform- and compiler-specific settings
 include(${PROJECT_SOURCE_DIR}/cmake/Platform.cmake)
