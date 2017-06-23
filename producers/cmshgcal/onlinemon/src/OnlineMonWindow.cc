@@ -31,9 +31,9 @@
 #endif
 
 // Enable this for debug options:
-#ifndef DEBUG
-#define DEBUG
-#endif
+//#ifndef DEBUG
+//#define DEBUG
+//#endif
 
 using namespace std;
 

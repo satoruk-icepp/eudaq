@@ -38,11 +38,14 @@ protected:
   TH1I *_hitYmap;
 
   TH2D *_HotPixelMap;
-  TH1F *_hitOcc;
+  //TH1F *_hitOcc;
   TH1I *_nHits;
   TH1I *_nbadHits;
   TH1I *_nHotPixels;
 
+  TH2I *_waveformLG, *_waveformHG;
+  TProfile *_waveformNormLG, *_waveformNormHG;
+  
 public:
   HexagonHistos(eudaq::StandardPlane p, RootMonitor *mon);
 
@@ -60,15 +63,23 @@ public:
   TH1I *getHitXmapHisto() { return _hitXmap; }
   TH1I *getHitYmapHisto() { return _hitYmap; }
   TH2D *getHotPixelMapHisto() { return _HotPixelMap; }
-  TH1F *getHitOccHisto() {
-    if (_wait)
-      return NULL;
-    else
-      return _hitOcc;
-  }
+
+  //TH1F *getHitOccHisto() {
+  //if (_wait)
+  //  return NULL;
+  //else
+  //  return _hitOcc;
+  //}
   TH1I *getNHitsHisto() { return _nHits; }
   TH1I *getNbadHitsHisto() { return _nbadHits; }
 
+  TH2I *getWaveformLGHisto() {return _waveformLG;}
+  TH2I *getWaveformHGHisto() {return _waveformHG;}
+
+  TProfile *getWaveformLGProfile() {return _waveformNormLG;}
+  TProfile *getWaveformHGProfile() {return _waveformNormHG;}
+
+  
   void setRootMonitor(RootMonitor *mon) { _mon = mon; }
 
 private:
