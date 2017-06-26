@@ -251,7 +251,7 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
       return; //don't process any further
     }
 
-    for (unsigned int i = 0; i < num; i++)
+    for (unsigned int i = 0; i < num;i++)
     {
       const eudaq::StandardPlane & plane = ev.GetPlane(i);
 
@@ -284,15 +284,17 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
       }
       SimpleStandardPlane simpPlane(sensorname,plane.ID(),plane.XSize(),plane.YSize(), plane.TLUEvent(),plane.PivotPixel(),&mon_configdata);
 
-      unsigned int lvl1 = 2;
-      // if (lvl1 > 2 && plane.HitPixels(lvl1) > 0) std::cout << "LVLHits: " << lvl1 << ": " << plane.HitPixels(lvl1) << std::endl;
-      
-      for (unsigned int index = 0; index < plane.HitPixels(lvl1); index++)
+      for (unsigned int lvl1 = 0; lvl1 < plane.NumFrames(); lvl1++)
+      {
+        // if (lvl1 > 2 && plane.HitPixels(lvl1) > 0) std::cout << "LVLHits: " << lvl1 << ": " << plane.HitPixels(lvl1) << std::endl;
+
+        for (unsigned int index = 0; index < plane.HitPixels(lvl1);index++)
         {
           SimpleStandardHit hit((int)plane.GetX(index,lvl1),(int)plane.GetY(index,lvl1));
-          hit.setTOT((int)plane.GetPixel(index, 12)); // TOT 
-          hit.setAMP((int)plane.GetPixel(index,lvl1)); //this stores the analog information if existent, else it stores 1
+          hit.setTOT((int)plane.GetPixel(index,lvl1)); //this stores the analog information if existent, else it stores 1
           hit.setLVL1(lvl1);
+
+
 
           if (simpPlane.getAnalogPixelType()) //this is analog pixel, apply threshold
           {
@@ -315,15 +317,6 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
 		continue;
 	      }
 	    }
-
-	    if (simpPlane.is_HEXABOARD)
-	      {
-		// Here we could set more selection on the pixels
-		// Or set SkiRoc specific values
-		if (hit.getAMP() < 20)
-		  continue;
-              
-	      }	    
             simpPlane.addHit(hit);
           }
           else //purely digital pixel
@@ -332,9 +325,7 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
           }
 
         }
-     
-
-      
+      }
       simpEv.addPlane(simpPlane);
 #ifdef DEBUG
       cout << "Type: " << plane.Type() << endl;
@@ -449,7 +440,7 @@ void RootMonitor::OnStartRun(unsigned param) {
   }
 
   Monitor::OnStartRun(param);
-  std::cout << "Called on start run" << param <<std::endl;
+  std::cout << "OnlineMon: Called on start run. RUN=" << param <<std::endl;
   onlinemon->UpdateStatus("Starting run..");
   char out[255];
   sprintf(out, "run%d.root",param);

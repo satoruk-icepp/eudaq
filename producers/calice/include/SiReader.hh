@@ -1,7 +1,7 @@
 #ifndef SIREADER_HH
 #define SIREADER_HH
 
-#include "CaliceProducer.hh"
+#include <AHCALProducer.hh>
 
 namespace eudaq {
 

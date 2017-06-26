@@ -20,3 +20,5 @@ INSTALL(TARGETS  ${hgcal_name} ${rpi_name} ${wirechamber_name}
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib)
 
+
+add_subdirectory(onlinemon)

@@ -83,6 +83,8 @@ class RpiProducer : public eudaq::Producer {
       m_portUDP = config.Get("portUDP", 55512);
       m_rpi_1_ip = config.Get("RPI_1_IP", "192.168.222.3");
 
+      std::cout<<"RPI IP address: "<<m_rpi_1_ip<<std::endl;
+
       if (configurationSuccessful) {
         SetStatus(eudaq::Status::LVL_OK, "Configuration reset!");
       }
@@ -268,7 +270,7 @@ class RpiProducer : public eudaq::Producer {
 	if (!m_running)
 	  {
 	    eudaq::mSleep(2000);
-	    EUDAQ_DEBUG("Not Running; but sleeping");
+	    //EUDAQ_DEBUG("Not Running; but sleeping");
 	    SetStatus(eudaq::Status::LVL_USER, "Sleeping");
 	    continue;
 	  }
@@ -287,7 +289,7 @@ class RpiProducer : public eudaq::Producer {
 	// ***********
 
 	SetStatus(eudaq::Status::LVL_DEBUG, "Running");
-	EUDAQ_DEBUG("Running again");
+	//EUDAQ_DEBUG("Running again");
 
 	const int bufsize = split1;
 	char buffer[bufsize];
@@ -358,13 +360,13 @@ class RpiProducer : public eudaq::Producer {
 	
 
 	std::cout<<"First few bytes of the RAW event:"<<std::endl;
-	for (int b=0; b<8; b++)
+	for (int b=0; b<3; b++)
 	  //printf(" %d byte: %x\n", b, (unsigned char)m_raw32bitData[b]);
 	  std::cout<<b<<" byte = "<<eudaq::to_hex(m_raw32bitData[b])<<std::endl;
 
-	std::cout<<"First 8 bytes of the RAW event:"<<std::endl;
-	for (int b=1; b<8; b++)
-	  std::cout<<RAW_EV_SIZE_32-b<<" byte = "<<eudaq::to_hex(m_raw32bitData[RAW_EV_SIZE_32-b])<<std::endl;
+	//std::cout<<"Last 8 bytes of the RAW event:"<<std::endl;
+	//for (int b=1; b<8; b++)
+	//std::cout<<RAW_EV_SIZE_32-b<<" byte = "<<eudaq::to_hex(m_raw32bitData[RAW_EV_SIZE_32-b])<<std::endl;
 
 	
 	
