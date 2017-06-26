@@ -6,6 +6,10 @@ SET (HgcOnlineMon_SOURCES
   src/OnlineMon.cxx
   src/OnlineMonWindow.cc
   src/BaseCollection.cc
+  src/HexagonCollection.cc
+  src/HexagonHistos.cc
+  src/AhcalCollection.cc
+  src/AhcalHistos.cc
   src/CheckEOF.cc
   src/CorrelationCollection.cc
   src/CorrelationHistos.cc
@@ -13,8 +17,6 @@ SET (HgcOnlineMon_SOURCES
   src/EUDAQMonitorHistos.cc
   src/EventSanityChecker.cc
   src/GraphWindow.cc
-  src/HexagonCollection.cc
-  src/HexagonHistos.cc
   src/HitmapCollection.cc
   src/HitmapHistos.cc
   src/MonitorPerformanceCollection.cc

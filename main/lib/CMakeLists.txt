@@ -67,6 +67,10 @@ if (BUILD_cmshgcal)
    list(APPEND plugins_sources ${PROJECT_SOURCE_DIR}/producers/cmshgcal/src/HexaBoardConverterPlugin.cc)
 endif()
 
+if (BUILD_calice)
+   list(APPEND plugins_sources ${PROJECT_SOURCE_DIR}/producers/calice/src/CaliceGenericConverterPlugin.cc)
+endif()
+
 ADD_LIBRARY( ${PROJECT_NAME} SHARED ${library_sources} ${plugins_sources})
 
 if (PROTOBUF_FOUND AND GEN_proto)
