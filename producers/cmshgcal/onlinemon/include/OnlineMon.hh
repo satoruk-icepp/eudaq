@@ -32,7 +32,8 @@
 #include "EUDAQMonitorHistos.hh"
 
 #include "HexagonCollection.hh"
-#include "HitmapCollection.hh"
+#include "AhcalCollection.hh"
+
 #include "CorrelationCollection.hh"
 #include "MonitorPerformanceCollection.hh"
 #include "EUDAQMonitorCollection.hh"
@@ -90,7 +91,8 @@ public:
   void registerSensorInGUI(std::string name, int id);
 
   HexagonCollection *hexaCollection;
-  HitmapCollection *hmCollection;
+  AhcalCollection *ahcalCollection;
+
   CorrelationCollection *corrCollection;
   EUDAQMonitorCollection *eudaqCollection;
 

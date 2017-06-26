@@ -43,13 +43,12 @@
 
 using namespace std;
 // Enable this for debug options:
-//#ifndef DEBUG
-//#define DEBUG
-//#endif
+#ifndef DEBUG
+#define DEBUG
+#endif
 
 RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & datafile, int /*x*/, int /*y*/, int /*w*/,
-			 int /*h*/, int argc, int offline, const unsigned lim, const unsigned skip_, const unsigned int skip_with_counter,
-			 const std::string & conffile)
+			 int /*h*/, int argc, int offline, const unsigned lim, const unsigned skip_, const unsigned int skip_with_counter, const std::string & conffile)
   : eudaq::Holder<int>(argc), eudaq::Monitor("OnlineMon", runcontrol, lim, skip_, skip_with_counter, datafile), _offline(offline), _planesInitialized(false) {
 
   if (_offline <= 0)
@@ -63,27 +62,27 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
   }
 
   hexaCollection = new HexagonCollection();
-  
-  //hmCollection = new HitmapCollection();
+  ahcalCollection = new AhcalCollection();
   corrCollection = new CorrelationCollection();
-  MonitorPerformanceCollection *monCollection =new MonitorPerformanceCollection();
-  eudaqCollection = new EUDAQMonitorCollection();
+
+  //MonitorPerformanceCollection *monCollection =new MonitorPerformanceCollection();
+  //eudaqCollection = new EUDAQMonitorCollection();
 
   cout << "--- Done ---"<<endl<<endl;
 
   // put collections into the vector
   _colls.push_back(hexaCollection);
-  //_colls.push_back(hmCollection);
+  _colls.push_back(ahcalCollection);
   _colls.push_back(corrCollection);
-  _colls.push_back(monCollection);
-  _colls.push_back(eudaqCollection);
+  //_colls.push_back(monCollection);
+  //_colls.push_back(eudaqCollection);
   // set the root Monitor
   if (_offline <= 0) {
     hexaCollection->setRootMonitor(this);
-    //hmCollection->setRootMonitor(this);
+    ahcalCollection->setRootMonitor(this);
     corrCollection->setRootMonitor(this);
-    monCollection->setRootMonitor(this);
-    eudaqCollection->setRootMonitor(this);
+    //monCollection->setRootMonitor(this);
+    //eudaqCollection->setRootMonitor(this);
     onlinemon->setCollections(_colls);
   }
 
@@ -243,7 +242,8 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
         cout << "Current/Previous " <<num<<"/"<<myevent.getNPlanes()<<endl;
         skip_dodgy_event=true; //we may want to skip this FIXME
         ostringstream eudaq_warn_message;
-        eudaq_warn_message << "Plane Mismatch in Event "<<ev.GetEventNumber() <<" "<<num<<"/"<<myevent.getNPlanes();
+        eudaq_warn_message << "Plane Mismatch in Event "<<ev.GetEventNumber() <<" "<<num<<"/"<<myevent.getNPlanes()
+			   <<"  If this happens at the end of RUN - it's normal.";
         EUDAQ_LOG(WARN,(eudaq_warn_message.str()).c_str());
 
       }
@@ -252,117 +252,22 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
       }
     }
 
-    SimpleStandardEvent simpEv;
+
+    
     if ((ev.GetEventNumber() == 1) && (_offline <0)) //only update Display, when GUI is active
-    {
       onlinemon->UpdateStatus("Getting data..");
-    }
-    // store the processing time of the previous EVENT, as we can't track this during the  processing
-    simpEv.setMonitor_eventanalysistime(previous_event_analysis_time);
-    simpEv.setMonitor_eventfilltime(previous_event_fill_time);
-    simpEv.setMonitor_eventclusteringtime(previous_event_clustering_time);
-    simpEv.setMonitor_eventcorrelationtime(previous_event_correlation_time);
-    // add some info into the simple event header
-    simpEv.setEvent_number(ev.GetEventNumber());
-    simpEv.setEvent_timestamp(ev.GetTimestamp());
-
+    
+    
     if (skip_dodgy_event)
-    {
       return; //don't process any further
-    }
 
-    for (unsigned int i = 0; i < num; i++)
-    {
-      const eudaq::StandardPlane & plane = ev.GetPlane(i);
+    
+    /***************
+// There was Simple Standard Event and Plane codes here
+// It's removed for HGC monitoring.
+// The plots are made directly from StandardEven and StandardPlanes
 
-#ifdef DEBUG
-      cout << "Plane ID         " << plane.ID()<<endl;
-      cout << "Plane Size       " << sizeof(plane) <<endl;
-      cout << "Plane Frames     " << plane.NumFrames() <<endl;
-      for (unsigned int nframes=0; nframes<plane.NumFrames(); nframes++)
-      {
-        cout << "Plane Pixels Hit Frame " << nframes <<" "<<plane.HitPixels(0) <<endl;
-      }
-      cout << i << " "<<plane.TLUEvent() << " "<< plane.PivotPixel() <<endl;
-#endif
-
-
-      string sensorname;
-      if ((plane.Type() == std::string("DEPFET")) &&(plane.Sensor().length()==0)) // FIXME ugly hack for the DEPFET
-      {
-        sensorname=plane.Type();
-      }
-      else
-      {
-        sensorname=plane.Sensor();
-
-      }
-      // DEAL with Fortis ...
-      if (strcmp(plane.Sensor().c_str(), "FORTIS") == 0 )
-      {
-        continue;
-      }
-      SimpleStandardPlane simpPlane(sensorname,plane.ID(),plane.XSize(),plane.YSize(), plane.TLUEvent(),plane.PivotPixel(),&mon_configdata);
-
-      unsigned int lvl1 = 9+3;
-      // if (lvl1 > 2 && plane.HitPixels(lvl1) > 0) std::cout << "LVLHits: " << lvl1 << ": " << plane.HitPixels(lvl1) << std::endl;
-
-      for (unsigned int index = 0; index < plane.HitPixels(lvl1); index++)
-        {
-          SimpleStandardHit hit((int)plane.GetX(index,lvl1),(int)plane.GetY(index,lvl1));
-
-	  const int avg = (plane.GetPixel(index, 11) + plane.GetPixel(index, 12) + plane.GetPixel(index, 13))/3; 
-          hit.setAMP(avg); // Average amplitude over 3 time samples around maximum 
-          hit.setLVL1((int)plane.GetPixel(index, 18));// Let's use this guy for TOA storage!
-          hit.setTOT((int)plane.GetPixel(index, 19)); // TOT
-
-          if (simpPlane.getAnalogPixelType()) //this is analog pixel, apply threshold
-          {
-            if (simpPlane.is_DEPFET)
-            {
-              if ((hit.getTOT()< -20) || (hit.getTOT()>120))
-              {
-                continue;
-              }
-            }
-	    if (simpPlane.is_EXPLORER)
-	    {
-	      if (lvl1!=0) continue;
-	      hit.setTOT((int)plane.GetPixel(index));
-	      //if (hit.getTOT() < -20 || hit.getTOT() > 20) {
-		//std::cout << hit.getTOT() << std::endl;
-	      //}
-	      if (hit.getTOT() < 20)
-	      {
-		continue;
-	      }
-	    }
-
-	    if (simpPlane.is_HEXABOARD)
-	      {
-		// Here we could set more selection on the pixels
-		// Or set SkiRoc specific values
-		if (hit.getAMP() == 4) // 4 is a minimum ADC counts possible
-		  continue;
-
-	      }
-            simpPlane.addHit(hit);
-          }
-          else //purely digital pixel
-          {
-            simpPlane.addHit(hit);
-          }
-
-        }
-
-      simpEv.addPlane(simpPlane);
-#ifdef DEBUG
-      cout << "Type: " << plane.Type() << endl;
-      cout << "StandardPlane: "<< plane.Sensor() <<  " " << plane.ID() << " " << plane.XSize() << " " << plane.YSize() << endl;
-      cout << "PlaneAddress: " << &plane << endl;
-#endif
-
-    }
+    ***********/
 
     my_event_inner_operations_time.Start(true);
     // Don't do clustering for hexaboard. This would not make any sense
@@ -396,29 +301,27 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
       if (_colls.at(i) == corrCollection)
       {
         my_event_inner_operations_time.Start(true);
-        if (getUseTrack_corr() == true)
-        {
-          tracksPerEvent = corrCollection->FillWithTracks(simpEv);
-          if (eudaqCollection->getEUDAQMonitorHistos() != NULL) //workaround because Correlation Collection is before EUDAQ Mon collection
-            eudaqCollection->getEUDAQMonitorHistos()->Fill(simpEv.getEvent_number(), tracksPerEvent);
 
-        }
-        else
-          _colls.at(i)->Fill(simpEv);
+	std::cout<<" correlation collection disabled"<<std::endl;
+	//_colls.at(i)->Fill(simpEv);
+	
         my_event_inner_operations_time.Stop();
         previous_event_correlation_time = my_event_inner_operations_time.RealTime();
       }
-      else if (_colls.at(i) == hexaCollection)
+
+      //else if (_colls.at(i) == hexaCollection && sensorname==std::string("HexaBoard"))
+      else if (_colls.at(i)->getCollectionType()==HEXAGON_COLLECTION_TYPE)
+        _colls.at(i)->Fill(ev);
+
+      else if (_colls.at(i)->getCollectionType()==AHCAL_COLLECTION_TYPE)
         _colls.at(i)->Fill(ev);
       
-      else
-        _colls.at(i)->Fill(simpEv);
-
-      // CollType is used to check which kind of Collection we are having
-      if (_colls.at(i)->getCollectionType()==HITMAP_COLLECTION_TYPE) // Calculate is only implemented for HitMapCollections
-      {
-        _colls.at(i)->Calculate(ev.GetEventNumber());
+      else {
+	std::cout<<" No Fill method is implemented for this situation:\n"
+		 <<"collection type: "<<_colls.at(i)->getCollectionType()<<std::endl;
       }
+      
+      //_colls.at(i)->Calculate(ev.GetEventNumber());
     }
 
     if (_offline <= 0)

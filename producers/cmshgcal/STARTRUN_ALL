@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# ----------
+# This starter script should run all producers at once:
+# HGCAL (RPI or IPBUS), AHCAL, WireChamber, etc
+#-----------
+
 export RCPORT=44000
 [ "$1" != "" ] && RCPORT=$1
 
@@ -104,6 +109,15 @@ xterm -sb -sl 1000 -geom 80x600-280-900 -fn fixed -T "RPI Producer" -e './RpiPro
 #flog="../logs/Run${NEWRUNNUM}_HGCalProducer_$dt.log"
 #nohup ./HGCalProducer.exe -r tcp://$HOSTIP:$RCPORT > $flog 2>&1 &
 #printf "The logs from the HGCalProducer are in $flog file. \n"
+
+sleep 1
+
+#######################################################################
+# AHCAL producer
+####################
+printf '\033[22;33m\t  caliceProducer-scintillator  \033[0m \n'
+xterm -sb -sl 1000000 -geom 160x10-480-900 -fn fixed -T "CALICE AHCAL" -e "./AHCALProducer.exe -n CaliceSc -r tcp://$TLUIP:$RCPORT && read || read" & 
+#./AHCALProducer.exe -n CaliceSc -r tcp://$TLUIP:$RCPORT 
 
 sleep 2
 

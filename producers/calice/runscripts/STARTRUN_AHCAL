@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ~/opt/root/6.08.04/build/bin/thisroot.sh
+#source ~/opt/root/6.08.04/build/bin/thisroot.sh
 
 #source build_env.sh
 

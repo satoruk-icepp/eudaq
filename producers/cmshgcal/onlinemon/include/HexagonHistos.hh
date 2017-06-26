@@ -1,10 +1,4 @@
 // -*- mode: c -*-
-/*
- * HexagonHistos.hh
- *
- *  Created on: Jun 16, 2011
- *      Author: stanitz
- */
 
 #ifndef HEXAGONHISTOS_HH_
 #define HEXAGONHISTOS_HH_

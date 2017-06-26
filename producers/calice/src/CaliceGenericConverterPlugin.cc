@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <typeinfo>  // for the std::bad_cast
+#include <memory> // for std::unique_ptr
 
 #include "eudaq/DataConverterPlugin.hh"
 #include "eudaq/StandardEvent.hh"
