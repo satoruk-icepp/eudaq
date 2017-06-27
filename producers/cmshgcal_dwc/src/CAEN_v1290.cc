@@ -545,3 +545,55 @@ int CAEN_V1290::SoftwareTrigger() {
   status |= CAENVME_WriteCycle(handle_,configuration_.baseAddress + CAEN_V1290_SOFTWARETRIGGERREG,&dummy_data, CAEN_V1290_ADDRESSMODE, cvD16);
   return status;
 }
+
+
+
+void CAEN_V1290::generatePseudoData(std::vector<WORD> &data) {
+  std::default_random_engine generator;
+  
+  std::vector< std::normal_distribution<double> > distrs;
+  distrs.push_back(std::normal_distribution<double>(600., 10.));
+  distrs.push_back(std::normal_distribution<double>(400., 10.));
+  distrs.push_back(std::normal_distribution<double>(650., 10.));
+  distrs.push_back(std::normal_distribution<double>(390., 10.));
+  distrs.push_back(std::normal_distribution<double>(610., 10.));
+  distrs.push_back(std::normal_distribution<double>(410., 10.));
+  distrs.push_back(std::normal_distribution<double>(660., 10.));
+  distrs.push_back(std::normal_distribution<double>(400., 10.));
+  distrs.push_back(std::normal_distribution<double>(600., 10.));
+  distrs.push_back(std::normal_distribution<double>(400., 10.));
+  distrs.push_back(std::normal_distribution<double>(650., 10.));
+  distrs.push_back(std::normal_distribution<double>(390., 10.));
+  distrs.push_back(std::normal_distribution<double>(610., 10.));
+  distrs.push_back(std::normal_distribution<double>(410., 10.));
+  distrs.push_back(std::normal_distribution<double>(660., 10.));
+  distrs.push_back(std::normal_distribution<double>(400., 10.));
+
+  
+  WORD bitStream = 0;
+
+  //first the BOE
+  unsigned int eventNr = 1;
+  bitStream = bitStream | 10<<28;
+  data.push_back(bitStream);
+  
+  //generate the channel information
+  for (unsigned int channel=0; channel<16; channel++) {
+    unsigned int readout;
+    readout=distrs[channel](generator);
+    
+
+    for (int N=0; N<20; N++) {
+      bitStream = 0;
+      bitStream = bitStream | 0<<28;
+      bitStream = bitStream | channel<<21;
+      bitStream = bitStream | (readout+N);
+      data.push_back(bitStream);
+    }
+  }
+  
+  //last the BOE
+  bitStream = 0;
+  bitStream = bitStream | 0x08<<28;
+  data.push_back(bitStream);
+}
