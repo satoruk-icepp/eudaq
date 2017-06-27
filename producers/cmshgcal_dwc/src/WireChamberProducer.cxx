@@ -175,7 +175,6 @@ class WireChamberProducer : public eudaq::Producer {
         eudaq::mSleep(200);
         continue;
       }
-      std::cout<<"mode: "<<_mode<<std::endl;
       
       if (stopping) continue;
       if (_mode==DWC_RUN) {
