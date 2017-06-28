@@ -63,6 +63,9 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
 
   hexaCollection = new HexagonCollection();
   ahcalCollection = new AhcalCollection();
+  wcCollection = new WireChamberCollection();
+
+
   corrCollection = new CorrelationCollection();
 
   //MonitorPerformanceCollection *monCollection =new MonitorPerformanceCollection();
@@ -73,6 +76,7 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
   // put collections into the vector
   _colls.push_back(hexaCollection);
   _colls.push_back(ahcalCollection);
+  _colls.push_back(wcCollection);
   _colls.push_back(corrCollection);
   //_colls.push_back(monCollection);
   //_colls.push_back(eudaqCollection);
@@ -80,6 +84,7 @@ RootMonitor::RootMonitor(const std::string & runcontrol, const std::string & dat
   if (_offline <= 0) {
     hexaCollection->setRootMonitor(this);
     ahcalCollection->setRootMonitor(this);
+    wcCollection->setRootMonitor(this);
     corrCollection->setRootMonitor(this);
     //monCollection->setRootMonitor(this);
     //eudaqCollection->setRootMonitor(this);
@@ -314,6 +319,9 @@ void RootMonitor::OnEvent(const eudaq::StandardEvent & ev) {
         _colls.at(i)->Fill(ev);
 
       else if (_colls.at(i)->getCollectionType()==AHCAL_COLLECTION_TYPE)
+        _colls.at(i)->Fill(ev);
+
+      else if (_colls.at(i)->getCollectionType()==WIRECHAMBER_COLLECTION_TYPE)
         _colls.at(i)->Fill(ev);
       
       else {
