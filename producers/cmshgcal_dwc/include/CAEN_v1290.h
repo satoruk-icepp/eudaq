@@ -168,6 +168,8 @@ public:
 
   inline CAEN_V1290_Config_t* GetConfiguration() { return &configuration_; };
 
+  virtual void generatePseudoData(std::vector<WORD> &data);
+
   int EnableTDCTestMode(WORD testData);
   int DisableTDCTestMode();
   int SoftwareTrigger();

@@ -19,6 +19,11 @@
 #include "Unpacker.h"
 
 
+enum RUNMODE{
+  DWC_DEBUG = 0,
+  DWC_RUN
+};
+
 
 static const std::string EVENT_TYPE = "DelayWireChambers";
 
@@ -27,15 +32,34 @@ class WireChamberProducer : public eudaq::Producer {
 
   WireChamberProducer(const std::string & name, const std::string & runcontrol)
     : eudaq::Producer(name, runcontrol), m_run(0), m_ev(0), stopping(false), done(false), started(0) {
-      std::cout<<"Initialisation of the DWC Producer..."<<std::endl;
       tdc = new CAEN_V1290();
-      tdc->Init();
+      opticalLinkInitialized = false;
       tdc_unpacker = NULL;
       outTree=NULL;
+      _mode = DWC_DEBUG;
+      std::cout<<"Initialisation of the DWC Producer..."<<std::endl;
     }
 
   virtual void OnConfigure(const eudaq::Configuration & config) {
     std::cout << "Configuring: " << config.Name() << std::endl;
+
+    //Read the data output file prefix
+    dataFilePrefix = config.Get("dataFilePrefix", "../data/dwc_run_");
+  
+
+    int mode = config.Get("AcquisitionMode", 0);
+    
+    switch( mode ){
+      case 0 : 
+        _mode = DWC_DEBUG;
+        break; 
+      case 1:
+      default :
+        _mode = DWC_RUN;
+        break;
+    }
+    std::cout<<"Mode at configuration: "<<_mode<<std::endl;
+    
 
     CAEN_V1290::CAEN_V1290_Config_t _config;
 
@@ -51,9 +75,6 @@ class WireChamberProducer : public eudaq::Producer {
     _config.windowWidth = config.Get("windowWidth", 0x40);
     _config.windowOffset = config.Get("windowOffset", -1);
 
-    tdc->Config(_config);
-    tdc->SetupModule();
-
     //read the channel map
     N_channels = config.Get("N_channels", 16);
     EUDAQ_INFO("Enabled channels:");
@@ -62,20 +83,16 @@ class WireChamberProducer : public eudaq::Producer {
       std::cout<<"TDC channel "<<channel<<" connected ? "<<channels_enabled[channel]<<std::endl;
     }
 
-    defaultTimestamp = config.Get("defaultTimestamp", -999);
-  
-    //setup the synchronisation board
-    int mode = config.Get("AcquisitionMode", 0);
-    /*
-    switch( mode ){
-      case 0 : 
-      default : 
+    if (_mode == DWC_RUN) { 
+      if (!opticalLinkInitialized) {  //the initialization is to be run just once
+        tdc->Init();
+        opticalLinkInitialized = true;
+      }
+      tdc->Config(_config);
+      tdc->SetupModule();
     }
-    */
-    
-    //Read the data output file prefix
-    dataFilePrefix = config.Get("dataFilePrefix", "../data/dwc_run_");
-
+      
+    defaultTimestamp = config.Get("defaultTimestamp", -999);
     SetStatus(eudaq::Status::LVL_OK, "Configured (" + config.Name() + ")");
 
   }
@@ -87,7 +104,8 @@ class WireChamberProducer : public eudaq::Producer {
     m_ev = 0;
     EUDAQ_INFO("Start Run: "+param);
   
-    tdc->BufferClear();
+    if (_mode==DWC_RUN)
+      tdc->BufferClear();
 
     dwc_timestamps.clear();
     channels.clear();
@@ -151,6 +169,7 @@ class WireChamberProducer : public eudaq::Producer {
 
 
   void ReadoutLoop() {
+    
     while(!done) {
       if (!started) {
         eudaq::mSleep(200);
@@ -158,15 +177,16 @@ class WireChamberProducer : public eudaq::Producer {
       }
       
       if (stopping) continue;
-      
-      //boost::thread TDC_thread = boost::thread(readTDCThread, tdc, std::ref(dataStream));
-      //TDC_thread.join();
-      tdc->Read(dataStream);
+      if (_mode==DWC_RUN) {
+        tdc->Read(dataStream);
+      } else if (_mode==DWC_DEBUG) {
+        eudaq::mSleep(1000);
+        tdc->generatePseudoData(dataStream);
+      }
       
       if (dataStream.size() == 0)
         continue;
       
-  
       m_ev++;
       tdcData unpacked = tdc_unpacker->ConvertTDCData(dataStream);
 
@@ -179,21 +199,22 @@ class WireChamberProducer : public eudaq::Producer {
         dwc_timestamps[channel] = channels_enabled[channel] ? unpacked.timeOfArrivals[channel] : defaultTimestamp;
       }
 
-
       std::cout<<"+++ Event: "<<m_ev<<" +++"<<std::endl;
       for (int channel=0; channel<N_channels; channel++) std::cout<<" "<<dwc_timestamps[channel]; std::cout<<std::endl;
       
       outTree->Fill();
       
       //Adding the event to the EUDAQ format
-      
       SendEvent(ev);
     }
   }
 
   private:
+    RUNMODE _mode;
+
     unsigned m_run, m_ev;
     bool stopping, done, started;
+    bool opticalLinkInitialized;
 
     std::string dataFilePrefix;
 
@@ -213,6 +234,8 @@ class WireChamberProducer : public eudaq::Producer {
     std::vector<int> channels;  
 
     int defaultTimestamp;
+
+
 
 };
 
