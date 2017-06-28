@@ -10,6 +10,8 @@ SET (HgcOnlineMon_SOURCES
   src/HexagonHistos.cc
   src/AhcalCollection.cc
   src/AhcalHistos.cc
+  src/WireChamberCollection.cc
+  src/WireChamberHistos.cc
   src/CheckEOF.cc
   src/CorrelationCollection.cc
   src/CorrelationHistos.cc

@@ -67,6 +67,10 @@ if (BUILD_cmshgcal)
    list(APPEND plugins_sources ${PROJECT_SOURCE_DIR}/producers/cmshgcal/src/HexaBoardConverterPlugin.cc)
 endif()
 
+if (BUILD_cmshgcal_dwc)
+   list(APPEND plugins_sources ${PROJECT_SOURCE_DIR}/producers/cmshgcal_dwc/src/WireChamberConverterPlugin.cc)
+endif()
+
 if (BUILD_calice)
    list(APPEND plugins_sources ${PROJECT_SOURCE_DIR}/producers/calice/src/CaliceGenericConverterPlugin.cc)
 endif()

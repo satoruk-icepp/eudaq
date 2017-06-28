@@ -164,7 +164,7 @@ namespace eudaq {
 	  plane.SetTLUEvent(GetTriggerID(ev));
 	  // Add the plane to the StandardEvent
 	  sev.AddPlane(plane);
-	  eudaq::mSleep(100);
+	  eudaq::mSleep(30);
 
 
 	  /* APZ DBG

@@ -25,7 +25,7 @@ enum RUNMODE{
 };
 
 
-static const std::string EVENT_TYPE = "DelayWireChambers";
+static const std::string EVENT_TYPE = "WireChambers";
 
 class WireChamberProducer : public eudaq::Producer {
   public:
@@ -45,21 +45,21 @@ class WireChamberProducer : public eudaq::Producer {
 
     //Read the data output file prefix
     dataFilePrefix = config.Get("dataFilePrefix", "../data/dwc_run_");
-  
+
 
     int mode = config.Get("AcquisitionMode", 0);
-    
+
     switch( mode ){
-      case 0 : 
+      case 0 :
         _mode = DWC_DEBUG;
-        break; 
+        break;
       case 1:
       default :
         _mode = DWC_RUN;
         break;
     }
     std::cout<<"Mode at configuration: "<<_mode<<std::endl;
-    
+
 
     CAEN_V1290::CAEN_V1290_Config_t _config;
 
@@ -83,7 +83,7 @@ class WireChamberProducer : public eudaq::Producer {
       std::cout<<"TDC channel "<<channel<<" connected ? "<<channels_enabled[channel]<<std::endl;
     }
 
-    if (_mode == DWC_RUN) { 
+    if (_mode == DWC_RUN) {
       if (!opticalLinkInitialized) {  //the initialization is to be run just once
         tdc->Init();
         opticalLinkInitialized = true;
@@ -91,7 +91,7 @@ class WireChamberProducer : public eudaq::Producer {
       tdc->Config(_config);
       tdc->SetupModule();
     }
-      
+
     defaultTimestamp = config.Get("defaultTimestamp", -999);
     SetStatus(eudaq::Status::LVL_OK, "Configured (" + config.Name() + ")");
 
@@ -103,7 +103,7 @@ class WireChamberProducer : public eudaq::Producer {
     m_run = param;
     m_ev = 0;
     EUDAQ_INFO("Start Run: "+param);
-  
+
     if (_mode==DWC_RUN)
       tdc->BufferClear();
 
@@ -123,7 +123,7 @@ class WireChamberProducer : public eudaq::Producer {
     outTree->Branch("event", &m_ev);
     outTree->Branch("channels", &channels);
     outTree->Branch("dwc_timestamps", &dwc_timestamps);
-    
+
 
     // It must send a BORE to the Data Collector
     eudaq::RawDataEvent bore(eudaq::RawDataEvent::BORE(EVENT_TYPE, m_run));
@@ -162,20 +162,20 @@ class WireChamberProducer : public eudaq::Producer {
     EUDAQ_INFO("Terminating...");
     done = true;
     eudaq::mSleep(200);
-    
+
     delete tdc;
     delete tdc_unpacker;
   }
 
 
   void ReadoutLoop() {
-    
+
     while(!done) {
       if (!started) {
         eudaq::mSleep(200);
         continue;
       }
-      
+
       if (stopping) continue;
       if (_mode==DWC_RUN) {
         tdc->Read(dataStream);
@@ -183,16 +183,13 @@ class WireChamberProducer : public eudaq::Producer {
         eudaq::mSleep(1000);
         tdc->generatePseudoData(dataStream);
       }
-      
+
       if (dataStream.size() == 0)
         continue;
-      
+
       m_ev++;
       tdcData unpacked = tdc_unpacker->ConvertTDCData(dataStream);
 
-      //making an EUDAQ event
-      eudaq::RawDataEvent ev(EVENT_TYPE,m_run,m_ev);
-      ev.AddBlock(1, dataStream);
 
       for (int channel=0; channel<N_channels; channel++) {
         channels[channel] = channel;
@@ -201,9 +198,27 @@ class WireChamberProducer : public eudaq::Producer {
 
       std::cout<<"+++ Event: "<<m_ev<<" +++"<<std::endl;
       for (int channel=0; channel<N_channels; channel++) std::cout<<" "<<dwc_timestamps[channel]; std::cout<<std::endl;
-      
+
       outTree->Fill();
-      
+
+
+      // ------
+      // Here, can we do a conversion of the raw data to X,Y positions of the Wire Cahmbers?
+      // Let's assume we can, and the numbers are storres in a vector of floats
+      std::vector<float> PosXY;
+      const float X1 = 0.5;
+      const float Y1 = 0.3;
+      const float X2 = 0.4;
+      const float Y2 = 0.5;
+      PosXY.push_back(X1);
+      PosXY.push_back(Y1);
+      PosXY.push_back(X2);
+      PosXY.push_back(Y2);
+      //making an EUDAQ event
+      eudaq::RawDataEvent ev(EVENT_TYPE,m_run,m_ev);
+
+      ev.AddBlock(0, PosXY);
+
       //Adding the event to the EUDAQ format
       SendEvent(ev);
     }
@@ -230,8 +245,8 @@ class WireChamberProducer : public eudaq::Producer {
     //generated for each run
     TTree* outTree;
 
-    std::vector<int> dwc_timestamps; 
-    std::vector<int> channels;  
+    std::vector<int> dwc_timestamps;
+    std::vector<int> channels;
 
     int defaultTimestamp;
 
@@ -252,13 +267,13 @@ int main(int /*argc*/, const char ** argv) {
   "The minimum level for displaying log messages locally");
   eudaq::Option<std::string> name (op, "n", "name", "DWCs", "string",
   "The name of this Producer.");
-  
+
   try {
     op.Parse(argv);
     EUDAQ_LOG_LEVEL(level.Value());
     WireChamberProducer producer(name.Value(), rctrl.Value());
     producer.ReadoutLoop();
-    
+
     EUDAQ_INFO("Quitting");
   } catch (...) {
     return op.HandleMainException();

@@ -33,6 +33,7 @@
 
 #include "HexagonCollection.hh"
 #include "AhcalCollection.hh"
+#include "WireChamberCollection.hh"
 
 #include "CorrelationCollection.hh"
 #include "MonitorPerformanceCollection.hh"
@@ -92,6 +93,7 @@ public:
 
   HexagonCollection *hexaCollection;
   AhcalCollection *ahcalCollection;
+  WireChamberCollection *wcCollection;
 
   CorrelationCollection *corrCollection;
   EUDAQMonitorCollection *eudaqCollection;
