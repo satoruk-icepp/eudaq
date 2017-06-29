@@ -88,8 +88,10 @@ class WireChamberProducer : public eudaq::Producer {
       if (!initialized) {  //the initialization is to be run just once
         initialized = tdc->Init();
       }
-      tdc->Config(_config);
-      tdc->SetupModule();
+      if (initialized) {
+        tdc->Config(_config);
+        tdc->SetupModule();
+      }
     }
 
     defaultTimestamp = config.Get("defaultTimestamp", -999);
@@ -168,6 +170,8 @@ class WireChamberProducer : public eudaq::Producer {
   }
 
 
+
+
   void ReadoutLoop() {
 
     while(!done) {
@@ -177,7 +181,7 @@ class WireChamberProducer : public eudaq::Producer {
       }
 
       if (stopping) continue;
-      if (_mode==DWC_RUN) {
+      if (_mode==DWC_RUN && initialized) {
         tdc->Read(dataStream);
       } else if (_mode==DWC_DEBUG) {
         eudaq::mSleep(1000);
