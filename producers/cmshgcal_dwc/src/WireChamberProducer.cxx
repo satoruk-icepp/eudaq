@@ -106,8 +106,11 @@ class WireChamberProducer : public eudaq::Producer {
     m_ev = 0;
     EUDAQ_INFO("Start Run: "+param);
 
-    if (_mode==DWC_RUN)
+    if (_mode==DWC_RUN && initialized)
       tdc->BufferClear();
+    else if (!initialized)
+      EUDAQ_INFO("ATTENTION !!! Communication to the TDC has not been established");
+
 
     dwc_timestamps.clear();
     channels.clear();
