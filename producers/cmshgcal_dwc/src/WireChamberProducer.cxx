@@ -33,7 +33,7 @@ class WireChamberProducer : public eudaq::Producer {
   WireChamberProducer(const std::string & name, const std::string & runcontrol)
     : eudaq::Producer(name, runcontrol), m_run(0), m_ev(0), stopping(false), done(false), started(0) {
       tdc = new CAEN_V1290();
-      opticalLinkInitialized = false;
+      initialized = false;
       tdc_unpacker = NULL;
       outTree=NULL;
       _mode = DWC_DEBUG;
@@ -83,10 +83,10 @@ class WireChamberProducer : public eudaq::Producer {
       std::cout<<"TDC channel "<<channel<<" connected ? "<<channels_enabled[channel]<<std::endl;
     }
 
+
     if (_mode == DWC_RUN) {
-      if (!opticalLinkInitialized) {  //the initialization is to be run just once
-        tdc->Init();
-        opticalLinkInitialized = true;
+      if (!initialized) {  //the initialization is to be run just once
+        initialized = tdc->Init();
       }
       tdc->Config(_config);
       tdc->SetupModule();
@@ -229,7 +229,7 @@ class WireChamberProducer : public eudaq::Producer {
 
     unsigned m_run, m_ev;
     bool stopping, done, started;
-    bool opticalLinkInitialized;
+    bool initialized;
 
     std::string dataFilePrefix;
 

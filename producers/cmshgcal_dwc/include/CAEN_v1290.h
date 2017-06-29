@@ -154,7 +154,7 @@ public:
   // --- Configurable  
   
 
-  virtual int Init();
+  virtual bool Init();
   virtual int SetupModule();
   virtual int Clear();
   virtual int ClearBusy() {return 0;};

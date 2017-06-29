@@ -3,13 +3,13 @@
 
 //#define CAENV1290_DEBUG 
 
-int CAEN_V1290::Init() {
+bool CAEN_V1290::Init() {
   int status=0;
   std::cout<< "[CAEN_V1290]::[INFO]::++++++ CAEN V1290 INIT ++++++"<<std::endl;
   
   if (handle_<0) {
     std::cout<<"Handle is negative --> Init has failed."<<std::endl;
-    return ERR_CONF_NOT_FOUND;
+    return false;
   }
 
   char* software_version = new char[100];
@@ -27,9 +27,9 @@ int CAEN_V1290::Init() {
   
   if (status) {
     std::cout << "[CAEN_VX2718]::[ERROR]::Cannot open VX2718 board." << std::endl;
-    return ERR_OPEN;
+    return false;
   }  
-  return 0;
+  return true;
 }
 
 int CAEN_V1290::SetupModule() {
