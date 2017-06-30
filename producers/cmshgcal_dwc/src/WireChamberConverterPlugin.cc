@@ -106,43 +106,6 @@ namespace eudaq {
 
         for (size_t i = 0; i<wcs.size(); i++) sev.AddPlane(wcs[i]);
 
-        /*
-        StandardPlane wc2(1, EVENT_TYPE, sensortype);
-        StandardPlane wc3(2, EVENT_TYPE, sensortype);
-        StandardPlane wc4(3, EVENT_TYPE, sensortype);
-       
-        wc1.SetSizeRaw(1, 2);
-        wc2.SetSizeRaw(1, 2);
-        wc3.SetSizeRaw(1, 2);
-        wc4.SetSizeRaw(1, 2);
-        // We store 4 numbers into these "planes":
-        // X1,Y1 for first WC, X2,Y2 for second WC  
-        wc1.SetPixel(0, 0, 0, x1);
-        wc1.SetPixel(1, 0, 1, y1);
-        
-        wc2.SetPixel(0, 0, 0, x2);
-        wc2.SetPixel(1, 0, 1, y2);
-
-        wc3.SetPixel(0, 0, 0, x3);
-        wc3.SetPixel(1, 0, 1, y3);
-
-        wc4.SetPixel(0, 0, 0, x4);
-        wc4.SetPixel(1, 0, 1, y4);
-        
-        // Set the trigger ID
-        wc1.SetTLUEvent(GetTriggerID(ev));
-        wc2.SetTLUEvent(GetTriggerID(ev));
-        wc3.SetTLUEvent(GetTriggerID(ev));
-        wc4.SetTLUEvent(GetTriggerID(ev));
-        
-        // Add the plane to the StandardEvent
-        sev.AddPlane(wc1);
-        sev.AddPlane(wc2);
-        sev.AddPlane(wc3);
-        sev.AddPlane(wc4);
-
-        */
-
       	eudaq::mSleep(10);
 	
       }
