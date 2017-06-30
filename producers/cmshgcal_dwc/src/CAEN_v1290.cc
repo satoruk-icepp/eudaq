@@ -237,7 +237,6 @@ int CAEN_V1290::Config(CAEN_V1290::CAEN_V1290_Config_t &_config) {
 int CAEN_V1290::Read(std::vector<WORD> &v) {
   int status = 0; 
 
-  v.clear();
   if (handle_<0) {
     return ERR_CONF_NOT_FOUND;
   }
@@ -549,27 +548,7 @@ int CAEN_V1290::SoftwareTrigger() {
 
 
 void CAEN_V1290::generatePseudoData(std::vector<WORD> &data) {
-  std::default_random_engine generator;
-  
-  std::vector< std::normal_distribution<double> > distrs;
-  distrs.push_back(std::normal_distribution<double>(600., 10.));
-  distrs.push_back(std::normal_distribution<double>(400., 10.));
-  distrs.push_back(std::normal_distribution<double>(650., 10.));
-  distrs.push_back(std::normal_distribution<double>(390., 10.));
-  distrs.push_back(std::normal_distribution<double>(610., 10.));
-  distrs.push_back(std::normal_distribution<double>(410., 10.));
-  distrs.push_back(std::normal_distribution<double>(660., 10.));
-  distrs.push_back(std::normal_distribution<double>(400., 10.));
-  distrs.push_back(std::normal_distribution<double>(600., 10.));
-  distrs.push_back(std::normal_distribution<double>(400., 10.));
-  distrs.push_back(std::normal_distribution<double>(650., 10.));
-  distrs.push_back(std::normal_distribution<double>(390., 10.));
-  distrs.push_back(std::normal_distribution<double>(610., 10.));
-  distrs.push_back(std::normal_distribution<double>(410., 10.));
-  distrs.push_back(std::normal_distribution<double>(660., 10.));
-  distrs.push_back(std::normal_distribution<double>(400., 10.));
 
-  
   WORD bitStream = 0;
 
   //first the BOE
@@ -580,8 +559,7 @@ void CAEN_V1290::generatePseudoData(std::vector<WORD> &data) {
   //generate the channel information
   for (unsigned int channel=0; channel<16; channel++) {
     unsigned int readout;
-    readout=distrs[channel](generator);
-    
+    readout=(unsigned int)(rand()%250) + 75;
 
     for (int N=0; N<20; N++) {
       bitStream = 0;

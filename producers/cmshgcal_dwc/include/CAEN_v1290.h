@@ -4,7 +4,8 @@
 #include <string>
 #include <vector> 
 #include <iostream>
-#include <random>
+#include <stdlib.h>
+
 
 #include "eudaq/Utils.hh"
 
@@ -145,7 +146,8 @@ public:
 
   } CAEN_V1290_Config_t;
 
-  CAEN_V1290(): handle_(-1) { type_="CAEN_V1290"; id_=0; _isConfigured=false;};
+  CAEN_V1290(): handle_(-1) { type_="CAEN_V1290"; id_=0; _isConfigured=false; srand(0);
+  };
 
   inline unsigned int GetId(){return id_;};
   inline void SetId(unsigned int id){id_=id;};
@@ -184,6 +186,7 @@ private:
   uint32_t handle_;
   CAEN_V1290_Config_t configuration_;
   uint32_t channels_;
+
 
 protected:
   unsigned int id_;
