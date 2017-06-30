@@ -75,40 +75,62 @@ namespace eudaq {
 
       for (unsigned blo=0; blo<nBlocks; blo++){
 
-	std::cout<<"Block = "<<blo<<"  Raw GetID = "<<rev->GetID(blo)<<std::endl;
+              
+        std::cout<<"Block = "<<blo<<"  Raw GetID = "<<rev->GetID(blo)<<std::endl;
 
-	const RawDataEvent::data_t & bl = rev->GetBlock(blo);
+        const RawDataEvent::data_t & bl = rev->GetBlock(blo);
 
-	std::cout<<"size of block: "<<bl.size()<<std::endl;
+        std::cout<<"size of block: "<<bl.size()<<std::endl;
 
-	float x1,x2,y1,y2;	
-	memcpy(&x1, &bl[0], sizeof(x1));
-	memcpy(&y1, &bl[4], sizeof(y1));
-	memcpy(&x2, &bl[8], sizeof(x2));
-	memcpy(&y2, &bl[12], sizeof(y2));
+        float x1,x2,y1,y2,x3,y3,x4,y4;  
+        memcpy(&x1, &bl[0], sizeof(x1));
+        memcpy(&y1, &bl[4], sizeof(y1));
+        memcpy(&x2, &bl[8], sizeof(x2));
+        memcpy(&y2, &bl[12], sizeof(y2));
+        memcpy(&x3, &bl[16], sizeof(x3));
+        memcpy(&y3, &bl[20], sizeof(y3));
+        memcpy(&x4, &bl[24], sizeof(x4));
+        memcpy(&y4, &bl[28], sizeof(y4));
 
-	std::cout<<"x1="<<x1<<" y1="<<y1<<"     x2="<<x2<<" y2="<<y2<<std::endl;
+        std::cout<<"x1="<<x1<<" y1="<<y1<<"     x2="<<x2<<" y2="<<y2;
+        std::cout<<" x3="<<x3<<" y3="<<y3<<"     x4="<<x4<<" y4="<<y4<<std::endl;
 
-	
-	StandardPlane wc0(0, EVENT_TYPE, sensortype);
-	StandardPlane wc1(1, EVENT_TYPE, sensortype);
-	wc0.SetSizeRaw(1, 2);
-	wc1.SetSizeRaw(1, 2);
-	// We store 4 numbers into these "planes":
-	// X1,Y1 for first WC, X2,Y2 for second WC	
-      	wc0.SetPixel(0, 0, 0, x1);
-	wc0.SetPixel(1, 0, 1, y1);
-      	wc1.SetPixel(0, 0, 0, x2);
-	wc1.SetPixel(1, 0, 1, y2);
-	
-	// Set the trigger ID
-	wc0.SetTLUEvent(GetTriggerID(ev));
-	wc1.SetTLUEvent(GetTriggerID(ev));
-	// Add the plane to the StandardEvent
-	sev.AddPlane(wc0);
-	sev.AddPlane(wc1);
-	
-	eudaq::mSleep(10);
+        
+        StandardPlane wc1(0, EVENT_TYPE, sensortype);
+        StandardPlane wc2(1, EVENT_TYPE, sensortype);
+        StandardPlane wc3(2, EVENT_TYPE, sensortype);
+        StandardPlane wc4(3, EVENT_TYPE, sensortype);
+        wc1.SetSizeRaw(1, 2);
+        wc2.SetSizeRaw(1, 2);
+        wc3.SetSizeRaw(1, 2);
+        wc4.SetSizeRaw(1, 2);
+        // We store 4 numbers into these "planes":
+        // X1,Y1 for first WC, X2,Y2 for second WC  
+        wc1.SetPixel(0, 0, 0, x1);
+        wc1.SetPixel(1, 0, 1, y1);
+        
+        wc2.SetPixel(0, 0, 0, x2);
+        wc2.SetPixel(1, 0, 1, y2);
+
+        wc3.SetPixel(0, 0, 0, x3);
+        wc3.SetPixel(1, 0, 1, y3);
+
+        wc4.SetPixel(0, 0, 0, x4);
+        wc4.SetPixel(1, 0, 1, y4);
+        
+        // Set the trigger ID
+        wc1.SetTLUEvent(GetTriggerID(ev));
+        wc2.SetTLUEvent(GetTriggerID(ev));
+        wc3.SetTLUEvent(GetTriggerID(ev));
+        wc4.SetTLUEvent(GetTriggerID(ev));
+        
+        // Add the plane to the StandardEvent
+        sev.AddPlane(wc1);
+        sev.AddPlane(wc2);
+        sev.AddPlane(wc3);
+        sev.AddPlane(wc4);
+
+      	eudaq::mSleep(10);
 	
       }
       

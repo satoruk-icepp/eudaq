@@ -75,13 +75,37 @@ class WireChamberProducer : public eudaq::Producer {
     _config.windowWidth = config.Get("windowWidth", 0x40);
     _config.windowOffset = config.Get("windowOffset", -1);
 
-    //read the channel map
+    //read the enabled channels
     N_channels = config.Get("N_channels", 16);
     EUDAQ_INFO("Enabled channels:");
     for (unsigned int channel=0; channel<N_channels; channel++){
       channels_enabled[channel] = (config.Get(("channel_"+std::to_string(channel)).c_str(), -1)==1) ? true : false;
       std::cout<<"TDC channel "<<channel<<" connected ? "<<channels_enabled[channel]<<std::endl;
     }
+
+    
+    dwc1_left_channel = config.Get("dwc1_left_channel", 0); 
+    dwc1_right_channel = config.Get("dwc1_right_channel", 1);
+    dwc1_down_channel = config.Get("dwc1_down_channel", 2); 
+    dwc1_up_channel = config.Get("dwc1_up_channel", 3);
+    
+    dwc2_left_channel = config.Get("dwc2_left_channel", 4); 
+    dwc2_right_channel = config.Get("dwc2_right_channel", 5);
+    dwc2_down_channel = config.Get("dwc2_down_channel", 6); 
+    dwc2_up_channel = config.Get("dwc2_up_channel", 7);
+    
+    dwc3_left_channel = config.Get("dwc3_left_channel", 8); 
+    dwc3_right_channel = config.Get("dwc3_right_channel", 9);      
+    dwc3_down_channel = config.Get("dwc3_down_channel", 10); 
+    dwc3_up_channel = config.Get("dwc3_up_channel", 11);
+    
+    dwc4_left_channel = config.Get("dwc4_left_channel", 12); 
+    dwc4_right_channel = config.Get("dwc4_right_channel", 13);
+    dwc4_down_channel = config.Get("dwc4_down_channel", 14); 
+    dwc4_up_channel = config.Get("dwc4_up_channel", 15);
+      
+    slope_x = config.Get("slope_x", 0.2);
+    slope_y = config.Get("slope_y", 0.2);
 
 
     if (_mode == DWC_RUN) {
@@ -106,11 +130,12 @@ class WireChamberProducer : public eudaq::Producer {
     m_ev = 0;
     EUDAQ_INFO("Start Run: "+param);
 
-    if (_mode==DWC_RUN && initialized)
-      tdc->BufferClear();
-    else if (!initialized)
-      EUDAQ_INFO("ATTENTION !!! Communication to the TDC has not been established");
-
+    if (_mode==DWC_RUN) {
+      if (initialized)
+        tdc->BufferClear();
+      else 
+        EUDAQ_INFO("ATTENTION !!! Communication to the TDC has not been established");
+    }
 
     dwc_timestamps.clear();
     channels.clear();
@@ -197,7 +222,6 @@ class WireChamberProducer : public eudaq::Producer {
       m_ev++;
       tdcData unpacked = tdc_unpacker->ConvertTDCData(dataStream);
 
-
       for (int channel=0; channel<N_channels; channel++) {
         channels[channel] = channel;
         dwc_timestamps[channel] = channels_enabled[channel] ? unpacked.timeOfArrivals[channel] : defaultTimestamp;
@@ -210,17 +234,38 @@ class WireChamberProducer : public eudaq::Producer {
 
 
       // ------
-      // Here, can we do a conversion of the raw data to X,Y positions of the Wire Cahmbers?
-      // Let's assume we can, and the numbers are storres in a vector of floats
-      std::vector<float> PosXY;
-      const float X1 = 0.5;
-      const float Y1 = 0.3;
-      const float X2 = 0.4;
-      const float Y2 = 0.5;
+      // Here, can we do a conversion of the raw data to X,Y positions of the Wire Chambers ->yes
+      // Let's assume we can, and the numbers are stored in a vector of floats
+      
+ 
+      //ATTENTION !
+      //possible source of segfault if the key, i.e. the assigned channel is not in between 0 and N_channels. N_channels and all the channel assignments originate from the configuration
+
+      PosXY.clear();
+      //x-y of wire chamber 1
+      float X1 = slope_x * (dwc_timestamps[dwc1_left_channel] - dwc_timestamps[dwc1_right_channel]);
       PosXY.push_back(X1);
+      float Y1 = slope_y * (dwc_timestamps[dwc1_down_channel] - dwc_timestamps[dwc1_up_channel]); 
       PosXY.push_back(Y1);
+      
+      //x-y of wire chamber 2
+      float X2 = slope_x * (dwc_timestamps[dwc2_left_channel] - dwc_timestamps[dwc2_right_channel]);
       PosXY.push_back(X2);
+      float Y2 = slope_y * (dwc_timestamps[dwc2_down_channel] - dwc_timestamps[dwc2_up_channel]); 
       PosXY.push_back(Y2);
+      
+      //x-y of wire chamber 3
+      float X3 = slope_x * (dwc_timestamps[dwc3_left_channel] - dwc_timestamps[dwc3_right_channel]);
+      PosXY.push_back(X3);
+      float Y3 = slope_y * (dwc_timestamps[dwc3_down_channel] - dwc_timestamps[dwc3_up_channel]); 
+      PosXY.push_back(Y3);  
+
+      //x-y of wire chamber 4
+      float X4 = slope_x * (dwc_timestamps[dwc4_left_channel] - dwc_timestamps[dwc4_right_channel]);
+      PosXY.push_back(X4);
+      float Y4 = slope_y * (dwc_timestamps[dwc4_down_channel] - dwc_timestamps[dwc4_up_channel]); 
+      PosXY.push_back(Y4);
+
       //making an EUDAQ event
       eudaq::RawDataEvent ev(EVENT_TYPE,m_run,m_ev);
 
@@ -228,6 +273,8 @@ class WireChamberProducer : public eudaq::Producer {
 
       //Adding the event to the EUDAQ format
       SendEvent(ev);
+
+      dataStream.clear();
     }
   }
 
@@ -257,7 +304,10 @@ class WireChamberProducer : public eudaq::Producer {
 
     int defaultTimestamp;
 
-
+    std::vector<float> PosXY;
+    //mapping and conversion parameters for the online monitoring
+    double slope_x, slope_y;
+    size_t dwc1_left_channel, dwc1_right_channel, dwc1_down_channel, dwc1_up_channel, dwc2_left_channel, dwc2_right_channel, dwc2_down_channel, dwc2_up_channel, dwc3_left_channel, dwc3_right_channel, dwc3_down_channel, dwc3_up_channel, dwc4_left_channel, dwc4_right_channel, dwc4_down_channel, dwc4_up_channel;
 
 };
 

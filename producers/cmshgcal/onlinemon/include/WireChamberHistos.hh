@@ -3,7 +3,7 @@
 #ifndef WIRECHAMBERHISTOS_HH_
 #define WIRECHAMBERHISTOS_HH_
 
-#include <TH2I.h>
+#include <TH2F.h>
 #include <TH2Poly.h>
 #include <TFile.h>
 
@@ -23,7 +23,7 @@ protected:
   int _maxY;
   bool _wait;
 
-  TH2I *_XYmap;
+  TH2F *_XYmap;
   
 public:
   WireChamberHistos(eudaq::StandardPlane p, RootMonitor *mon);
@@ -34,7 +34,7 @@ public:
   void Calculate(const int currentEventNum);
   void Write();
 
-  TH2I *getXYmapHisto() { return _XYmap; }
+  TH2F *getXYmapHisto() { return _XYmap; }
 
   
   void setRootMonitor(RootMonitor *mon) { _mon = mon; }

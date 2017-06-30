@@ -4,7 +4,6 @@
 #include "WireChamberHistos.hh"
 #include "OnlineMon.hh"
 #include "TCanvas.h"
-#include "TGraph.h"
 #include <cstdlib>
 #include <sstream>
 
@@ -24,8 +23,8 @@ WireChamberHistos::WireChamberHistos(eudaq::StandardPlane p, RootMonitor *mon)
 
     sprintf(out, "%s %i XY map", _sensor.c_str(), _id);
     sprintf(out2, "h_XYmap_%s_%i", _sensor.c_str(), _id);
-    _XYmap = new TH2I(out2, out, 50, -4, 4, 50, -4, 4);
-    SetHistoAxisLabels(_XYmap, "X (cm)", "Y (cm)");
+    _XYmap = new TH2F(out2, out, 100, -50., 50., 100, -50., 50.);
+    SetHistoAxisLabels(_XYmap, "X (mm)", "Y (mm)");
     
 
     // make a plane array for calculating e..g hotpixels and occupancy
