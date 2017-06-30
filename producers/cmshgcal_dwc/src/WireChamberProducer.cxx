@@ -33,7 +33,7 @@ class WireChamberProducer : public eudaq::Producer {
   WireChamberProducer(const std::string & name, const std::string & runcontrol)
     : eudaq::Producer(name, runcontrol), m_run(0), m_ev(0), stopping(false), done(false), started(0) {
       tdc = new CAEN_V1290();
-      opticalLinkInitialized = false;
+      initialized = false;
       tdc_unpacker = NULL;
       outTree=NULL;
       _mode = DWC_DEBUG;
@@ -75,7 +75,7 @@ class WireChamberProducer : public eudaq::Producer {
     _config.windowWidth = config.Get("windowWidth", 0x40);
     _config.windowOffset = config.Get("windowOffset", -1);
 
-    //read the channel map
+    //read the enabled channels
     N_channels = config.Get("N_channels", 16);
     EUDAQ_INFO("Enabled channels:");
     for (unsigned int channel=0; channel<N_channels; channel++){
@@ -83,13 +83,36 @@ class WireChamberProducer : public eudaq::Producer {
       std::cout<<"TDC channel "<<channel<<" connected ? "<<channels_enabled[channel]<<std::endl;
     }
 
+    
+    dwc1_left_channel = config.Get("dwc1_left_channel", 0); 
+    dwc1_right_channel = config.Get("dwc1_right_channel", 1);
+    dwc1_down_channel = config.Get("dwc1_down_channel", 2); 
+    dwc1_up_channel = config.Get("dwc1_up_channel", 3);
+    
+    dwc2_left_channel = config.Get("dwc2_left_channel", 4); 
+    dwc2_right_channel = config.Get("dwc2_right_channel", 5);
+    dwc2_down_channel = config.Get("dwc2_down_channel", 6); 
+    dwc2_up_channel = config.Get("dwc2_up_channel", 7);
+    
+    dwc3_left_channel = config.Get("dwc3_left_channel", 8); 
+    dwc3_right_channel = config.Get("dwc3_right_channel", 9);      
+    dwc3_down_channel = config.Get("dwc3_down_channel", 10); 
+    dwc3_up_channel = config.Get("dwc3_up_channel", 11);
+    
+    dwc4_left_channel = config.Get("dwc4_left_channel", 12); 
+    dwc4_right_channel = config.Get("dwc4_right_channel", 13);
+    dwc4_down_channel = config.Get("dwc4_down_channel", 14); 
+    dwc4_up_channel = config.Get("dwc4_up_channel", 15);
+      
+
     if (_mode == DWC_RUN) {
-      if (!opticalLinkInitialized) {  //the initialization is to be run just once
-        tdc->Init();
-        opticalLinkInitialized = true;
+      if (!initialized) {  //the initialization is to be run just once
+        initialized = tdc->Init();
       }
-      tdc->Config(_config);
-      tdc->SetupModule();
+      if (initialized) {
+        tdc->Config(_config);
+        tdc->SetupModule();
+      }
     }
 
     defaultTimestamp = config.Get("defaultTimestamp", -999);
@@ -104,8 +127,12 @@ class WireChamberProducer : public eudaq::Producer {
     m_ev = 0;
     EUDAQ_INFO("Start Run: "+param);
 
-    if (_mode==DWC_RUN)
-      tdc->BufferClear();
+    if (_mode==DWC_RUN) {
+      if (initialized)
+        tdc->BufferClear();
+      else 
+        EUDAQ_INFO("ATTENTION !!! Communication to the TDC has not been established");
+    }
 
     dwc_timestamps.clear();
     channels.clear();
@@ -168,6 +195,8 @@ class WireChamberProducer : public eudaq::Producer {
   }
 
 
+
+
   void ReadoutLoop() {
 
     while(!done) {
@@ -177,7 +206,7 @@ class WireChamberProducer : public eudaq::Producer {
       }
 
       if (stopping) continue;
-      if (_mode==DWC_RUN) {
+      if (_mode==DWC_RUN && initialized) {
         tdc->Read(dataStream);
       } else if (_mode==DWC_DEBUG) {
         eudaq::mSleep(1000);
@@ -188,8 +217,9 @@ class WireChamberProducer : public eudaq::Producer {
         continue;
 
       m_ev++;
-      tdcData unpacked = tdc_unpacker->ConvertTDCData(dataStream);
+     
 
+      tdcData unpacked = tdc_unpacker->ConvertTDCData(dataStream);
 
       for (int channel=0; channel<N_channels; channel++) {
         channels[channel] = channel;
@@ -203,24 +233,47 @@ class WireChamberProducer : public eudaq::Producer {
 
 
       // ------
-      // Here, can we do a conversion of the raw data to X,Y positions of the Wire Cahmbers?
-      // Let's assume we can, and the numbers are storres in a vector of floats
-      std::vector<float> PosXY;
-      const float X1 = 0.5;
-      const float Y1 = 0.3;
-      const float X2 = 0.4;
-      const float Y2 = 0.5;
-      PosXY.push_back(X1);
-      PosXY.push_back(Y1);
-      PosXY.push_back(X2);
-      PosXY.push_back(Y2);
+      // Here, can we do a conversion of the raw data to X,Y positions of the Wire Chambers ->yes
+      // Let's assume we can, and the numbers are stored in a vector of floats
+      
+ 
+      //ATTENTION !
+      //possible source of segfault if the key, i.e. the assigned channel is not in between 0 and N_channels. N_channels and all the channel assignments originate from the configuration
+      PosXY.clear();
+      PosXY.push_back(dwc_timestamps[dwc1_left_channel]);
+      PosXY.push_back(dwc_timestamps[dwc1_right_channel]);
+      PosXY.push_back(dwc_timestamps[dwc1_down_channel]);
+      PosXY.push_back(dwc_timestamps[dwc1_up_channel]);
+      
+      //x-y of wire chamber 2
+      PosXY.push_back(dwc_timestamps[dwc2_left_channel]);
+      PosXY.push_back(dwc_timestamps[dwc2_right_channel]);
+      PosXY.push_back(dwc_timestamps[dwc2_down_channel]);
+      PosXY.push_back(dwc_timestamps[dwc2_up_channel]);
+      
+      //x-y of wire chamber 3
+      PosXY.push_back(dwc_timestamps[dwc3_left_channel]);
+      PosXY.push_back(dwc_timestamps[dwc3_right_channel]);
+      PosXY.push_back(dwc_timestamps[dwc3_down_channel]);
+      PosXY.push_back(dwc_timestamps[dwc3_up_channel]);  
+
+      //x-y of wire chamber 4
+      PosXY.push_back(dwc_timestamps[dwc4_left_channel]);
+      PosXY.push_back(dwc_timestamps[dwc4_right_channel]);
+      PosXY.push_back(dwc_timestamps[dwc4_down_channel]);
+      PosXY.push_back(dwc_timestamps[dwc4_up_channel]);
+
+
       //making an EUDAQ event
       eudaq::RawDataEvent ev(EVENT_TYPE,m_run,m_ev);
 
-      ev.AddBlock(0, PosXY);
+      ev.AddBlock(0, dataStream);
+      ev.AddBlock(1, PosXY);
 
       //Adding the event to the EUDAQ format
       SendEvent(ev);
+
+      dataStream.clear();
     }
   }
 
@@ -229,7 +282,7 @@ class WireChamberProducer : public eudaq::Producer {
 
     unsigned m_run, m_ev;
     bool stopping, done, started;
-    bool opticalLinkInitialized;
+    bool initialized;
 
     std::string dataFilePrefix;
 
@@ -250,7 +303,9 @@ class WireChamberProducer : public eudaq::Producer {
 
     int defaultTimestamp;
 
-
+    std::vector<float> PosXY;
+    //mapping and conversion parameters for the online monitoring
+    size_t dwc1_left_channel, dwc1_right_channel, dwc1_down_channel, dwc1_up_channel, dwc2_left_channel, dwc2_right_channel, dwc2_down_channel, dwc2_up_channel, dwc3_left_channel, dwc3_right_channel, dwc3_down_channel, dwc3_up_channel, dwc4_left_channel, dwc4_right_channel, dwc4_down_channel, dwc4_up_channel;
 
 };
 

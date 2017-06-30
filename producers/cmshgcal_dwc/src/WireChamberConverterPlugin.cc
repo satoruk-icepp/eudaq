@@ -71,44 +71,42 @@ namespace eudaq {
       //rev->Print(std::cout);
 
       const unsigned nBlocks = rev->NumBlocks();
-      std::cout<<"Number of Raw Data Blocks: "<<nBlocks<<std::endl;
+      std::cout<<"Number o Raw Data Blocks: "<<nBlocks<<std::endl;
 
       for (unsigned blo=0; blo<nBlocks; blo++){
+        if (blo != 1) continue;  //we only want the unpacked dwc data
+              
+        std::cout<<"Block = "<<blo<<"  Raw GetID = "<<rev->GetID(blo)<<std::endl;
 
-	std::cout<<"Block = "<<blo<<"  Raw GetID = "<<rev->GetID(blo)<<std::endl;
+        const RawDataEvent::data_t & bl = rev->GetBlock(blo);
 
-	const RawDataEvent::data_t & bl = rev->GetBlock(blo);
+        std::cout<<"size of block: "<<bl.size()<<std::endl;
 
-	std::cout<<"size of block: "<<bl.size()<<std::endl;
 
-	float x1,x2,y1,y2;	
-	memcpy(&x1, &bl[0], sizeof(x1));
-	memcpy(&y1, &bl[4], sizeof(y1));
-	memcpy(&x2, &bl[8], sizeof(x2));
-	memcpy(&y2, &bl[12], sizeof(y2));
+        std::vector<StandardPlane> wcs;
+        for (int wc_index=0; wc_index<4; wc_index++) {
+          float xl, xr, yu, yd;
+          memcpy(&xl, &bl[4*wc_index*4+0], sizeof(xl));
+          memcpy(&xr, &bl[4*wc_index*4+4], sizeof(xr));
+          memcpy(&yu, &bl[4*wc_index*4+8], sizeof(yu));
+          memcpy(&yd, &bl[4*wc_index*4+12], sizeof(yd));
 
-	std::cout<<"x1="<<x1<<" y1="<<y1<<"     x2="<<x2<<" y2="<<y2<<std::endl;
+          std::cout<<"Wire chamber "<<wc_index<<": "<<"xl="<<xl<<" xr="<<xr<<"     yu="<<yu<<" yd="<<yd<<std::endl;;
+          StandardPlane wc(wc_index, EVENT_TYPE, sensortype);
+          wc.SetSizeRaw(1, 4);
+          wc.SetPixel(0, 0, 0, xl);
+          wc.SetPixel(1, 1, 0, xr);
+          wc.SetPixel(2, 0, 0, yu);
+          wc.SetPixel(3, 0, 0, yd);
 
-	
-	StandardPlane wc0(0, EVENT_TYPE, sensortype);
-	StandardPlane wc1(1, EVENT_TYPE, sensortype);
-	wc0.SetSizeRaw(1, 2);
-	wc1.SetSizeRaw(1, 2);
-	// We store 4 numbers into these "planes":
-	// X1,Y1 for first WC, X2,Y2 for second WC	
-      	wc0.SetPixel(0, 0, 0, x1);
-	wc0.SetPixel(1, 0, 1, y1);
-      	wc1.SetPixel(0, 0, 0, x2);
-	wc1.SetPixel(1, 0, 1, y2);
-	
-	// Set the trigger ID
-	wc0.SetTLUEvent(GetTriggerID(ev));
-	wc1.SetTLUEvent(GetTriggerID(ev));
-	// Add the plane to the StandardEvent
-	sev.AddPlane(wc0);
-	sev.AddPlane(wc1);
-	
-	eudaq::mSleep(10);
+          wc.SetTLUEvent(GetTriggerID(ev));
+
+          wcs.push_back(wc);
+        }
+
+        for (size_t i = 0; i<wcs.size(); i++) sev.AddPlane(wcs[i]);
+
+      	eudaq::mSleep(10);
 	
       }
       
