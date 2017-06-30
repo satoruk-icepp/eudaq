@@ -558,6 +558,8 @@ void CAEN_V1290::generatePseudoData(std::vector<WORD> &data) {
   
   //generate the channel information
   for (unsigned int channel=0; channel<16; channel++) {
+    if (rand()%100 < 10) continue;  //ten percent change of no hit detection 
+
     unsigned int readout;
     readout=(unsigned int)(rand()%250) + 75;
 

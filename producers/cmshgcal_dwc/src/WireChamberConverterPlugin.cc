@@ -71,10 +71,10 @@ namespace eudaq {
       //rev->Print(std::cout);
 
       const unsigned nBlocks = rev->NumBlocks();
-      std::cout<<"Number of Raw Data Blocks: "<<nBlocks<<std::endl;
+      std::cout<<"Number o Raw Data Blocks: "<<nBlocks<<std::endl;
 
       for (unsigned blo=0; blo<nBlocks; blo++){
-
+        if (blo != 1) continue;  //we only want the unpacked dwc data
               
         std::cout<<"Block = "<<blo<<"  Raw GetID = "<<rev->GetID(blo)<<std::endl;
 
@@ -82,24 +82,35 @@ namespace eudaq {
 
         std::cout<<"size of block: "<<bl.size()<<std::endl;
 
-        float x1,x2,y1,y2,x3,y3,x4,y4;  
-        memcpy(&x1, &bl[0], sizeof(x1));
-        memcpy(&y1, &bl[4], sizeof(y1));
-        memcpy(&x2, &bl[8], sizeof(x2));
-        memcpy(&y2, &bl[12], sizeof(y2));
-        memcpy(&x3, &bl[16], sizeof(x3));
-        memcpy(&y3, &bl[20], sizeof(y3));
-        memcpy(&x4, &bl[24], sizeof(x4));
-        memcpy(&y4, &bl[28], sizeof(y4));
 
-        std::cout<<"x1="<<x1<<" y1="<<y1<<"     x2="<<x2<<" y2="<<y2;
-        std::cout<<" x3="<<x3<<" y3="<<y3<<"     x4="<<x4<<" y4="<<y4<<std::endl;
+        std::vector<StandardPlane> wcs;
+        for (int wc_index=0; wc_index<4; wc_index++) {
+          float xl, xr, yu, yd;
+          memcpy(&xl, &bl[4*wc_index*4+0], sizeof(xl));
+          memcpy(&xr, &bl[4*wc_index*4+4], sizeof(xr));
+          memcpy(&yu, &bl[4*wc_index*4+8], sizeof(yu));
+          memcpy(&yd, &bl[4*wc_index*4+12], sizeof(yd));
 
-        
-        StandardPlane wc1(0, EVENT_TYPE, sensortype);
+          std::cout<<"Wire chamber "<<wc_index<<": "<<"xl="<<xl<<" xr="<<xr<<"     yu="<<yu<<" yd="<<yd<<std::endl;;
+          StandardPlane wc(wc_index, EVENT_TYPE, sensortype);
+          wc.SetSizeRaw(1, 4);
+          wc.SetPixel(0, 0, 0, xl);
+          wc.SetPixel(1, 1, 0, xr);
+          wc.SetPixel(2, 0, 0, yu);
+          wc.SetPixel(3, 0, 0, yd);
+
+          wc.SetTLUEvent(GetTriggerID(ev));
+
+          wcs.push_back(wc);
+        }
+
+        for (size_t i = 0; i<wcs.size(); i++) sev.AddPlane(wcs[i]);
+
+        /*
         StandardPlane wc2(1, EVENT_TYPE, sensortype);
         StandardPlane wc3(2, EVENT_TYPE, sensortype);
         StandardPlane wc4(3, EVENT_TYPE, sensortype);
+       
         wc1.SetSizeRaw(1, 2);
         wc2.SetSizeRaw(1, 2);
         wc3.SetSizeRaw(1, 2);
@@ -129,6 +140,8 @@ namespace eudaq {
         sev.AddPlane(wc2);
         sev.AddPlane(wc3);
         sev.AddPlane(wc4);
+
+        */
 
       	eudaq::mSleep(10);
 	

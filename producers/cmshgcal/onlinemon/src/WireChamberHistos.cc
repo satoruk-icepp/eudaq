@@ -62,12 +62,28 @@ int WireChamberHistos::zero_plane_array() {
 void WireChamberHistos::Fill(const eudaq::StandardPlane &plane) {
   // std::cout<< "FILL with a plane." << std::endl;
 
-  const float x = plane.GetPixel(0);
-  const float y = plane.GetPixel(1);
+  float xl = plane.GetPixel(0);
+  float xr = plane.GetPixel(1);
+  float yu = plane.GetPixel(2);
+  float yd = plane.GetPixel(3);
 
-  std::cout<<"In Filling of Hists: x="<<x<<" y="<<y<<std::endl;
+  int good_xl = xl >= 0 ? 1 : 0;
+  int good_xr = xl >= 0 ? 1 : 0;
+  int good_yu = xl >= 0 ? 1 : 0;
+  int good_yd = xl >= 0 ? 1 : 0;
+  int good_x = (good_xl+good_xr) == 2 ? 1: 0;
+  int good_y = (good_yu+good_yd) == 2 ? 1: 0;
+  int good_all = (good_x+good_y) == 2 ? 1: 0;
   
-  _XYmap->Fill(x,y);
+  float x = (xr-xl)*0.2;
+  float y = (yd-yu)*0.2;
+  
+
+  if (good_all) {
+    std::cout<<"In Filling of 2D-Hists: x="<<x<<" y="<<y<<std::endl;
+    _XYmap->Fill(x,y);
+  }
+  
 }
 
 void WireChamberHistos::Reset() {
