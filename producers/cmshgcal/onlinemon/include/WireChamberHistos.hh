@@ -4,6 +4,8 @@
 #define WIRECHAMBERHISTOS_HH_
 
 #include <TH2F.h>
+#include <TH2I.h>
+#include <TH1F.h>
 #include <TH2Poly.h>
 #include <TFile.h>
 
@@ -23,6 +25,11 @@ protected:
   int _maxY;
   bool _wait;
 
+  TH2I *_goodX;
+  TH2I *_goodY;
+  TH1F *_recoX;
+  TH1F *_recoY;
+  TH1I *_goodAll;
   TH2F *_XYmap;
   
 public:
@@ -34,6 +41,11 @@ public:
   void Calculate(const int currentEventNum);
   void Write();
 
+  TH2I *getGoodXHisto() { return _goodX; }
+  TH2I *getGoodYHisto() { return _goodY; }
+  TH1I *getGoodAllHisto() { return _goodAll; }
+  TH1F *getRecoXHisto() { return _recoX; }
+  TH1F *getRecoYHisto() { return _recoY; }
   TH2F *getXYmapHisto() { return _XYmap; }
 
   
