@@ -99,8 +99,8 @@ void WireChamberHistos::Fill(const eudaq::StandardPlane &plane) {
   int good_y = (good_yu+good_yd) == 2 ? 1: 0;
   int good_all = (good_x+good_y) == 2 ? 1: 0;
   
-  float x = (xr-xl)*0.2;
-  float y = (yd-yu)*0.2;
+  float x = (xr-xl)/40*0.2; //one time unit of the tdc corresponds to 25ps, 1. conversion into nm, 
+  float y = (yd-yu)/40*0.2; //2. conversion from nm to mm via the default calibration factor from the DWC manual
   
   _goodX->Fill(good_xl, good_xr);
   _goodY->Fill(good_yu, good_yd);
