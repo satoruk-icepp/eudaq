@@ -21,17 +21,18 @@ const size_t nSkiPerBoard=4;
 const uint32_t skiMask = 0x0000000F;
 //const uint32_t skiMask = 0;
 
-const char mainFrameOffset=4;
+//const char mainFrameOffset=4;
 
-const size_t NUMBER_OF_SCA=13;
+const size_t nSCA=13;
 
-// For zero usppression:
+// For zero suppression:
+//( these are not used anymore, because ZS is done with HA bit )
 //const int ped = 150;  // pedestal. It is now calculated as median from all channels in hexaboard
-const int noi = 10;   // noise
-const int thresh = 50; // ZS threshold (above pedestal)
+//const int noi = 10;   // noise
+//const int thresh = 50; // ZS threshold (above pedestal)
 
 // Size of ZS data ()per channel
-const char hitSizeZS = 21;
+const char hitSizeZS = 29;
 
 
 namespace eudaq {
@@ -164,7 +165,7 @@ namespace eudaq {
 	  plane.SetTLUEvent(GetTriggerID(ev));
 	  // Add the plane to the StandardEvent
 	  sev.AddPlane(plane);
-	  eudaq::mSleep(30);
+	  eudaq::mSleep(10);
 
 
 	  /* APZ DBG
@@ -257,17 +258,6 @@ namespace eudaq {
 
       std::vector<std::array<unsigned int, 1924>> ev(mask_count, std::array<unsigned int, 1924>());
 
-      /* //All are already initialized to zeros.
-	 //so this is not needed:
-      for(int i = 0; i < 1924; i++){
-	for (int k = 0; k < mask_count; k++){
-	  // Let's check if it is not zero already:
-	  if (ev[k][i]!=0)
-	    std::cout<<"It is not zero:"<<ev[k][i]<<std::endl;
-	  ev[k][i] = 0;
-	}
-      }
-      */
 
       uint32_t x;
       const int offset = 1; // Due to FF or other things in data head
@@ -285,28 +275,14 @@ namespace eudaq {
 	}
       }
 
-
-      // Let's not do the gray decoding here. It's not necessary.
-      /*
-      unsigned int t, bith;
-      for(int k = 0; k < mask_count; k++ ){
-        for(int i = 0; i < 128*13; i++){
-          bith = ev[k][i] & 0x8000;
-
-          t = gray_to_brady(ev[k][i] & 0x7fff);
-          ev[k][i] =  bith | t;
-        }
-      }
-      */
-
       return ev;
 
     }
 
     char GetRollMaskEnd(const unsigned int r) const {
-      //printf("Roll mask = %d \n", r);
+      printf("Roll mask = %d \n", r);
       int k1 = -1, k2 = -1;
-      for (int p=0; p<13; p++){
+      for (int p=0; p<nSCA; p++){
 	//printf("pos = %d, %d \n", p, r & (1<<12-p));
 	if (r & (1<<p)) {
 	  if (k1==-1)
@@ -318,7 +294,7 @@ namespace eudaq {
 	}
       }
 
-      //printf("ROLL MASK:  k1 = %d, k2 = %d \n", k1, k2);
+      printf("ROLL MASK:  k1 = %d, k2 = %d \n", k1, k2);
 
       // Check that k1 and k2 are consecutive
       char last = -1;
@@ -329,7 +305,7 @@ namespace eudaq {
       else
 	last = k2;
 
-      //printf("last = %d\n", last);
+      printf("last = %d\n", last);
       
       return last;
     }
@@ -364,16 +340,6 @@ namespace eudaq {
     }
     */
     
-    /*
-    int GetMainFrame(const unsigned int r, const char mainFrameOffset=8) const {
-      // Order of TS is reverse in raw data, hence subtruct 12:
-      const char last = GetRollMaskEnd(r);
-
-      int mainFrame = 12 - ( last + (13 - mainFrameOffset) ) % 13;
-      //int mainFrame = 12 - (((last - mainFrameOffset) % 13) + ((last >= mainFrameOffset) ? 0 : 13))%13;
-      return mainFrame;
-    }
-    */
 
     std::vector<std::vector<unsigned short>> GetZSdata(const std::vector<std::array<unsigned int,1924>> &decoded) const{
 
@@ -400,14 +366,10 @@ namespace eudaq {
 	const unsigned int r = decoded[ski][1920];
 
 	// This is the position of "track" in TS array:
-	const int TS0 = 12-GetRollMaskEnd(r);
+	const int TRACK = 12-GetRollMaskEnd(r);
 	
-	//const char mainFrame = GetMainFrame(r, mainFrameOffset);
-	const int mainFrame = (TS0 + mainFrameOffset)%13;
 
-	// -- End of main frame determination
-
-
+	/*
 	std::vector<unsigned short> tmp_adc;
 	for (int ch = 0; ch < 64; ch+=2){
 	  // Here lets estimate the pedestal and noise by averaging over all channels
@@ -444,9 +406,9 @@ namespace eudaq {
 	tmp_adc.clear();
 	
 	//const int ped = 150;
-	const int ped = median;
+	//const int ped = median;
 
-	
+	*/
 	for (int ch = 0; ch < 64; ch+=2){
 
 	  const int chArrPos = 63-ch; // position of the hit in array
@@ -484,10 +446,10 @@ namespace eudaq {
 	  */
 	  
 	  unsigned short adc = 0;
-	  adc = gray_to_brady(decoded[ski][mainFrame*128 + 64 + chArrPos] & 0x0FFF);
-	  if (adc==0) adc=4096;
+	  //adc = gray_to_brady(decoded[ski][mainFrame*128 + 64 + chArrPos] & 0x0FFF);
+	  //if (adc==0) adc=4096;
 
-	  const int chargeHG = adc;
+	  //const int chargeHG = adc;
 
 	  //adc = gray_to_brady(decoded[ski][mainFrame*128 + chArrPos] & 0x0FFF);
 	  //if (adc==0) adc=4096;
@@ -502,23 +464,25 @@ namespace eudaq {
 	  //std::cout<<"Warning: HA is not what we think it is..."<<std::endl;
 	  
 	  // ZeroSuppress it:
-	  if (chargeHG - (ped+noi) < thresh)  // - Based on ADC in LG/HG
-	    //if (! (decoded[ski][chArrPos] & 0x1000)) // - Based on HA bit
+	  //if (chargeHG - (ped+noi) < thresh)  // - Based on ADC in LG/HG
+
+
+	  if (! (decoded[ski][chArrPos] & 0x1000)) // - Based on HA bit
 	    continue;
 
 	  dataBlockZS[hexa].push_back((ski%4)*100+ch);
 
-	  // Low gain (save 9 time-slices after track):
-	  for (int ts=0; ts<9; ts++){
-	    const int t = (TS0+t)%13; // subtract from 12 because the data in SkiRock memory is saved backwards
+	  // Low gain (save nSCA time-slices after track):
+	  for (int ts=1; ts<=nSCA; ts++){
+	    const int t = 12-(TRACK+ts)%13; // subtract from 12 because the data in SkiRock memory is saved backwards
 	    adc = gray_to_brady(decoded[ski][t*128 + chArrPos] & 0x0FFF);
 	    if (adc==0) adc=4096;
 	    dataBlockZS[hexa].push_back(adc);
 	  }
 
 	  // High gain:
-	  for (int ts=0; ts<9; ts++){
-	    const int t = (TS0+t)%13;
+	  for (int ts=1; ts<=nSCA; ts++){
+	    const int t = 12-(TRACK+ts)%13;
 	    adc = gray_to_brady(decoded[ski][t*128 + 64 + chArrPos] & 0x0FFF);
 	    if (adc==0) adc=4096;
 	    dataBlockZS[hexa].push_back(adc);
@@ -545,16 +509,6 @@ namespace eudaq {
 	  //if (adc==0) adc=4096;
 	  //dataBlockZS[hexa].push_back(adc);
 
-
-	  // For PEDESTAL. Get first TS after track (LG):
-	  //adc = gray_to_brady(decoded[ski][after_track1*128 + chArrPos] & 0x0FFF);
-	  //if (adc==0) adc=4096;   // Taking care of overflow and zeros
-	  //dataBlockZS[hexa].push_back(adc);
-
-	  // For PEDESTAL. Get second TS after track (LG):
-	  //adc = gray_to_brady(decoded[ski][after_track2*128 + chArrPos] & 0x0FFF);
-	  //if (adc==0) adc=4096;   // Taking care of overflow and zeros
-	  //dataBlockZS[hexa].push_back(adc);
 
 
 	  /* Let's not save this for the moment (no need)

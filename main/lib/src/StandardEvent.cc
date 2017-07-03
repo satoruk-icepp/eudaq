@@ -313,7 +313,8 @@ namespace eudaq {
                         m_pix[2][i] * (m_pivot[0][i]);
       }
       m_result_pix = &m_temp_pix;
-    } else if (m_pix.size() == 20){ // Hexaboard data
+      
+    } else if (m_pix.size() == 28){ // Hexaboard data
       m_temp_pix.resize(0);
       m_temp_x.resize(0);
       m_temp_y.resize(0);

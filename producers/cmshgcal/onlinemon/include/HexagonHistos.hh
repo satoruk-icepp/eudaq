@@ -23,13 +23,13 @@ protected:
   int _maxY;
   bool _wait;
 
+  TH2Poly *_hexagons_occ_HA_bit;
   TH2Poly *_hexagons_occ_adc;
   TH2Poly *_hexagons_occ_tot;
   TH2Poly *_hexagons_occ_toa;
   TH2Poly *_hexagons_charge;
-  TH2I *_hitmap;
-  TH1I *_hitXmap;
-  TH1I *_hitYmap;
+  TH2I *_hit2Dmap;
+  TH1I *_hit1Docc;
 
   TH2D *_HotPixelMap;
   //TH1F *_hitOcc;
@@ -39,7 +39,9 @@ protected:
 
   TH2I *_waveformLG, *_waveformHG;
   TProfile *_waveformNormLG, *_waveformNormHG;
-  
+
+  TH1I *_posOfMaxADCinLG, *_posOfMaxADCinHG;
+
 public:
   HexagonHistos(eudaq::StandardPlane p, RootMonitor *mon);
 
@@ -49,13 +51,13 @@ public:
   void Calculate(const int currentEventNum);
   void Write();
 
+  TH2Poly *getHexagonsOccHAbitHisto() { return _hexagons_occ_HA_bit; }
   TH2Poly *getHexagonsOccAdcHisto() { return _hexagons_occ_adc; }
   TH2Poly *getHexagonsOccTotHisto() { return _hexagons_occ_tot; }
   TH2Poly *getHexagonsOccToaHisto() { return _hexagons_occ_toa; }
   TH2Poly *getHexagonsChargeHisto() { return _hexagons_charge; }
-  TH2I *getHitmapHisto() { return _hitmap; }
-  TH1I *getHitXmapHisto() { return _hitXmap; }
-  TH1I *getHitYmapHisto() { return _hitYmap; }
+  TH2I *getHitmapHisto() { return _hit2Dmap; }
+  TH1I *getHit1DoccHisto() { return _hit1Docc; }
   TH2D *getHotPixelMapHisto() { return _HotPixelMap; }
 
   //TH1F *getHitOccHisto() {
@@ -73,6 +75,8 @@ public:
   TProfile *getWaveformLGProfile() {return _waveformNormLG;}
   TProfile *getWaveformHGProfile() {return _waveformNormHG;}
 
+  TH1I *getPosOfMaxADCinLGHisto() { return _posOfMaxADCinLG;}
+  TH1I *getPosOfMaxADCinHGHisto() { return _posOfMaxADCinHG;}
   
   void setRootMonitor(RootMonitor *mon) { _mon = mon; }
 
