@@ -42,6 +42,8 @@ protected:
 
   TH1I *_posOfMaxADCinLG, *_posOfMaxADCinHG;
 
+  TH1I *_pedLG, *_pedHG;  
+
 public:
   HexagonHistos(eudaq::StandardPlane p, RootMonitor *mon);
 
@@ -77,6 +79,9 @@ public:
 
   TH1I *getPosOfMaxADCinLGHisto() { return _posOfMaxADCinLG;}
   TH1I *getPosOfMaxADCinHGHisto() { return _posOfMaxADCinHG;}
+
+  TH1I *getPedLGHisto() { return _pedLG;}
+  TH1I *getPedHGHisto() { return _pedHG;}
   
   void setRootMonitor(RootMonitor *mon) { _mon = mon; }
 
@@ -96,7 +101,7 @@ private:
 
   RootMonitor *_mon;
 
-  bool is_HEXABOARD;
+  //bool is_HEXABOARD;
 };
 
 

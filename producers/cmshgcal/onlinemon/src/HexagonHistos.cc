@@ -9,6 +9,7 @@
 #include <sstream>
 
 const int nSCA = 13;
+const int mainFrameTS = 4;
 
 HexagonHistos::HexagonHistos(eudaq::StandardPlane p, RootMonitor *mon)
   :_sensor(p.Sensor()), _id(p.ID()), _maxX(p.XSize()),  _maxY(p.YSize()), _wait(false),
@@ -16,7 +17,8 @@ HexagonHistos::HexagonHistos(eudaq::StandardPlane p, RootMonitor *mon)
   _hit2Dmap(NULL), _hit1Docc(NULL),
   _nHits(NULL), _nbadHits(NULL), _nHotPixels(NULL),
   _waveformLG(NULL), _waveformHG(NULL), _waveformNormLG(NULL), _waveformNormHG(NULL),
-  _posOfMaxADCinLG(NULL), _posOfMaxADCinHG(NULL){
+  _posOfMaxADCinLG(NULL), _posOfMaxADCinHG(NULL),
+  _pedLG(NULL), _pedHG(NULL) {
 
 
   char out[1024], out2[1024];
@@ -44,7 +46,6 @@ HexagonHistos::HexagonHistos(eudaq::StandardPlane p, RootMonitor *mon)
     _hexagons_occ_toa = get_th2poly(out2,out);
 
 
-
     sprintf(out, "%s %i  ADC HG Charge", _sensor.c_str(), _id);
     sprintf(out2, "h_hexagons_charge_%s_%i", _sensor.c_str(), _id);
     _hexagons_charge = get_th2poly(out2,out);
@@ -59,6 +60,17 @@ HexagonHistos::HexagonHistos(eudaq::StandardPlane p, RootMonitor *mon)
     sprintf(out2, "h_hit1Docc_%s_%i", _sensor.c_str(), _id);
     _hit1Docc = new TH1I(out2, out, 256, 0, 256);
     SetHistoAxisLabelx(_hit1Docc, "(SkiRoc ID * 64 ) + channel");
+
+
+    sprintf(out, "%s %i Pedestal LG", _sensor.c_str(), _id);
+    sprintf(out2, "h_pedLG_%s_%i", _sensor.c_str(), _id);
+    _pedLG = new TH1I(out2, out, 100, 0, 300);
+    SetHistoAxisLabelx(_pedLG, "ADC counts");
+
+    sprintf(out, "%s %i Pedestal HG", _sensor.c_str(), _id);
+    sprintf(out2, "h_pedHG_%s_%i", _sensor.c_str(), _id);
+    _pedHG = new TH1I(out2, out, 100, 0, 400);
+    SetHistoAxisLabelx(_pedHG, "ADC counts");
 
     /*
     sprintf(out, "%s %i Cluster Hitmap", _sensor.c_str(), _id);
@@ -136,7 +148,7 @@ HexagonHistos::HexagonHistos(eudaq::StandardPlane p, RootMonitor *mon)
     _waveformNormHG = new TProfile(out2, out, 2*nSCA, 0, nSCA, 0, 1.5);
     SetHistoAxisLabels(_waveformNormHG, "Time Sample of 25 ns", "Normalized");
 
-    
+
     sprintf(out, "%s %i Maximim at LG", _sensor.c_str(), _id);
     sprintf(out2, "h_posOfMaxADC_LG_%s_%i", _sensor.c_str(), _id);
     _posOfMaxADCinLG = new TH1I(out2, out, 2*nSCA, 0, nSCA);
@@ -208,14 +220,14 @@ void HexagonHistos::Fill(const eudaq::StandardPlane &plane) {
 
       std::cout<<" We are getting a pixel with pix="<<pix
 	       <<"\t in hexagon channel:"<<ch<<",  ski="<<pixel_x<<"  Ch="<<pixel_y<<std::endl;
-      
+
       // Arrays to store Time Samples
       std::array<int, nSCA> sig_LG;
       std::array<int, nSCA> sig_HG;
 
       for (int ts=0; ts<nSCA; ts++){
 	sig_LG[ts] = plane.GetPixel(pix, ts);
-	sig_HG[ts] = plane.GetPixel(pix, ts+nSCA);	
+	sig_HG[ts] = plane.GetPixel(pix, ts+nSCA);
       }
 
       const auto max_LG = std::max_element(std::begin(sig_LG), std::end(sig_LG));
@@ -228,33 +240,33 @@ void HexagonHistos::Fill(const eudaq::StandardPlane &plane) {
 
 
       // Get pedestal estimates from the first time samples:
-      const int ped_LG = plane.GetPixel(pix, 0);
-      const int ped_HG = plane.GetPixel(pix, nSCA);
+      const int ped_LG = std::accumulate(sig_LG.begin(), sig_LG.begin()+2, 0)/3; // average of the first three TS
+      const int ped_HG = std::accumulate(sig_HG.begin(), sig_HG.begin()+2, 0)/3; // average of the first three TS
+      //const int ped_LG = plane.GetPixel(pix, 0);
+      //const int ped_HG = plane.GetPixel(pix, nSCA);
 
       const int thresh_LG = 50;
       const int thresh_HG = 100;
-	
+
+      if (_pedLG!=NULL)
+	_pedLG->Fill(ped_LG);
+      if (_pedHG!=NULL)
+	_pedHG->Fill(ped_HG);
 
       if (_posOfMaxADCinLG!=NULL && (*max_LG) - ped_LG > thresh_LG)
 	_posOfMaxADCinLG->Fill(pos_max_LG);
       if (_posOfMaxADCinHG!=NULL && (*max_HG) - ped_HG > thresh_HG)
 	_posOfMaxADCinHG->Fill(pos_max_HG);
-      
+
       // Average of three TS around Maximum:
-      const int avg_lg = (plane.GetPixel(pix, 2) + plane.GetPixel(pix, 3) + plane.GetPixel(pix, 4))/3;
-      const int avg_hg = (plane.GetPixel(pix, 15) + plane.GetPixel(pix, 16) + plane.GetPixel(pix, 17))/3;
+      const int avg_lg = std::accumulate(sig_LG.begin()+mainFrameTS-1, sig_LG.begin()+mainFrameTS+1, 0)/3; 
+      const int avg_hg = std::accumulate(sig_HG.begin()+mainFrameTS-1, sig_HG.begin()+mainFrameTS+1, 0)/3;
       const int toa = plane.GetPixel(pix, 26);
       const int tot = plane.GetPixel(pix, 27);
-         
 
-      if (_waveformHG!=NULL && _waveformLG!=NULL
-	  &&_waveformNormHG!=NULL && _waveformNormLG!=NULL){
-	//const int normLG = std::max(plane.GetPixel(pix, 3), plane.GetPixel(pix, 4));
-	//const int normHG = std::max(plane.GetPixel(pix, 12), plane.GetPixel(pix, 13));
 
-	//const int normLG = *max_LG;
-	//const int normHG = *max_HG;
-
+      if (_waveformHG!=NULL && _waveformLG!=NULL &&_waveformNormHG!=NULL && _waveformNormLG!=NULL){
+	
 	// Onle fill these if maximum is above some threshold (ie, it is signal)
 	if ( (*max_LG) - ped_LG > thresh_LG) {
 	  for (int ts=0; ts<nSCA; ts++){
@@ -274,7 +286,11 @@ void HexagonHistos::Fill(const eudaq::StandardPlane &plane) {
 	_hit2Dmap->Fill(pixel_x, pixel_y);
       if (_hit1Docc != NULL)
 	_hit1Docc->Fill(pixel_x*64+pixel_y);
-      
+
+      if (_HotPixelMap != NULL)
+	if ((*max_LG) > 4060 || (*max_HG) > 4060)
+	  _HotPixelMap->Fill(pixel_x, pixel_y);
+
       // Loop over the bins and Fill the one matched to our channel
       for (int icell = 0; icell < 133 ; icell++) {
 
@@ -331,6 +347,10 @@ void HexagonHistos::Reset() {
 
   _posOfMaxADCinLG->Reset();
   _posOfMaxADCinHG->Reset();
+
+  _pedLG->Reset();
+  _pedHG->Reset();
+
   // we have to reset the aux array as well
   zero_plane_array();
 }
@@ -349,13 +369,13 @@ void HexagonHistos::Write() {
   _hexagons_charge->Write();
   _hit2Dmap->Write();
   _hit1Docc->Write();
-   //_clusterSize->Write();
+  //_clusterSize->Write();
   //_nClusters->Write();
   _nHits->Write();
-  //_nbadHits->Write();
-  //_HotPixelMap->Write();
+  _nbadHits->Write();
+  _HotPixelMap->Write();
   //_nHotPixels->Write();
- 
+
   _waveformLG->Write();
   _waveformHG->Write();
 
@@ -364,6 +384,9 @@ void HexagonHistos::Write() {
 
   _posOfMaxADCinLG->Write();
   _posOfMaxADCinHG->Write();
+
+  _pedLG->Write();
+  _pedHG->Write();
 
   std::cout<<"Doing HexagonHistos::Write() before canvas drawing"<<std::endl;
 
