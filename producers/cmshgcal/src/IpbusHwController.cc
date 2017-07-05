@@ -87,15 +87,11 @@ void IpbusHwController::CastTheData(const uhal::ValVector<uint32_t> &data)
 {
   for( uhal::ValVector<uint32_t>::const_iterator cit=data.begin(); cit!=data.end(); ++cit )
     m_data.push_back(*cit);
-    // re-implement the method as soon as the data format is better known
-    // a data format class must be implemented
-    // m_data should be a vector of this data format class
   }
 
   void IpbusHwController::ResetTheData()
   {
     m_data.clear();
-    // it might be needed to re-implement this method as soon as the data format is better known
   }
 
 }

@@ -23,7 +23,8 @@ namespace ipbus {
     void SetUhalLogLevel(unsigned char lvl);
     void ResetTheData();
     uhal::HwInterface *getInterface() const {return m_hw;};
-    
+
+    void addTrailerToData(uint32_t trailer){m_data.push_back(trailer);}
     std::vector<uint32_t> const & getData(){return m_data;}
   private:
     void CastTheData(const uhal::ValVector<uint32_t> &data);
