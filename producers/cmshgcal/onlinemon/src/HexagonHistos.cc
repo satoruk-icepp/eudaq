@@ -245,8 +245,8 @@ void HexagonHistos::Fill(const eudaq::StandardPlane &plane) {
       //const int ped_LG = plane.GetPixel(pix, 0);
       //const int ped_HG = plane.GetPixel(pix, nSCA);
 
-      const int thresh_LG = 50;
-      const int thresh_HG = 100;
+      const int thresh_LG = 60;
+      const int thresh_HG = 120;
 
       if (_pedLG!=NULL)
 	_pedLG->Fill(ped_LG);
@@ -258,7 +258,7 @@ void HexagonHistos::Fill(const eudaq::StandardPlane &plane) {
       if (_posOfMaxADCinHG!=NULL && (*max_HG) - ped_HG > thresh_HG)
 	_posOfMaxADCinHG->Fill(pos_max_HG);
 
-      // Average of three TS around Maximum:
+      // Average of three TS around main frame:
       const int avg_lg = std::accumulate(sig_LG.begin()+mainFrameTS-1, sig_LG.begin()+mainFrameTS+1, 0)/3; 
       const int avg_hg = std::accumulate(sig_HG.begin()+mainFrameTS-1, sig_HG.begin()+mainFrameTS+1, 0)/3;
       const int toa = plane.GetPixel(pix, 26);

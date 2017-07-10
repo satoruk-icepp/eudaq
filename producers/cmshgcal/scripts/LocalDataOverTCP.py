@@ -27,11 +27,14 @@ EventRate = 30 # Events per spill
 SpillTime = 1  # Duration of the spill in seconds
 InterSpill = 1 # Time between spills in seconds
 
-RAW_EV_SIZE = 30787
+RAW_EV_SIZE = 30787 # 8 bit format
 
 parser =  argparse.ArgumentParser(description='RPI DAQ: a TCP server')
 parser.add_argument('-f', '--inputFile', dest="fname", type=str, default=None, required=True,
                     help="Raw data file to open")
+parser.add_argument('--bit', dest="bit", type=int,  choices=[8,32], default=32, required=True,
+                    help="Format of the input data file (32 or 8 bit)")
+
 opt = parser.parse_args()
 
 def sendData(sudp, stop_event):
@@ -50,7 +53,10 @@ def sendData(sudp, stop_event):
   
   while (not stop_event.is_set()):
 
-    rawData = f.read(RAW_EV_SIZE)
+    if opt.bit==8:
+      rawData = f.read(RAW_EV_SIZE)
+    else:
+      rawData = f.read(RAW_EV_SIZE*4+4)
     
     if ev%EventRate==0:
       stop_event.wait(InterSpill)
@@ -63,16 +69,24 @@ def sendData(sudp, stop_event):
     
     if rawData!=None:
       d = rawData
-      print rawData[0].encode('hex') , len(d)
-      # d = rawData[evmod*RAW_EV_SIZE:(evmod+1)*RAW_EV_SIZE]
-      npd = np.fromstring(d, dtype=np.uint8)
-      #print len(npd), npd.nbytes, npd
-      npd32 = npd.astype(np.uint32)
-      #print len(npd32), npd32.nbytes, npd32.nbytes/4, npd32
-      half1 = npd32[0:15500]
-      half2 = np.append(npd32[15500:], [0x0a0b0c0d]).astype(np.uint32) # this is to check endienness
-      # print len(half1), half1.nbytes, len(half2), half2.nbytes, half2.dtype
-      # print half2[-3], half2[-2], half2[-1]
+      print rawData[0:4].encode('hex') , len(d)
+      if opt.bit==8:
+        # d = rawData[evmod*RAW_EV_SIZE:(evmod+1)*RAW_EV_SIZE]
+        npd = np.fromstring(d, dtype=np.uint8)
+        #print len(npd), npd.nbytes, npd
+        npd32 = npd.astype(np.uint32)
+        #print len(npd32), npd32.nbytes, npd32.nbytes/4, npd32
+        half1 = npd32[0:15500]
+        half2 = np.append(npd32[15500:], [0x0a0b0c0d]).astype(np.uint32)
+        
+      else:
+        npd32 = np.fromstring(d, np.uint32)
+
+        half1 = npd32[0:15500]
+        half2 = npd32[15500:]
+
+      print len(half1), half1.nbytes, len(half2), half2.nbytes, half2.dtype
+      print half2[-3], half2[-2], half2[-1]
       
     else:
       d = 'Hello World'
