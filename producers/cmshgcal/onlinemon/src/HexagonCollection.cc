@@ -168,41 +168,53 @@ void HexagonCollection::registerPlane(const eudaq::StandardPlane &p) {
     _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
 
 
+    sprintf(tree, "%s/Module %i/LGvsTOTfast", p.Sensor().c_str(), p.ID());
+    _mon->getOnlineMon()->registerTreeItem(tree);
+    _mon->getOnlineMon()->registerHisto(tree, getHexagonHistos(p.Sensor(), p.ID())->getLGvsTOTfastHisto(),"COL2");
+
+    sprintf(tree, "%s/Module %i/LGvsTOTslow", p.Sensor().c_str(), p.ID());
+    _mon->getOnlineMon()->registerTreeItem(tree);
+    _mon->getOnlineMon()->registerHisto(tree, getHexagonHistos(p.Sensor(), p.ID())->getLGvsTOTslowHisto(),"COL2");
+
+    sprintf(tree, "%s/Module %i/HGvsLG", p.Sensor().c_str(), p.ID());
+    _mon->getOnlineMon()->registerTreeItem(tree);
+    _mon->getOnlineMon()->registerHisto(tree, getHexagonHistos(p.Sensor(), p.ID())->getHGvsLGHisto(), "COL2");
+
+
     // ----------
     // Waveforms
     
-    sprintf(tree, "%s/Waveforms/WaveForm LG Module %i", p.Sensor().c_str(), p.ID());
+    sprintf(tree, "%s/Waveforms/WaveForm_Histo_LG_Module_%i", p.Sensor().c_str(), p.ID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(tree, getHexagonHistos(p.Sensor(), p.ID())->getWaveformLGHisto(), "COL2");
     _mon->getOnlineMon()->addTreeItemSummary("HexaBoard/Waveforms", tree);
 
-    sprintf(tree, "%s/Waveforms/WaveForm HG Module %i", p.Sensor().c_str(), p.ID());
+    sprintf(tree, "%s/Waveforms/WaveForm_Histo_HG_Module_%i", p.Sensor().c_str(), p.ID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(tree, getHexagonHistos(p.Sensor(), p.ID())->getWaveformHGHisto(), "COL2");
     _mon->getOnlineMon()->addTreeItemSummary("HexaBoard/Waveforms", tree);
     _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
 
-
-    sprintf(tree, "%s/Waveforms/TS of Max ADC LG, Module %i", p.Sensor().c_str(), p.ID());
+    sprintf(tree, "%s/Waveforms/TS_of_Max_ADC_LG, Module %i", p.Sensor().c_str(), p.ID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(tree, getHexagonHistos(p.Sensor(), p.ID())->getPosOfMaxADCinLGHisto());
     _mon->getOnlineMon()->addTreeItemSummary("HexaBoard/Waveforms", tree);
 
-    sprintf(tree, "%s/Waveforms/TS of Max ADC HG, Module %i", p.Sensor().c_str(), p.ID());
+    sprintf(tree, "%s/Waveforms/TS_of_Max_ADC_HG, Module %i", p.Sensor().c_str(), p.ID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(tree, getHexagonHistos(p.Sensor(), p.ID())->getPosOfMaxADCinHGHisto());
     _mon->getOnlineMon()->addTreeItemSummary("HexaBoard/Waveforms", tree);
     _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
     
-    sprintf(tree, "%s/Waveforms Norm/WaveForm LG Module %i", p.Sensor().c_str(), p.ID());
+    sprintf(tree, "%s/Waveforms/WaveForm_Prof_LG_Module_%i", p.Sensor().c_str(), p.ID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(tree, getHexagonHistos(p.Sensor(), p.ID())->getWaveformLGProfile());
-    _mon->getOnlineMon()->addTreeItemSummary("HexaBoard/Waveforms Norm", tree);
+    _mon->getOnlineMon()->addTreeItemSummary("HexaBoard/Waveforms", tree);
 
-    sprintf(tree, "%s/Waveforms Norm/WaveForm HG Module %i", p.Sensor().c_str(), p.ID());
+    sprintf(tree, "%s/Waveforms/WaveForm_Prof_HG_Module_%i", p.Sensor().c_str(), p.ID());
     _mon->getOnlineMon()->registerTreeItem(tree);
     _mon->getOnlineMon()->registerHisto(tree, getHexagonHistos(p.Sensor(), p.ID())->getWaveformHGProfile());
-    _mon->getOnlineMon()->addTreeItemSummary("HexaBoard/Waveforms Norm", tree);
+    _mon->getOnlineMon()->addTreeItemSummary("HexaBoard/Waveforms", tree);
     _mon->getOnlineMon()->addTreeItemSummary(folder, tree);
 
     // End of Waveforms

@@ -38,6 +38,8 @@ protected:
   TH1I *_nHotPixels;
 
   TH2I *_waveformLG, *_waveformHG;
+  TH2I *_LGvsTOTslow, *_LGvsTOTfast;
+  TH2I *_HGvsLG;
   TProfile *_waveformNormLG, *_waveformNormHG;
 
   TH1I *_posOfMaxADCinLG, *_posOfMaxADCinHG;
@@ -73,6 +75,10 @@ public:
 
   TH2I *getWaveformLGHisto() {return _waveformLG;}
   TH2I *getWaveformHGHisto() {return _waveformHG;}
+
+  TH2I *getLGvsTOTslowHisto() {return _LGvsTOTslow;}
+  TH2I *getLGvsTOTfastHisto() {return _LGvsTOTfast;}
+  TH2I *getHGvsLGHisto() {return _HGvsLG;}
 
   TProfile *getWaveformLGProfile() {return _waveformNormLG;}
   TProfile *getWaveformHGProfile() {return _waveformNormHG;}

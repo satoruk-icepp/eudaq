@@ -32,7 +32,7 @@ const int nSCA=13;
 //const int thresh = 50; // ZS threshold (above pedestal)
 
 // Size of ZS data ()per channel
-const char hitSizeZS = 29;
+const char hitSizeZS = 31;
 
 
 namespace eudaq {
@@ -162,7 +162,7 @@ namespace eudaq {
 	    }
 
 	    // Set the trigger ID
-	    plane.SetTLUEvent(GetTriggerID(ev));
+	    plane.SetTLUEvent(ev.GetEventNumber());
 	    // Add the plane to the StandardEvent
 	    sev.AddPlane(plane);
 	    eudaq::mSleep(10);
@@ -489,15 +489,15 @@ namespace eudaq {
 	    dataBlockZS[hexa].push_back((ski%4)*100+ch);
 
 	    // Low gain (save nSCA time-slices after track):
-	    std::cout<<"\t Roll positions:"<<std::endl;
+	    //std::cout<<"\t Roll positions:"<<std::endl;
 	    for (int ts=0; ts<nSCA; ts++){
 	      const int t = 12-(TS0+ts)%13; // subtract from 12 (nSCA-1) because the data in SkiRock memory is saved backwards
 	      adc = gray_to_brady(decoded[ski][t*128 + chArrPos] & 0x0FFF);
 	      if (adc==0) adc=4096;
 	      dataBlockZS[hexa].push_back(adc);
-	      std::cout<<"  ts:"<<ts<<" adc="<<adc;
+	      //std::cout<<"  ts:"<<ts<<" adc="<<adc;
 	    }
-	    std::cout<<std::endl;
+	    //std::cout<<std::endl;
 	    
 	    /*
 	      std::cout<<"\t From track::"<<std::endl;
@@ -527,19 +527,19 @@ namespace eudaq {
 	    dataBlockZS[hexa].push_back(adc);
 
 	    // Filling TOA (stop rising clock)
-	    //adc = gray_to_brady(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF);
-	    //if (adc==0) adc=4096;
-	    //dataBlockZS[hexa].push_back(adc);
-
-	    // Filling TOT (slow)
-	    adc = gray_to_brady(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF);
+	    adc = gray_to_brady(decoded[ski][1664 + 64 + chArrPos] & 0x0FFF);
 	    if (adc==0) adc=4096;
 	    dataBlockZS[hexa].push_back(adc);
 
 	    // Filling TOT (fast)
-	    //adc = gray_to_brady(decoded[ski][1664 + 3*64 +chArrPos] & 0x0FFF);
-	    //if (adc==0) adc=4096;
-	    //dataBlockZS[hexa].push_back(adc);
+	    adc = gray_to_brady(decoded[ski][1664 + 2*64 + chArrPos] & 0x0FFF);
+	    if (adc==0) adc=4096;
+	    dataBlockZS[hexa].push_back(adc);
+
+	    // Filling TOT (slow)
+	    adc = gray_to_brady(decoded[ski][1664 + 3*64 +chArrPos] & 0x0FFF);
+	    if (adc==0) adc=4096;
+	    dataBlockZS[hexa].push_back(adc);
 
 
 
