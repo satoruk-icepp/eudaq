@@ -127,7 +127,9 @@ public:
 	for( int i=0; i<(int)m_rdout_orms.size(); i++){
 	  threadVec[i].join();
 	  checkCRC( "RDOUT.CRC",m_rdout_orms[i]);
-
+	  uint32_t trailer=i;//8 bits for orm id
+	  trailer|=m_triggerController->eventNumber()<<8;//24 bits for trigger number
+	  m_rdout_orms[i]->addTrailerToData(trailer);
 	  const std::vector<uint32_t> the_data = m_rdout_orms[i]->getData() ;
 
 	  for (int b=0; b<20; b++)
@@ -220,6 +222,13 @@ private:
     sprintf(rawFilename, "../data/HexaData_Run%04d.raw", m_run); // The path is relative to eudaq/bin
     m_rawFile.open(rawFilename, std::ios::binary);
 
+    uint32_t header[2];
+    header[0]=time(0);
+    header[1]=m_rdout_orms.size();
+    header[1]|=m_run<<8;
+    m_rawFile.write(reinterpret_cast<const char*>(&header[0]), sizeof(header));
+    
+    
     //m_triggerController.startrunning( m_run, m_acqmode );
     m_triggerThread=boost::thread(startTriggerThread,m_triggerController,&m_run,&m_acqmode);
 
@@ -242,6 +251,8 @@ private:
 	eudaq::mSleep(1000); //waiting for EORE being send
       }
 
+      uint32_t trailer=time(0);
+      m_rawFile.write(reinterpret_cast<const char*>(&trailer), sizeof(trailer));
       m_rawFile.close();
 
       SetStatus(eudaq::Status::LVL_OK, "Stopped");
