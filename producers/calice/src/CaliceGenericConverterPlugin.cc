@@ -74,7 +74,7 @@ class CaliceGenericConverterPlugin: public DataConverterPlugin {
 
          //prepare 6 AHCAL layers
          std::vector<std::unique_ptr<StandardPlane>> planes;
-         for (int i = 0; i <6; ++i) {
+         for (int i = 0; i < 6; ++i) {
             std::unique_ptr<StandardPlane> plane(new StandardPlane(i, EVENT_TYPE, sensortype));
             plane->SetSizeRaw(13, 13, 1, 0);
             if (ev.GetEventNumber() > 0) plane->SetTLUEvent(ev.GetEventNumber());
@@ -117,11 +117,11 @@ class CaliceGenericConverterPlugin: public DataConverterPlugin {
                int hitbit = (data[5 + data[4] + ichan] & 0x1000) ? 1 : 0;  //extract hitbit
                if (planeNumber >= 0) {//plane, which is not found, has index -1
                   if (hitbit) {
-                     // std::cout << "x=" << getXcoordFromCHIPID(chipid, ichan) << "y=" << getYcoordFromCHIPID(chipid, ichan) << "adc="                           << (hitbit ? (gainbit ? adc : 10 * adc) : 0) << std::endl;
-                     planes[planeNumber]->PushPixel(getXcoordFromCHIPID(chipid, ichan), getYcoordFromCHIPID(chipid, ichan),
-                           hitbit ? (gainbit ? adc : 10 * adc) : 1, //storing the ADC value
-                           //hitbit ? 1 : 0, //storing just the hit information
-                           false, 0);
+		    // std::cout << "x=" << getXcoordFromCHIPID(chipid, ichan) << "y=" << getYcoordFromCHIPID(chipid, ichan) << "adc="                           << (hitbit ? (gainbit ? adc : 10 * adc) : 0) << std::endl;
+		    planes[planeNumber]->PushPixel(getXcoordFromCHIPID(chipid, ichan), getYcoordFromCHIPID(chipid, ichan),
+						   hitbit ? (gainbit ? adc : 10 * adc) : 1, //storing the ADC value
+						   //hitbit ? 1 : 0, //storing just the hit information
+						   false, 0);
                   }
                }
             }

@@ -110,6 +110,11 @@ void AhcalHistos::Fill(const eudaq::StandardPlane &plane) {
     {
       //std::cout<<" We are getting a pixel with pix="<<pix<<std::endl;
 
+      // Zero suppress empty picels
+      if (plane.GetPixel(pix) <= 0)
+	continue;
+      
+
       const int pixel_x = plane.GetX(pix);
       const int pixel_y = plane.GetY(pix);
 
