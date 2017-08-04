@@ -40,7 +40,7 @@ namespace eudaq {
                std::vector<int> TriggerIDs; //trigger IDs from the LDA packet
                std::vector<uint64_t> TS_Triggers; //triggers Timestamps inside acquisition
 
-         };
+      };
 
          struct RunTimeStatistics {
                void clear();
@@ -64,6 +64,8 @@ namespace eudaq {
          };
 
          const ScReader::RunTimeStatistics& getRunTimesStatistics() const;
+         unsigned int getCycleNo() const;
+         unsigned int getTrigId() const;
 
       private:
          enum class UnfinishedPacketStates {

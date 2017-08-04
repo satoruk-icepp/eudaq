@@ -1,0 +1,129 @@
+#!/bin/bash
+
+if [ -f KILLRUN.local ]
+then
+    sh KILLRUN.local
+else
+    sh KILLRUN
+fi
+
+export RCPORT=44000
+export HOSTIP=127.0.0.1
+#################  Run control ###################
+xterm -sb -sl 1000000 -T "Runcontrol" -e 'bin/euRun -n Ex0RunControl -a tcp://$RCPORT ; read '&
+sleep 1  
+#################  Log collector #################
+xterm -sb -sl 1000 -T "DataLogger" -e 'bin/euLog ; read' &
+#sleep 1
+#################  Data collector #################
+xterm -sb -sl 1000000  -T "Data collector" -e 'bin/euCliCollector -n DirectSaveDataCollector -t dc1 ; read' &
+#xterm -sb -sl 100000  -T "Data collector2" -e 'bin/euCliCollector -n DirectSaveDataCollector -t dc2 ; read' &
+#sleep 1
+
+#################  Producer #################
+xterm -sb -sl 1000000 -geometry 160x30 -T "AHCAL" -e 'bin/AHCALProducer -r tcp://$HOSTIP:$RCPOR|tee -a logs/ahcal.log && read || read'&
+#sleep 2# xterm -sb -sl 100000  -T "Example Producer" -e 'bin/euCliProducer -n Ex0Producer -t my_pd0 ; read' &
+# #sleep 1
+# xterm -sb -sl 100000  -T "Example Producer2" -e 'bin/euCliProducer -n Ex0Producer -t my_pd1 ; read' &
+# sleep 1
+
+#################  Online Monitor #################
+#xterm -sb -sl 100000  -T "Online monitor" -e 'bin/euCliMonitor -n StdEventMonitors -t my_mon -a tcp://45002 ; read'&
+# echo "starting online monitor"
+xterm -sb -sl 100000  -T "Online monitor" -e 'bin/StdEventMonitor -r tcp://$HOSTIP:$RCPORT -a tcp://45002 ; read' &
+# echo "online monitor started"
+exit
+
+[ "$1" != "" ] && RCPORT=$1
+
+export TLUIP=127.0.0.1
+export HOSTNAME=127.0.0.1
+
+cd `dirname $0`
+if [ -z "$LD_LIBRARY_PATH" ]; then
+  export LD_LIBRARY_PATH="`pwd`/lib"
+else
+  export LD_LIBRARY_PATH="`pwd`/lib:$LD_LIBRARY_PATH"
+fi
+
+printf '\033[1;32;48m \t STARTING DAQ LOCALLY\033[0m \n'
+echo $(date)
+printf '\033[22;33m\t Cleaning up first...  \033[0m \n'
+
+if [ -f KILLRUN.local ]
+then
+    sh KILLRUN.local
+else
+    sh KILLRUN
+fi
+
+printf '\033[22;31m\t End of killall \033[0m \n'
+
+sleep 1
+
+######################################################################
+if [ -n "`ls data/run*.raw`" ]
+then
+    printf '\033[22;33m\t Making sure all data files are properly writeprotected \033[0m \n'
+    chmod a=r data/run*.raw
+    printf '\033[22;32m\t ...Done!\033[0m \n'
+fi
+
+cd bin
+#=====================================================================
+printf '\033[22;33m\t Starting Subprocesses \033[0m \n'
+#=====================================================================
+
+######################################################################
+# euRun
+###############
+printf '\033[22;33m\t RunControl \033[0m \n'
+xterm -sb -sl 1000000 -T "Runcontrol" -e './euRun -a tcp://$RCPORT || read '&
+sleep 2
+
+######################################################################
+# euLog
+###############
+#printf '\033[22;33m\t Logger  \033[0m \n'
+xterm -sb -sl 1000 -T "DataLogger" -e './euLog -r tcp://$HOSTIP:$RCPORT || read' &
+sleep 2
+#sleep 10
+
+######################################################################
+# DataCollector
+###############
+#printf '\033[22;33m\t TestDataCollector \033[0m \n'
+#xterm -sb -sl 100000  -T "direct save Data Collector" -e './Launcher -n DirectSaveDataCollector -t d1 -r tcp://$HOSTIP:$RCPORT && read || read' &
+#sleep 2
+
+#xterm -sb -sl 100000 -rv -T "event number Data Collector" -e './Launcher -n EventnumberSyncDataCollector -t d2 -r tcp://$HOSTIP:$RCPORT && read || read' &
+#sleep 2
+
+#xterm -sb -sl 100000 -rv -T "bif Data Collector" -e './Launcher -n DirectSaveDataCollector -t d3 -r tcp://$HOSTIP:$RCPORT && read || read' &
+#sleep 2
+
+xterm -sb -sl 100000  -T "Event Building Data Collector" -e './Launcher -n CaliceAhcalBifEventBuildingDataCollector -t d4 -r tcp://$HOSTIP:$RCPORT && read || read' &
+sleep 2
+
+#xterm -sb -sl 1000 -geom 80x10-480-900 -fn fixed -T "Data Collector" -e './TestDataCollector -r tcp://$HOSTIP:$RCPORT' &
+#sleep 2
+
+
+######################################################################
+# AHCAL producer
+################
+#xterm -sb -sl 1000 -T "AHCAL" -e './AHCALProducer -r tcp://$HOSTIP:$RCPOR || read'&
+xterm -sb -sl 1000000 -geometry 160x30 -T "AHCAL" -e './AHCALProducer -r tcp://$HOSTIP:$RCPOR|tee -a ../logs/ahcal.log && read || read'&
+sleep 2
+
+####################################################################
+# AHCAL BIF
+####################################
+xterm -sb -sl 1000000 -geometry 160x30 -T "BIF" -e './BIFAHCALProducer -r tcp://$HOSTIP:$RCPOR|tee -a ../logs/bif.log && read || read'&
+sleep 2
+
+printf ' \n'
+printf ' \n'
+printf ' \n'
+printf '\033[1;32;48m\t ...Done!\033[0m \n'
+printf '\033[1;32;48mSTART OF DAQ COMPLETE\033[0m \n'

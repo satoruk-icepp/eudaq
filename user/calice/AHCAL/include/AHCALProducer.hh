@@ -81,6 +81,7 @@ namespace eudaq {
          int getGenerateTriggerIDFrom() const;
          int getColoredTerminalMessages() const;
          int getIgnoreLdaTimestamps() const;
+      int getMaxTrigidSkip() const;
 
       private:
          AHCALProducer::EventBuildingMode _eventBuildingMode;
@@ -98,6 +99,7 @@ namespace eudaq {
          int _runNo;
          int _eventNo; //last sent event - for checking of correct event numbers sequence during sending events
          int _fd;
+      int _maxTrigidSkip;
 
          std::mutex _mufd;
 

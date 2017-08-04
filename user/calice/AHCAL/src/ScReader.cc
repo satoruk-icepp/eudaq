@@ -584,6 +584,7 @@ namespace eudaq {
                eudaq::RawEvent *nev_raw = dynamic_cast<RawEvent*>(nev.get());
                prepareEudaqRawPacket(nev_raw);
                nev->SetTag("ROC", roc);
+               nev->SetTag("BXID", bxid);
                nev->SetTag("ROCStartTS", startTS);
                nev->SetTriggerN(rawTrigId - _producer->getLdaTrigidOffset());
                if (startTS && (!_producer->getIgnoreLdaTimestamps())) {
@@ -672,9 +673,11 @@ namespace eudaq {
             }
             _LDATimestampData.erase(roc);
          } else {
-            if (_producer->getColoredTerminalMessages()) std::cout << "\033[31m";
-            std::cout << "ERROR: matching LDA timestamp information not found for ROC " << roc << std::endl;
-            if (_producer->getColoredTerminalMessages()) std::cout << "\033[0m";
+            if (!_producer->getIgnoreLdaTimestamps()) {
+               if (_producer->getColoredTerminalMessages()) std::cout << "\033[31m";
+               std::cout << "ERROR: matching LDA timestamp information not found for ROC " << roc << std::endl;
+               if (_producer->getColoredTerminalMessages()) std::cout << "\033[0m";
+            }
          }
          //----------------------------------------------------------
 
@@ -687,6 +690,7 @@ namespace eudaq {
             eudaq::RawEvent *nev_raw = dynamic_cast<RawEvent*>(nev.get());
             prepareEudaqRawPacket(nev_raw);
             nev->SetTag("ROC", roc);
+            nev->SetTag("BXID", bxid);
             if (_LDATimestampData.count(roc)) {
                nev->SetTag("ROCStartTS", startTS);
                std::vector<uint32_t> cycledata;
@@ -816,7 +820,7 @@ namespace eudaq {
                while ((++_lastBuiltEventNr < (_LDATimestampData[roc].TriggerIDs[i] - _producer->getLdaTrigidOffset()))
                      && (_producer->getInsertDummyPackets())) {
                   //std::cout << "WARNING EB: inserting a dummy trigger: " << _lastBuiltEventNr << ", because " << _LDATimestampData[roc].TriggerIDs[i] << " is next" << std::endl;
-                  insertDummyEvent(EventQueue, -1, _lastBuiltEventNr, true);
+                  insertDummyEvent(EventQueue, _lastBuiltEventNr, _lastBuiltEventNr, true);
                }
                int trigid = _LDATimestampData[roc].TriggerIDs[i];
 
@@ -899,7 +903,8 @@ namespace eudaq {
       prepareEudaqRawPacket(nev_raw);
       if (eventNumber > 0) nev->SetEventN(eventNumber);
       if (triggerid > 0) nev->SetTriggerN(triggerid, triggeridFlag);
-      EventQueue.push_back(std::move(nev));
+       nev->SetTag("Dummy", 1);
+       EventQueue.push_back(std::move(nev));
    }
 
    void ScReader::readTemperature(std::deque<char> &buf) {
@@ -1123,7 +1128,7 @@ namespace eudaq {
 
             if (trigIDdifference != 1) { //serious error, we missed a trigger ID, we got it more time, or the data is corrupted
                //int cycle_difference = static_cast<int>((_trigID + 1) & 0xFFFF) - static_cast<int>(rawTrigID);
-               if ((trigIDdifference > 1) && (trigIDdifference < 100)) {
+            if ((trigIDdifference > 1) && (trigIDdifference < _producer->getMaxTrigidSkip())) {
                   //we do accept small jumps forward
                   _trigID += trigIDdifference;
                   _RunTimesStatistics.triggers_lost += trigIDdifference - 1;
@@ -1136,7 +1141,7 @@ namespace eudaq {
                }
 
                //TODO fix the case, when the trigger comes as the very first event. Not the case for TLU - it starts sending triggers later
-               if ((trigIDdifference < 1) || (trigIDdifference >= 100)) {
+            if ((trigIDdifference < 1) || (trigIDdifference >= _producer->getMaxTrigidSkip())) {
                   //too big difference to be compensated. Dropping this packet
                   if (_producer->getColoredTerminalMessages()) std::cout << "\033[31;1m";
                   cout << "Unexpected TriggerID in run " << _runNo << ". ROC=" << _cycleNo << ", Expected TrigID=" << (_trigID + 1) << ", received:" << rawTrigID << ". SKipping" << endl;
@@ -1297,4 +1302,14 @@ namespace eudaq {
 const ScReader::RunTimeStatistics& ScReader::getRunTimesStatistics() const
 {
    return _RunTimesStatistics;
+}
+
+unsigned int ScReader::getCycleNo() const
+{
+   return _cycleNo;
+}
+
+unsigned int ScReader::getTrigId() const
+{
+   return _trigID;
 }
