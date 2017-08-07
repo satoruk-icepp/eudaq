@@ -1,5 +1,9 @@
 #include "eudaq/StdEventConverter.hh"
 #include "eudaq/RawEvent.hh"
+#ifdef _WIN32
+//TODO remove the _WIN32 if not necessary in linux
+#include <array>
+#endif
 
 class AHCalRawEvent2StdEventConverter: public eudaq::StdEventConverter {
    public:

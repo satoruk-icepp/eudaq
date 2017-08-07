@@ -423,10 +423,9 @@ namespace eudaq {
          s = "i:CycleNr,i:BunchXID,i:EvtNr,i:ChipID,i:NChannels,i:TDC14bit[NC],i:ADC14bit[NC]";
          nev->AddBlock(1, s.c_str(), s.length());
          unsigned int times[1];
-         struct timeval tv;
-         ::gettimeofday(&tv, NULL);
-         times[0] = tv.tv_sec;
-         nev->AddBlock(2, times, sizeof(times));
+		 auto since_epoch = std::chrono::system_clock::now().time_since_epoch();
+		 times[0] = std::chrono::duration_cast<std::chrono::seconds>(since_epoch).count();
+		 nev->AddBlock(2, times, sizeof(times));
          nev->AddBlock(3, vector<int>()); // dummy block to be filled later with slowcontrol files
          nev->AddBlock(4, vector<int>()); // dummy block to be filled later with LED information (only if LED run)
          nev->AddBlock(5, vector<int>()); // dummy block to be filled later with temperature
@@ -497,10 +496,9 @@ namespace eudaq {
       s = "i:CycleNr,i:BunchXID,i:EvtNr,i:ChipID,i:NChannels,i:TDC14bit[NC],i:ADC14bit[NC]";
       ev->AddBlock(1, s.c_str(), s.length());
       unsigned int times[1];
-      struct timeval tv;
-      ::gettimeofday(&tv, NULL);
-      times[0] = tv.tv_sec;
-      ev->AddBlock(2, times, sizeof(times));
+ 	  auto since_epoch = std::chrono::system_clock::now().time_since_epoch();
+	  times[0] = std::chrono::duration_cast<std::chrono::seconds>(since_epoch).count();
+	  ev->AddBlock(2, times, sizeof(times));
       ev->AddBlock(3, vector<int>()); // dummy block to be filled later with slowcontrol files
       ev->AddBlock(4, vector<int>()); // dummy block to be filled later with LED information (only if LED run)
       ev->AddBlock(5, vector<int>()); // dummy block to be filled later with temperature
@@ -1242,8 +1240,8 @@ namespace eudaq {
       triggers_in_cycle_histogram.clear();
    }
    void ScReader::RunTimeStatistics::append(const RunTimeStatistics& otherStats) {
-      last_TS = std::max(last_TS, otherStats.last_TS);
-      first_TS = std::min(first_TS, otherStats.first_TS);
+      last_TS = (std::max)(last_TS, otherStats.last_TS); // putting std::max into parenthesis due to windows macros. TODO check if works under linux
+      first_TS = (std::min)(first_TS, otherStats.first_TS); // putting std::max into parenthesis due to windows macros. TODO check if works under linux
       ontime += otherStats.ontime;
       offtime += otherStats.offtime;
       cycles += otherStats.cycles;
