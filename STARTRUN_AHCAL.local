@@ -10,7 +10,7 @@ fi
 export RCPORT=44000
 export HOSTIP=127.0.0.1
 #################  Run control ###################
-xterm -sb -sl 1000000 -T "Runcontrol" -e 'bin/euRun -n Ex0RunControl -a tcp://$RCPORT ; read '&
+xterm -sb -sl 1000000 -T "Runcontrol" -e 'bin/euRun -n RunControl -a tcp://$RCPORT ; read '&
 sleep 1  
 #################  Log collector #################
 xterm -sb -sl 1000 -T "DataLogger" -e 'bin/euLog ; read' &
@@ -22,15 +22,11 @@ xterm -sb -sl 1000000  -T "Data collector" -e 'bin/euCliCollector -n DirectSaveD
 
 #################  Producer #################
 xterm -sb -sl 1000000 -geometry 160x30 -T "AHCAL" -e 'bin/AHCALProducer -r tcp://$HOSTIP:$RCPOR|tee -a logs/ahcal.log && read || read'&
-#sleep 2# xterm -sb -sl 100000  -T "Example Producer" -e 'bin/euCliProducer -n Ex0Producer -t my_pd0 ; read' &
-# #sleep 1
-# xterm -sb -sl 100000  -T "Example Producer2" -e 'bin/euCliProducer -n Ex0Producer -t my_pd1 ; read' &
 # sleep 1
 
 #################  Online Monitor #################
-#xterm -sb -sl 100000  -T "Online monitor" -e 'bin/euCliMonitor -n StdEventMonitors -t my_mon -a tcp://45002 ; read'&
-# echo "starting online monitor"
-xterm -sb -sl 100000  -T "Online monitor" -e 'bin/StdEventMonitor -r tcp://$HOSTIP:$RCPORT -a tcp://45002 ; read' &
+#echo "starting online monitor"
+xterm -sb -sl 100000  -T "Online monitor" -e 'bin/StdEventMonitor -c conf/onlinemonitor.conf --reset -r tcp://$HOSTIP:$RCPORT -a tcp://45002 ; read' &
 # echo "online monitor started"
 exit
 
