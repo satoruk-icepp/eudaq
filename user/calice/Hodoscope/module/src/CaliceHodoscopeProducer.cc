@@ -8,6 +8,37 @@
 #ifndef _WIN32
 #include <sys/file.h>
 #endif
+#include <easiroc.h>
+
+
+extern unsigned int slowdata[sizeByte_SC];
+extern unsigned int ReadSCdata[sizeByte_RSC];
+extern unsigned int Probedata[sizeByte_PSC];
+extern unsigned int Pindata[sizeByte_PIN];
+
+class Udpsetper {
+   public:
+      float DACdata[63];
+      float HVC_1;
+      float HVC_2;
+      float ADC2HV;
+      float ADC2uA;
+      float ADC2V;
+      float ADC2K;
+      Udpsetper() {
+         HVC_1 = 415;
+         HVC_2 = 780;
+         //HVDAC =HVC_1 * HV + HVC_2;            convert HV to DAC bit
+         ADC2HV = 0.00208;
+         //rd_data = ADC2HV * rd_data;          convert ADC bit to HV
+         ADC2uA = 0.034;
+         //rd_data = ADC2uA * rd_data;          convert ADC bit to HVcurrent
+         ADC2V = 0.0000685;
+         //rd_data = ADC2V * rd_data;             convert ADC bit to inputDAC Voltage
+         ADC2K = 4500;
+         //rd_data = ADC2K * rd_data/65535/2.4; convert ADC bit to TEMP(K)
+      }
+};
 
 class CaliceHodoscopeProducer: public eudaq::Producer {
    public:
@@ -19,9 +50,16 @@ class CaliceHodoscopeProducer: public eudaq::Producer {
       void DoTerminate() override;
       void DoReset() override;
       void Mainloop();
-
+      int ADCOneCycle_wHeader(Exchanger* exchange, std::ofstream& file);
+      void ADCStop(Exchanger* exchange);
+      int DebugFPGA(Exchanger* exchange);
+      int TransmitSC(Exchanger* exchange);
+      int TransmitReadSC(Exchanger* exchange);
+      void setuplog(Exchanger* exchange, Udpsetper* udpper);
+      void udplog(Exchanger* exchange, Udpsetper* udpper, std::string file_name);
       static const uint32_t m_id_factory = eudaq::cstr2hash("CaliceHodoscopeProducer");
-      private:
+
+   private:
       bool m_flag_ts;
       bool m_flag_tg;
       uint32_t m_plane_id;
@@ -29,6 +67,10 @@ class CaliceHodoscopeProducer: public eudaq::Producer {
       std::chrono::milliseconds m_ms_busy;
       std::thread m_thd_run;
       bool m_exit_of_run;
+
+      //easiroc old module variables
+      int ForceStop = 0;
+      int EndADC = 0;
 };
 namespace {
 auto dummy0 = eudaq::Factory<eudaq::Producer>::
@@ -88,38 +130,451 @@ void CaliceHodoscopeProducer::DoTerminate() {
       m_thd_run.join();
    fclose(m_file_lock);
 }
-void CaliceHodoscopeProducer::Mainloop() {
-   auto tp_start_run = std::chrono::steady_clock::now();
-   uint32_t trigger_n = 0;
-   uint8_t x_pixel = 16;
-   uint8_t y_pixel = 16;
-   std::random_device rd;
-   std::mt19937 gen(rd());
-   std::uniform_int_distribution<uint32_t> position(0, x_pixel * y_pixel - 1);
-   std::uniform_int_distribution<uint32_t> signal(0, 255);
-   while (!m_exit_of_run) {
-      auto ev = eudaq::Event::MakeUnique("Ex0Raw");
-      auto tp_trigger = std::chrono::steady_clock::now();
-      auto tp_end_of_busy = tp_trigger + m_ms_busy;
-      if (m_flag_ts) {
-         std::chrono::nanoseconds du_ts_beg_ns(tp_trigger - tp_start_run);
-         std::chrono::nanoseconds du_ts_end_ns(tp_end_of_busy - tp_start_run);
-         ev->SetTimestamp(du_ts_beg_ns.count(), du_ts_end_ns.count());
+
+//void CaliceHodoscopeProducer::Mainloop() {
+//   auto tp_start_run = std::chrono::steady_clock::now();
+//   uint32_t trigger_n = 0;
+//   uint8_t x_pixel = 16;
+//   uint8_t y_pixel = 16;
+//   std::random_device rd;
+//   std::mt19937 gen(rd());
+//   std::uniform_int_distribution<uint32_t> position(0, x_pixel * y_pixel - 1);
+//   std::uniform_int_distribution<uint32_t> signal(0, 255);
+//   while (!m_exit_of_run) {
+//      auto ev = eudaq::Event::MakeUnique("HodoscopeRaw");
+//      auto tp_trigger = std::chrono::steady_clock::now();
+//      auto tp_end_of_busy = tp_trigger + m_ms_busy;
+//      if (m_flag_ts) {
+//         std::chrono::nanoseconds du_ts_beg_ns(tp_trigger - tp_start_run);
+//         std::chrono::nanoseconds du_ts_end_ns(tp_end_of_busy - tp_start_run);
+//         ev->SetTimestamp(du_ts_beg_ns.count(), du_ts_end_ns.count());
+//      }
+//      if (m_flag_tg)
+//         ev->SetTriggerN(trigger_n);
+//
+//      std::vector<uint8_t> hit(x_pixel * y_pixel, 0);
+//      hit[position(gen)] = signal(gen);
+//      std::vector<uint8_t> data;
+//      data.push_back(x_pixel);
+//      data.push_back(y_pixel);
+//      data.insert(data.end(), hit.begin(), hit.end());
+//
+//      uint32_t block_id = m_plane_id;
+//      ev->AddBlock(block_id, data);
+//      SendEvent(std::move(ev));
+//      trigger_n++;
+//      std::this_thread::sleep_until(tp_end_of_busy);
+//   }
+//}
+void CaliceHodoscopeProducer::ADCStop(Exchanger* exchange) {
+   unsigned int data = 0;
+   std::cout << "ADC exit process" << std::endl;
+   data += 16 << 24;
+   data += 100 << 16;
+   exchange->tcp_send(data);
+   sleep(1);
+
+   //data = 0;
+   //data += 100 << 16;
+   //exchange->tcp_send(data);
+   //usleep(10000);
+
+   return;
+}
+
+int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstream& file) {
+
+   unsigned int DataBuffer[1000];
+   memset(DataBuffer, 0, sizeof(DataBuffer));
+   unsigned int *ptr_DataBuf = DataBuffer;
+   unsigned int TotalRecvByte = 0;
+   unsigned int TotalRecvEvent = 0;
+
+   static const int NofHeader = 3;
+   static unsigned int sizeHeader = NofHeader * sizeof(int);
+   static unsigned int wordsize = sizeof(int);
+
+   unsigned int Header[NofHeader] = { 1, 1, 1 };
+   unsigned int header1[1] = { 1 };
+   unsigned int header2[1] = { 1 };
+   unsigned int header3[1] = { 1 };
+   int ret = 0;
+
+   while (true) {
+      ret = exchange->tcp_multi_recv((char*) header1, &wordsize);
+      if (ret <= 0 && EndADC == 1) {
+         return -1;
       }
-      if (m_flag_tg)
-         ev->SetTriggerN(trigger_n);
+      //std::cout << std::hex << header1[0] << std::endl;
+      if (header1[0] == 0xFFFF7368) {
+         break;
+      }
+      //else{
+      //   std::cout << "dump data " << header1[0] << std::endl;
+      //}
+   }
+   ret = exchange->tcp_multi_recv((char*) header2, &wordsize);
+   if (ret <= 0 && EndADC == 1) {
+      return -1;
+   }
+   ret = exchange->tcp_multi_recv((char*) header3, &wordsize);
+   if (ret <= 0 && EndADC == 1) {
+      return -1;
+   }
+   //std::cout << " Header1 : " << std::hex << header1[0] << std::endl;
+   //std::cout << " Header2 : " << std::hex << header2[0] << std::endl;
+   //std::cout << " Header3 : " << std::hex << header3[0] << std::endl;
+   Header[0] = header1[0];
+   Header[1] = header2[0];
+   Header[2] = header3[0];
 
-      std::vector<uint8_t> hit(x_pixel * y_pixel, 0);
-      hit[position(gen)] = signal(gen);
+   if (header1[0] != 0xFFFF7368) {
+      std::cerr << " Fatal ADC ERROR : HEADER" << std::endl;
+      std::cerr << " Header1 : " << std::hex << header1[0] << std::endl;
+      std::cerr << " Header2 : " << std::hex << header2[0] << std::endl;
+      std::cerr << " Header3 : " << std::hex << header3[0] << std::endl;
+      exit(-1);
+   } else {
+      unsigned int sizeData = (sizeof(int) * header2[0] & 0xffff);
+      unsigned int NofWord = (header2[0] & 0xffff);
+      unsigned int OneData[NofWord];
+      exchange->tcp_multi_recv((char*) OneData, &sizeData);
+      /*
+       for(int i = 0; i<NofWord; ++i){//
+       if (i%4 ==0)
+       {
+       std::cout << std::hex << OneData[i] <<" "<< std::hex << OneData[i+1] <<" "
+       << std::hex << OneData[i+2] <<" "<< std::hex << OneData[i+3] <<" "<< std::endl;
+       }
+       }
+       */
+      memcpy(ptr_DataBuf, Header, sizeHeader);
+      ptr_DataBuf += NofHeader;
+
+      memcpy(ptr_DataBuf, OneData, sizeData);
+      ptr_DataBuf += sizeData / sizeof(int);
+
+      TotalRecvByte += sizeHeader + sizeData;
+      ++TotalRecvEvent;
+   }
+
+   if (EndADC != 1) {
+      for (unsigned int i = 0; i < TotalRecvByte / sizeof(int); ++i) {
+         unsigned int buffer = DataBuffer[i];
+         file.write((char*) &buffer, sizeof(int));
+      }
+   }
+   return 0;
+}
+
+int CaliceHodoscopeProducer::DebugFPGA(Exchanger* exchange) {
+   unsigned int buffer = 0;
+   buffer += 0 << 16;
+   buffer += (Pindata[0] & 255) << 8;
+   if (-1 == exchange->WriteData(buffer)) {
+      exit(-1);
+   }
+
+   for (int i = 1; i < 5; ++i) {
+      buffer = 0;
+      if (i == 4) {
+         buffer += 5 << 16;
+      } else {
+         buffer += i << 16;
+      }
+      buffer += ((Pindata[1] >> (i - 1) * 8) & 255) << 8;
+      if (-1 == exchange->WriteData(buffer)) {
+         exit(-1);
+      }
+      usleep(1);
+   }
+   return 0;
+}
+
+int CaliceHodoscopeProducer::TransmitSC(Exchanger* exchange) {
+   unsigned int data = 0;
+   //Set SC mode -----------------------------------------------------------
+   data = 0;
+   data += 1 << 16;
+   data += 240 << 8;
+   if (-1 == exchange->WriteData(data)) {
+      exit(-1);
+   }
+
+   //SC start -------------------------------------------------------------
+   data = 0;
+   data += 10 << 16;
+   data += (slowdata[0] & 255) << 8;
+   if (-1 == exchange->WriteData(data)) {
+      exit(-1);
+   }
+
+   for (int i = 1; i < 15; ++i) {
+      for (int shift = 0; shift < 4; ++shift) {
+         data = 0;
+         data += 10 << 16;
+         data += ((slowdata[i] >> 8 * shift) & 255) << 8;
+         if (-1 == exchange->WriteData(data)) {
+            exit(-1);
+         }
+         usleep(1);
+      }
+   }
+
+   //StartCycle -----------------------------------------------------------
+   data = 0;
+   data += 1 << 16;
+   data += 242 << 8;
+   if (-1 == exchange->WriteData(data)) {
+      exit(-1);
+   }
+
+   data = 0;
+   data += 1 << 16;
+   data += 240 << 8;
+   if (-1 == exchange->WriteData(data)) {
+      exit(-1);
+   }
+
+   //Load SC --------------------------------------------------------------
+   data = 0;
+   data += 1 << 16;
+   data += 241 << 8;
+   if (-1 == exchange->WriteData(data)) {
+      exit(-1);
+   }
+
+   data = 0;
+   data += 1 << 16;
+   data += 240 << 8;
+   if (-1 == exchange->WriteData(data)) {
+      exit(-1);
+   }
+   return 0;
+}
+
+int CaliceHodoscopeProducer::TransmitReadSC(Exchanger* exchange) {
+   //SCA read ---------------------------------------------------------------
+   unsigned int data = 0;
+
+   for (int i = 0; i < 4; ++i) {
+      data = 0;
+      data += 12 << 16;
+      data += ((ReadSCdata[0] >> i * 8) & 255) << 8;
+      if (-1 == exchange->WriteData(data)) {
+         exit(-1);
+      }
+      usleep(1);
+   }
+
+   //StartCycle ------------------------------------------------------------
+   data = 0;
+   data += 1 << 16;
+   data += 242 << 8;
+   if (-1 == exchange->WriteData(data)) {
+      exit(-1);
+   }
+
+   data = 0;
+   data += 1 << 16;
+   data += 240 << 8;
+   if (-1 == exchange->WriteData(data)) {
+      exit(-1);
+   }
+   return 0;
+}
+
+void CaliceHodoscopeProducer::setuplog(Exchanger* exchange, Udpsetper* udpper) {
+   std::vector<std::string> rdsufile, dataval;
+   std::ifstream ifs("autoconfig/sulogfile.txt");
+   std::string fntemp, datatemp, ofntemp;
+   std::ostringstream os;
+   while (ifs >> fntemp) {
+      rdsufile.push_back(fntemp);
+   }
+   ifs.close();
+   time_t now = time(NULL);
+   struct tm *pnow = localtime(&now);
+
+   os << pnow->tm_year + 1900 << pnow->tm_mon + 1 << pnow->tm_mday << "_" << pnow->tm_hour << pnow->tm_min << "_sulog";
+   ofntemp = "./sulog/" + os.str();
+   mkdir(ofntemp.c_str(), 0775);
+
+   for (int i = 0; i < rdsufile.size(); ++i)
+         {
+      fntemp = "setup/" + rdsufile[i];
+      std::ifstream ifs2(fntemp.c_str());
+      ofntemp = "sulog/" + os.str() + "/" + rdsufile[i];
+      std::ofstream ofs(ofntemp.c_str());
+      while (getline(ifs2, datatemp)) {
+         ofs << datatemp << std::endl;
+      }
+      ifs2.close();
+      ofs.close();
+   }
+   ofntemp = "./sulog/" + os.str() + "/udplog.txt";
+   udplog(exchange, udpper, ofntemp);
+   return;
+}
+
+void CaliceHodoscopeProducer::udplog(Exchanger* exchange, Udpsetper* udpper, std::string file_name) {
+   double Bias = 0;
+   double rd_data = 0;
+   float DACdata[63];
+   int MUX = 0;
+   std::ofstream ofs(file_name.c_str());
+   rd_data = exchange->read_madc(3);
+   rd_data = udpper->ADC2HV * rd_data;
+   Bias = rd_data;
+   ofs << "Bias voltage : " << rd_data << " V " << std::endl;
+   rd_data = exchange->read_madc(4);
+   rd_data = udpper->ADC2uA * rd_data;
+   ofs << "Bias current : " << rd_data << " uA " << std::endl;
+
+   ofs << "Input DAC scan" << std::endl;
+   int i = 0;
+   for (i = 0; i < 32; i++) {
+      if (i % 2 == 0 && i < 16) {
+         MUX = 199 - i / 2;
+      }
+      else
+         if (i % 2 == 1 && i < 16) {
+            MUX = 207 - i / 2;
+         }
+         else
+            if (i % 2 == 0 && i < 32 && i > 15) {
+               MUX = 55 - (i - 16) / 2;
+            }
+            else
+               if (i % 2 == 1 && i < 32 && i > 15) {
+                  MUX = 63 - (i - 16) / 2;
+               }
+               else
+                  if (i == 32) {
+                     MUX = 0;
+                  }
+      exchange->udp_send(0x00000013, MUX);
+      usleep(2000);
+      ofs << std::left;
+      if (i < 32) {
+         rd_data = exchange->read_madc(1);     //Read ADC data
+         //std::cout <<"MADC_data = "<< rd_data;
+         rd_data = udpper->ADC2V * rd_data; //convert ADC bit to V
+         ofs << "ch" << std::setw(3) << i << std::setw(8) << rd_data << " V " << std::setw(8) << Bias - rd_data << " V" << std::endl;
+         rd_data = exchange->read_madc(2); //Read ADC data
+         //std::cout <<"MADC_data = "<< rd_data;
+         rd_data = udpper->ADC2V * rd_data; //convert ADC bit to V
+         ofs << "ch" << std::setw(3) << i + 32 << std::setw(8) << rd_data << " V " << std::setw(8) << Bias - rd_data << " V" << std::endl;
+      }
+   }
+
+   return;
+}
+
+void CaliceHodoscopeProducer::Mainloop() {
+   uint32_t trigger_n = 0;
+   std::string ofilename;
+   char* SiTCP_MASTER_IP = "192.168.10.15";
+   unsigned int tcpport = 24;
+   unsigned int udpport = 4660;
+   unsigned int daq_mode = (unsigned int) 6;   //atoi(argv[2]);
+
+   //----------- initialize -----------------
+
+   Exchanger* exchange = new Exchanger(SiTCP_MASTER_IP, tcpport, udpport);
+   exchange->CreateTCPSock();
+   exchange->CreateUDPSock();
+   exchange->SetTCPTimeOut(3, 0);
+//   DebugFPGA(exchange);
+//   std::cout << "ASIS Initialize : Done" << std::endl;
+//   std::cout << std::endl;
+//   usleep(10000);
+//
+//   exchange->WriteData(37888);
+//   PrepareSC(1);
+//   TransmitSC(exchange);
+//   std::cout << "Slow Control chip1 : Done" << std::endl;
+//   std::cout << std::endl;
+//   PrepareReadSC(1);
+//   TransmitReadSC(exchange);
+//   std::cout << "Read Slow Control chip1 : Done" << std::endl;
+//   std::cout << std::endl;
+
+//   exchange->WriteData(21504);
+//   PrepareSC(2);
+//   TransmitSC(exchange);
+//   std::cout << "Slow Control chip2 : Done" << std::endl;
+//   std::cout << std::endl;
+//   PrepareReadSC(2);
+//   TransmitReadSC(exchange);
+//   std::cout << "Read Slow Control chip2: Done" << std::endl;
+//   std::cout << std::endl;
+
+   exchange->WriteData(5120);
+   {
+      unsigned int sidata = 31;
+      sidata = sidata << 16;
+      unsigned int data = daq_mode;
+      data = data << 8;
+      sidata += data;
+      if (-1 == exchange->WriteData(sidata)) {
+         exit(-1);
+      }
+      std::cout << "#D : DAQ mode is " << daq_mode << std::endl;
+      std::cout << std::endl;
+   }
+   //UDP Initialize-------------------------------------------------------
+   Udpsetper* udpper = new Udpsetper();
+   exchange->udp_send(0x00000012, 248); //Set ADC rate to 50Hz
+   exchange->udp_send(0x0000001f, 0);
+
+   //------------- end of configuration ----------------------
+   setuplog(exchange, udpper);
+
+   ofilename = "data/test.dat";
+   //+ file_name;
+   std::ofstream file(ofilename.c_str(), std::ios::binary);
+   unsigned int data = 0;
+   int EventNum = 0;
+   data += 32 << 24;
+   data += 100 << 16;
+   exchange->tcp_send(data);
+
+   while (!m_exit_of_run) {   //run until runcontrol decides to stop
+      ADCOneCycle_wHeader(exchange, file);
+      ++EventNum;
+      if (0 == EventNum % 1000) {
+         std::cout << "Event # " << std::dec << EventNum << std::endl;
+      }
+
+      auto ev = eudaq::Event::MakeUnique("HodoscopeRaw");
+      ev->SetTriggerN(trigger_n);
       std::vector<uint8_t> data;
-      data.push_back(x_pixel);
-      data.push_back(y_pixel);
-      data.insert(data.end(), hit.begin(), hit.end());
-
       uint32_t block_id = m_plane_id;
       ev->AddBlock(block_id, data);
       SendEvent(std::move(ev));
       trigger_n++;
-      std::this_thread::sleep_until(tp_end_of_busy);
    }
+
+   ADCStop(exchange);
+   EndADC = 1;
+   int abort = 0;
+   while (0 == ADCOneCycle_wHeader(exchange, file)) {
+      usleep(10000);
+      if (abort == 50) {
+         ADCStop(exchange);
+         abort = 0;
+      }
+      std::cout << "dummy data" << std::endl;
+      ++abort;
+   }
+   EndADC = 0;
+   ForceStop = 0;
+   std::cout << "End ADC" << std::endl;
+   file.close();
+   exchange->CloseUDPSock();
+   exchange->CloseTCPSock();
+   std::cout << "All :: Connection Close" << std::endl;
+   delete exchange;
+   delete udpper;
 }
