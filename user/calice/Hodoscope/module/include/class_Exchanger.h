@@ -7,7 +7,7 @@
 class Exchanger:public SiTCP{
 
 public:
-  Exchanger(char* IpAddr, unsigned int tcp, unsigned int udp);
+  Exchanger(const char* IpAddr, unsigned int tcp, unsigned int udp);
   ~Exchanger();
 
   void udp_send(unsigned int address, int data);//send only 1 data length

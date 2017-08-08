@@ -1,7 +1,7 @@
 #include "class_Exchanger.h"
 //#define binary(bit) strtol(bit,NULL,2)
 
-Exchanger::Exchanger(char* IpAddr, unsigned int tcp, unsigned int udp){
+Exchanger::Exchanger(const char* IpAddr, unsigned int tcp, unsigned int udp){
   SetIPPort(IpAddr,tcp,udp);
 };
 Exchanger::~Exchanger(){};

@@ -14,7 +14,7 @@ SiTCP::SiTCP(){
 
 SiTCP::~SiTCP(){};
 
-bool SiTCP::SetIPPort(char* IpAddr, unsigned int tcp, unsigned int udp){
+bool SiTCP::SetIPPort(const char* IpAddr, unsigned int tcp, unsigned int udp){
   sitcpIpAddr = IpAddr;
   if(tcp<=0 || 65535<=tcp || udp<=0 || 65535<=udp){
     if(tcp<=0 || 65535<=tcp){

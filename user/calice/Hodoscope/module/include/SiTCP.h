@@ -65,7 +65,7 @@ public:
 
   SiTCP();
   ~SiTCP();
-  bool SetIPPort(char* IpAddr, unsigned int tcp, unsigned int udp);
+  bool SetIPPort(const char* IpAddr, unsigned int tcp, unsigned int udp);
   bool CloseDumpFile();
   bool CloseLastFrameFile();
   bool CreateUDPSock();
