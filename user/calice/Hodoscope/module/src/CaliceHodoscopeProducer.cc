@@ -30,18 +30,13 @@ private:
   std::thread m_thd_run;
   bool m_exit_of_run;
 };
-//----------DOC-MARK-----END*DEC-----DOC-MARK----------
-//----------DOC-MARK-----BEG*REG-----DOC-MARK----------
 namespace{
   auto dummy0 = eudaq::Factory<eudaq::Producer>::
     Register<CaliceHodoscopeProducer, const std::string&, const std::string&>(CaliceHodoscopeProducer::m_id_factory);
 }
-//----------DOC-MARK-----END*REG-----DOC-MARK----------
-//----------DOC-MARK-----BEG*CON-----DOC-MARK----------
 CaliceHodoscopeProducer::CaliceHodoscopeProducer(const std::string & name, const std::string & runcontrol)
   :eudaq::Producer(name, runcontrol), m_exit_of_run(false){  
 }
-//----------DOC-MARK-----BEG*INI-----DOC-MARK----------
 void CaliceHodoscopeProducer::DoInitialise(){
   auto ini = GetInitConfiguration();
   std::string lock_path = ini->Get("EX0_DEV_LOCK_PATH", "ex0lockfile.txt");
@@ -53,7 +48,6 @@ void CaliceHodoscopeProducer::DoInitialise(){
 #endif
 }
 
-//----------DOC-MARK-----BEG*CONF-----DOC-MARK----------
 void CaliceHodoscopeProducer::DoConfigure(){
   auto conf = GetConfiguration();
   conf->Print(std::cout);
@@ -67,18 +61,15 @@ void CaliceHodoscopeProducer::DoConfigure(){
     m_flag_tg = true;
   }
 }
-//----------DOC-MARK-----BEG*RUN-----DOC-MARK----------
 void CaliceHodoscopeProducer::DoStartRun(){
   m_exit_of_run = false;
   m_thd_run = std::thread(&CaliceHodoscopeProducer::Mainloop, this);
 }
-//----------DOC-MARK-----BEG*STOP-----DOC-MARK----------
 void CaliceHodoscopeProducer::DoStopRun(){
   m_exit_of_run = true;
   if(m_thd_run.joinable())
     m_thd_run.join();
 }
-//----------DOC-MARK-----BEG*RST-----DOC-MARK----------
 void CaliceHodoscopeProducer::DoReset(){
   m_exit_of_run = true;
   if(m_thd_run.joinable())
@@ -91,14 +82,12 @@ void CaliceHodoscopeProducer::DoReset(){
   m_ms_busy = std::chrono::milliseconds();
   m_exit_of_run = false;
 }
-//----------DOC-MARK-----BEG*TER-----DOC-MARK----------
 void CaliceHodoscopeProducer::DoTerminate(){
   m_exit_of_run = true;
   if(m_thd_run.joinable())
     m_thd_run.join();
   fclose(m_file_lock);
 }
-//----------DOC-MARK-----BEG*LOOP-----DOC-MARK----------
 void CaliceHodoscopeProducer::Mainloop(){
   auto tp_start_run = std::chrono::steady_clock::now();
   uint32_t trigger_n = 0;
@@ -134,4 +123,3 @@ void CaliceHodoscopeProducer::Mainloop(){
     std::this_thread::sleep_until(tp_end_of_busy);
   }
 }
-//----------DOC-MARK-----END*IMP-----DOC-MARK----------
