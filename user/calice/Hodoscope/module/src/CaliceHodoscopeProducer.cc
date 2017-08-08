@@ -56,6 +56,7 @@ class CaliceHodoscopeProducer: public eudaq::Producer {
       int TransmitReadSC(Exchanger* exchange);
       void setuplog(Exchanger* exchange, Udpsetper* udpper);
       void udplog(Exchanger* exchange, Udpsetper* udpper, std::string file_name);
+      void update_counter_modulo(unsigned int &counter, const unsigned int newvalue_modulo, const unsigned int modulo_bits, const unsigned int max_backwards);
       void OpenRawFile();
 
       static const uint32_t m_id_factory = eudaq::cstr2hash("CaliceHodoscopeProducer");
@@ -87,6 +88,11 @@ class CaliceHodoscopeProducer: public eudaq::Producer {
       //easiroc old module variables
       //int ForceStop = 0;
       int EndADC = 0;
+
+      unsigned int m_lastTrigN;
+      unsigned int m_lastCycleN;
+      unsigned int m_lastTDCVal;
+      unsigned int m_lastEventN;
 };
 namespace {
 auto dummy0 = eudaq::Factory<eudaq::Producer>::
@@ -129,6 +135,10 @@ void CaliceHodoscopeProducer::DoConfigure() {
 }
 void CaliceHodoscopeProducer::DoStartRun() {
    m_exit_of_run = false;
+   m_lastCycleN = 0;
+   m_lastTDCVal = 0;
+   m_lastTrigN = 0;
+   m_lastEventN = 0;
    m_thd_run = std::thread(&CaliceHodoscopeProducer::Mainloop, this);
 }
 void CaliceHodoscopeProducer::DoStopRun() {
@@ -201,6 +211,16 @@ void CaliceHodoscopeProducer::ADCStop(Exchanger* exchange) {
    return;
 }
 
+void CaliceHodoscopeProducer::update_counter_modulo(unsigned int &counter, const unsigned int newvalue_modulo, const unsigned int modulo_bits,
+      const unsigned int max_backwards) {
+   unsigned int newvalue = counter - max_backwards;
+   unsigned int mask = (1 << modulo_bits) - 1;
+   if ((newvalue & mask) > (newvalue_modulo & mask)) {
+      newvalue += (1 << modulo_bits);
+   }
+   counter = (newvalue & (~mask)) | (newvalue_modulo & mask);
+}
+
 int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstream& file) {
 
    unsigned int DataBuffer[1000];
@@ -227,9 +247,12 @@ int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstr
          ret = (m_redirectedInput) ? 1 : 0;
       }
 
-      if (ret <= 0 && ((EndADC == 1) || m_exit_of_run)) {
-         std::cout << "ERROR read 1" << std::endl;
-         return -1;
+      if (ret <= 0) {
+         if ((EndADC == 1) || m_exit_of_run) {
+            std::cout << "ERROR read 1" << std::endl;
+            return -1;
+         }
+         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
       //std::cout << std::hex << header1[0] << std::endl;
       if (header1[0] == 0xFFFF7368) {
@@ -242,18 +265,20 @@ int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstr
    if (m_redirectedInputFileName.empty()) {
       ret = exchange->tcp_multi_recv((char*) header2, &wordsize);
    } else {
-      ret = m_redirectedInput.read((char*) header2, wordsize) ? 1 : 0;
+      m_redirectedInput.read((char*) header2, wordsize);
+      ret = (m_redirectedInput) ? 1 : 0;
    }
    if (ret <= 0 && ((EndADC == 1) || m_exit_of_run)) {
       std::cout << "ERROR read 2" << std::endl;
       return -1;
    }
+
    if (m_redirectedInputFileName.empty()) {
       ret = exchange->tcp_multi_recv((char*) header3, &wordsize);
    } else {
-      ret = m_redirectedInput.read((char*) header3, wordsize) ? 1 : 0;
+      m_redirectedInput.read((char*) header3, wordsize);
+      ret = (m_redirectedInput) ? 1 : 0;
    }
-
    if (ret <= 0 && ((EndADC == 1) || m_exit_of_run)) {
       std::cout << "ERROR read 3" << std::endl;
       return -1;
@@ -277,7 +302,8 @@ int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstr
       if (m_redirectedInputFileName.empty()) {
          ret = exchange->tcp_multi_recv((char*) OneData, &sizeData);
       } else {
-         ret = m_redirectedInput.read((char*) OneData, wordsize) ? 1 : 0;
+         m_redirectedInput.read((char*) OneData, sizeData);
+         ret = (m_redirectedInput) ? 1 : 0;
       }
       if (ret <= 0 && EndADC == 1) {
          std::cout << "ERROR read 4" << std::endl;
@@ -304,15 +330,48 @@ int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstr
    if (EndADC != 1) {
       for (unsigned int i = 0; i < TotalRecvByte / sizeof(int); ++i) {
          unsigned int buffer = DataBuffer[i];
-         file.write((char*) &buffer, sizeof(int));
+//         std::cout<<eudaq::to_hex(buffer,8)<<" ";
+         if (m_writeRaw) file.write((char*) &buffer, sizeof(int));
       }
-      auto ev = eudaq::Event::MakeUnique("HodoscopeRaw");
-//      ev->SetTriggerN(trigger_n);
-//      std::vector<uint8_t> data;
-//      uint32_t block_id = m_plane_id;
-//      ev->AddBlock(block_id, data);
+      // DEBUG prints
+      //      for (int i = 0; i < 40; i++) {
+      //         std::cout << eudaq::to_hex((unsigned char) *(((unsigned char *) DataBuffer) + i), 2) << " ";
+      //      }
+      //      std::cout << std::endl;
+
+      //cherrypick the information from the data
+      unsigned int trig = (DataBuffer[2] >> 16) & 0xFFF;
+      unsigned int cycle = DataBuffer[3] & 0xFFFFF;
+      unsigned int tdc_val = DataBuffer[4] & 0xFFFFF;
+      unsigned char tdc_bit = (DataBuffer[4] >> 20) & 0x1;
+      // fix overflowing
+      if ((m_lastCycleN & 0xFFFFF) != (cycle)) m_lastTDCVal = 0;      //clear the tdc value for the next readout cycle
+      update_counter_modulo(m_lastTrigN, trig, 12, 1);
+      update_counter_modulo(m_lastCycleN, cycle, 20, 1);
+      update_counter_modulo(m_lastTDCVal, tdc_val, 20, 1);
+//      std::cout << "TRG=" << m_lastTrigN << "\tcycle=" << m_lastCycleN << "\ttdc_val=" << m_lastTDCVal << "\tbit=" << (int) tdc_bit << std::endl;
+
+      eudaq::EventUP ev = eudaq::Event::MakeUnique("HodoscopeRaw");
+      ev->SetTriggerN(m_lastTrigN);
+      ev->SetTag("ROC", m_lastCycleN);
+      ev->SetTag("BXID", (m_lastTDCVal - m_AHCALBXID0Offset) / m_AHCALBXIDWidth);
+      ev->SetTag("TDC", m_lastTDCVal);
+      ev->SetEventN(++m_lastEventN);
+      //TODO ev->SetDeviceN(1);
+      unsigned int unixtime[1];
+//      auto since_epoch = std::chrono::system_clock::now().time_since_epoch();
+//      unixtime[0] = std::chrono::duration_cast<std::chrono::seconds>(since_epoch).count();
+      unixtime[0] = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      ev->AddBlock(0, unixtime, sizeof(unixtime));
+      ev->AddBlock(1, DataBuffer, TotalRecvByte);
+      if (m_lastTrigN == 0) ev->SetBORE();
+//      ev->Print(std::cout);
+//      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       SendEvent(std::move(ev));
-//      trigger_n++;
+
+      //update the status of the producer
+      SetStatusTag("lastROC", eudaq::to_string(m_lastCycleN));
+      SetStatusTag("lastTrig", eudaq::to_string(m_lastTrigN));
    }
    return 0;
 }
@@ -627,9 +686,8 @@ void CaliceHodoscopeProducer::Mainloop() {
    }
    while (!m_exit_of_run) {   //run until runcontrol decides to stop
       ADCOneCycle_wHeader(exchange, m_rawFile);
-      ++EventNum;
-      if (0 == EventNum % 1000) {
-         std::cout << "Event # " << std::dec << EventNum << std::endl;
+      if (0 == m_lastEventN % 1000) {
+         std::cout << "Event # " << std::dec << m_lastEventN << std::endl;
       }
    }
 
