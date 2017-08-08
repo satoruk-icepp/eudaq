@@ -98,7 +98,11 @@ namespace eudaq {
          int _StartWaitSeconds; //wait a fixed amount of seconds, befor the DoStartRun is executed
          int _runNo;
          int _eventNo; //last sent event - for checking of correct event numbers sequence during sending events
+#ifdef _WIN32
+		 SOCKET _fd;
+#else
          int _fd;
+#endif
       int _maxTrigidSkip;
 
          std::mutex _mufd;

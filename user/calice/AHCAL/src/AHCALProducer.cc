@@ -204,6 +204,46 @@ void AHCALProducer::DoStopRun() {
 
 bool AHCALProducer::OpenConnection()
 {
+#ifdef _WIN32
+	if (_redirectedInputFileName.empty()) {
+		WSADATA wsaData;
+		int wsaRet=WSAStartup(MAKEWORD(2, 2), &wsaData); //initialize winsocks 2.2
+		if (wsaRet) { cout << "ERROR: WSA init failed with code " << wsaRet << endl; return false; }
+		cout << "DEBUG: WSAinit OK" << endl;
+
+		std::unique_lock<std::mutex> myLock(_mufd);
+		_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (_fd == INVALID_SOCKET) {
+			cout << "ERROR: invalid socket" << endl;
+			WSACleanup;
+			return false;
+		}
+		cout << "DEBUG: Socket OK" << endl;
+
+		struct sockaddr_in dstAddr;//win ok
+		//??		memset(&dstAddr, 0, sizeof(dstAddr));
+		dstAddr.sin_family = AF_INET;
+		dstAddr.sin_port = htons(_port);
+		dstAddr.sin_addr.s_addr = inet_addr(_ipAddress.c_str());
+
+		int ret = connect(_fd, (struct sockaddr *) &dstAddr, sizeof(dstAddr));
+		if (ret != 0) {
+			cout << "DEBUG: Connect failed" << endl;
+			return 0;
+		}
+		cout << "DEBUG: Connect OK" << endl;
+		return 1;
+	}
+	else {
+		std::cout << "Redirecting intput from file: " << _redirectedInputFileName << std::endl;
+		_fd = open(_redirectedInputFileName.c_str(), O_RDONLY);
+		if (_fd < 0) {
+			cout << "open redirected file failed from this path:" << _redirectedInputFileName << endl;
+			return false;
+		}
+		return true;
+	}
+#else
    if (_redirectedInputFileName.empty()) {
       struct sockaddr_in dstAddr;
       memset(&dstAddr, 0, sizeof(dstAddr));
@@ -225,12 +265,14 @@ bool AHCALProducer::OpenConnection()
       }
       return true;
    }
+#endif //_WIN32
 }
 
 void AHCALProducer::CloseConnection() {
    std::unique_lock<std::mutex> myLock(_mufd);
 #ifdef _WIN32
    closesocket(_fd);
+   WSACleanup;
 #else
    close(_fd);
 #endif
@@ -241,13 +283,17 @@ void AHCALProducer::CloseConnection() {
 void AHCALProducer::SendCommand(const char *command, int size) {
    cout << "DEBUG: in AHCALProducer::SendCommand(const char *command, int size)" << endl;
    if (size == 0) size = strlen(command);
-
+   cout << "DEBUG: size: " << size << " message:" << command << endl;
    if (_fd <= 0)
       cout << "AHCALProducer::SendCommand(): cannot send command because connection is not open." << endl;
    else {
       if (_redirectedInputFileName.empty()) {
          cout << "DEBUG: sending command over TCP" << endl;
+#ifdef _WIN32
+         size_t bytesWritten = send(_fd, command, size,0);
+#else
          size_t bytesWritten = write(_fd, command, size);
+#endif
          if (bytesWritten < 0) {
             cout << "There was an error writing to the TCP socket" << endl;
          } else {
@@ -362,7 +408,11 @@ void AHCALProducer::Exec() {
          std::this_thread::sleep_for(std::chrono::milliseconds(100));
          continue;
       }
+#ifdef _WIN32
+	  size = recv(_fd, buf, bufsize, 0);
+#else
       size = ::read(_fd, buf, bufsize);
+#endif // _WIN32
       //std::cout << "DEBUG: producer Exec(): read" << size << " bytes" << std::endl;
       if (size > 0) {
          //_last_readout_time = std::time(NULL);
