@@ -245,29 +245,32 @@ void CaliceHodoscopeProducer::openConnections()
 	m_exchanger->CreateTCPSock();
 	m_exchanger->CreateUDPSock();
 	m_exchanger->SetTCPTimeOut(m_tcptimeout, 0);
-	//   DebugFPGA(exchange);
-	//   std::cout << "ASIS Initialize : Done" << std::endl;
-	//   std::cout << std::endl;
-	//   usleep(10000);
-	//
-	//   exchange->WriteData(37888);
-	//   PrepareSC(1);
-	//   TransmitSC(exchange);
-	//   std::cout << "Slow Control chip1 : Done" << std::endl;
-	//   std::cout << std::endl;
-	//   PrepareReadSC(1);
-	//   TransmitReadSC(exchange);
-	//   std::cout << "Read Slow Control chip1 : Done" << std::endl;
-	//   std::cout << std::endl;
-	//   exchange->WriteData(21504);
-	//   PrepareSC(2);
-	//   TransmitSC(exchange);
-	//   std::cout << "Slow Control chip2 : Done" << std::endl;
-	//   std::cout << std::endl;
-	//   PrepareReadSC(2);
-	//   TransmitReadSC(exchange);
-	//   std::cout << "Read Slow Control chip2: Done" << std::endl;
-	//   std::cout << std::endl;
+
+	PrepareFPGA();
+	DebugFPGA(m_exchanger);
+	std::cout << "ASIS Initialize : Done" << std::endl;
+	std::cout << std::endl;
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+	m_exchanger->WriteData(37888);
+	PrepareSC(1);
+	TransmitSC(m_exchanger);
+	std::cout << "Slow Control chip1 : Done" << std::endl;
+	std::cout << std::endl;
+	PrepareReadSC(1);
+	TransmitReadSC(m_exchanger);
+	std::cout << "Read Slow Control chip1 : Done" << std::endl;
+	std::cout << std::endl;
+
+	m_exchanger->WriteData(21504);
+	PrepareSC(2);
+	TransmitSC(m_exchanger);
+	std::cout << "Slow Control chip2 : Done" << std::endl;
+	std::cout << std::endl;
+	PrepareReadSC(2);
+	TransmitReadSC(m_exchanger);
+	std::cout << "Read Slow Control chip2: Done" << std::endl;
+	std::cout << std::endl;
 
 	m_exchanger->WriteData(5120); // TODO no idea what it does
 	{
@@ -290,6 +293,7 @@ void CaliceHodoscopeProducer::openConnections()
 	//Windows has some instability issues with sending over UDP
 	m_exchanger->udp_send(0x00000012, 248); //Set ADC rate to 50Hz
 	m_exchanger->udp_send(0x0000001f, 0);
+	std::cout << "Debug UDP 3" << std::endl;
 
 	rampHV(m_exchanger, m_udpper, m_HV);
 }
@@ -760,7 +764,6 @@ void CaliceHodoscopeProducer::rampHV(Exchanger* exchange, Udpsetper* udpper, con
 	hvset(exchange, udpper, HV);
 	std::cout << "Now HV is set to:" << HV << "V" << std::endl;
 	std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
-
 	hvstatus(exchange, udpper);
 }
 
