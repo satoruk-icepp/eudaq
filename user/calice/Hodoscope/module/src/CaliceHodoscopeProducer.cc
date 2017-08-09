@@ -100,6 +100,7 @@ auto dummy0 = eudaq::Factory<eudaq::Producer>::
 }
 CaliceHodoscopeProducer::CaliceHodoscopeProducer(const std::string & name, const std::string & runcontrol)
       : eudaq::Producer(name, runcontrol), m_exit_of_run(false) {
+	std::cout << "CaliceHodoscopeProducer created" << std::endl;
 }
 void CaliceHodoscopeProducer::DoInitialise() {
    auto ini = GetInitConfiguration();
@@ -350,7 +351,7 @@ int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstr
       update_counter_modulo(m_lastTrigN, trig, 12, 1);
       update_counter_modulo(m_lastCycleN, cycle, 20, 1);
       update_counter_modulo(m_lastTDCVal, tdc_val, 20, 1);
-//      std::cout << "TRG=" << m_lastTrigN << "\tcycle=" << m_lastCycleN << "\ttdc_val=" << m_lastTDCVal << "\tbit=" << (int) tdc_bit << std::endl;
+      std::cout << "TRG=" << m_lastTrigN << "\tcycle=" << m_lastCycleN << "\ttdc_val=" << m_lastTDCVal << "\tbit=" << (int) tdc_bit << std::endl;
 
       eudaq::EventUP ev = eudaq::Event::MakeUnique("HodoscopeRaw");
       ev->SetTriggerN(m_lastTrigN);
@@ -676,13 +677,13 @@ void CaliceHodoscopeProducer::Mainloop() {
       }
       //UDP Initialize-------------------------------------------------------
       std::cout << "Debug 1" << std::endl;
-      Udpsetper* udpper = new Udpsetper();
+      //Udpsetper* udpper = new Udpsetper();
       std::cout << "Debug 2" << std::endl;
       exchange->udp_send(0x00000012, 248); //Set ADC rate to 50Hz
       exchange->udp_send(0x0000001f, 0);
       std::cout << "Debug 3" << std::endl;
       //------------- end of configuration ----------------------
-      setuplog(exchange, udpper);
+      //setuplog(exchange, udpper);
       //m_rawFile(ofilename.c_str(), std::ios::binary);
       //std::ofstream file(ofilename.c_str(), std::ios::binary);
       std::cout << "Debug 4" << std::endl;
@@ -718,13 +719,20 @@ void CaliceHodoscopeProducer::Mainloop() {
       EndADC = 0;
 //ForceStop = 0;
       std::cout << "End ADC" << std::endl;
+
+#ifndef _WIN32
       if (m_redirectedInputFileName.empty()) exchange->CloseUDPSock();
+#endif // !_WIN32
       if (m_redirectedInputFileName.empty()) exchange->CloseTCPSock();
       std::cout << "All :: Connection Close" << std::endl;
+	  std::cout << "DEBUG: Terminate 1" << std::endl;
       delete exchange;
-      delete udpper;
+	  std::cout << "DEBUG: Terminate 2" << std::endl; 
+	 // delete udpper;
+	  std::cout << "DEBUG: Terminate 3" << std::endl;
    }
    if (m_writeRaw) {
       m_rawFile.close();
    }
+   std::cout << "DEBUG: Terminate 4" << std::endl;
 }

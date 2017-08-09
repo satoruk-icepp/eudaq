@@ -49,7 +49,12 @@ private:
   unsigned int tcpPort;
   unsigned int udpPort;
   int          udpsock;
+#ifdef _WIN32
+  SOCKET       tcpsock;
+#else
   int          tcpsock;
+#endif // _WIN32
+
   struct bcp_header  sndHeader;
   unsigned int ain_value;
   FILE         *dump_fp;

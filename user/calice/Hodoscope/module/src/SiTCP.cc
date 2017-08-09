@@ -58,6 +58,54 @@ bool SiTCP::SetIPPort(const char* IpAddr, unsigned int tcp, unsigned int udp){
 
 bool SiTCP::CreateTCPSock(){
   std::cout<<"#Create socket for TCP...";
+
+#ifdef _WIN32
+  WSADATA wsaData;
+  int wsaRet = WSAStartup(MAKEWORD(2, 2), &wsaData); //initialize winsocks 2.2
+  if (wsaRet) { std::cout << "ERROR: WSA init failed with code " << wsaRet << std::endl; return false; }
+  std::cout << "DEBUG: WSAinit OK" << std::endl;
+
+  tcpsock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (tcpsock < 0) {
+	  perror("TCP socket");
+	  std::cout << "errno = " << errno << std::endl;
+	  WSACleanup;
+	  exit(1);
+  }
+  memset(&tcpAddr, 0, sizeof(tcpAddr));
+  tcpAddr.sin_family = AF_INET;
+  tcpAddr.sin_port = htons(tcpPort);
+  tcpAddr.sin_addr.s_addr = inet_addr(sitcpIpAddr);
+  std::cout << "  Done" << std::endl;
+
+  std::cout << "#  ->Trying to connect to " << sitcpIpAddr << " ..." << std::endl;
+  if (connect(tcpsock, (struct sockaddr *)&tcpAddr, sizeof(tcpAddr)) < 0) {
+	  if (errno != EINPROGRESS) perror("TCP connection");
+	  FD_ZERO(&rmask);
+	  FD_SET(tcpsock, &rmask);
+	  wmask = rmask;
+	  timeout.tv_sec = 3;
+	  timeout.tv_usec = 0;
+
+	  int rc = select(tcpsock + 1, &rmask, NULL, NULL, &timeout);
+	  if (rc<0) perror("connect-select error");
+	  if (rc == 0) {
+		  puts("\n     =====time out !=====\n ");
+		  exit(1);
+	  }
+	  else {
+		  puts("\n     ===connection error===\n ");
+		  exit(1);
+	  }
+  }
+  FD_ZERO(&readfds);
+  FD_SET(tcpsock, &readfds);
+  FD_SET(0, &readfds);
+
+  puts("#  ->Connect success!\n");
+
+  return true;
+#else
   tcpsock = socket(AF_INET, SOCK_STREAM, 0);
   if(tcpsock < 0){
     perror("TCP socket");
@@ -97,6 +145,8 @@ bool SiTCP::CreateTCPSock(){
   puts("#  ->Connect success!\n");
 
   return true;
+#endif // _WIN32
+
 }
 
 bool SiTCP::CreateUDPSock(){
@@ -138,7 +188,13 @@ bool SiTCP::CloseUDPSock(){
 
 bool SiTCP::CloseTCPSock(){
   std::cout<<"#Close TCP Socket...";
+#ifdef _WIN32
+  closesocket(tcpsock);
+  WSACleanup;
+#else
   close(tcpsock);
+#endif // _WIN32
+
   std::cout<<"  Done"<<std::endl;
   return true;
 }
