@@ -57,7 +57,12 @@ class CaliceHodoscopeProducer: public eudaq::Producer {
       void setuplog(Exchanger* exchange, Udpsetper* udpper);
       void udplog(Exchanger* exchange, Udpsetper* udpper, std::string file_name);
       void update_counter_modulo(unsigned int &counter, const unsigned int newvalue_modulo, const unsigned int modulo_bits, const unsigned int max_backwards);
+	  void openConnections();
+	  void closeConnections();
       void OpenRawFile();
+	  void hvset(Exchanger * exchange, Udpsetper * udpper, const double HV);
+	  void hvstatus(Exchanger * exchange, Udpsetper * udpper);
+	  void rampHV(Exchanger* exchange, Udpsetper* udpper, const double HV);
 
       static const uint32_t m_id_factory = eudaq::cstr2hash("CaliceHodoscopeProducer");
 
@@ -84,6 +89,7 @@ class CaliceHodoscopeProducer: public eudaq::Producer {
       std::ifstream m_redirectedInput;
 
 	  int m_printEvents;// level of event prints. 1=event info, 2= eudaq_events
+	  double m_HV;//high voltage value
 
       int m_AHCALBXIDWidth;
       int m_AHCALBXID0Offset;
@@ -95,6 +101,9 @@ class CaliceHodoscopeProducer: public eudaq::Producer {
       unsigned int m_lastCycleN;
       unsigned int m_lastTDCVal;
       unsigned int m_lastEventN;
+	  Exchanger* m_exchanger;//TCP communication library
+	  Udpsetper* m_udpper;//UDP stuff??
+	  bool m_skipConOpen;//skips opening of the connection
 };
 namespace {
 auto dummy0 = eudaq::Factory<eudaq::Producer>::
@@ -113,6 +122,9 @@ void CaliceHodoscopeProducer::DoInitialise() {
    m_tcptimeout = ini->Get("TCP_Timeout", 3);
    m_udpport = ini->Get("UDP_Port", 4660);
    m_daq_mode = ini->Get("DAQ_Mode", 6);
+   m_HV = ini->Get("HV", 10.0);
+   m_skipConOpen = ini->Get("SkipConnectionOpen", false);
+   if (!m_skipConOpen) openConnections();
 }
 
 void CaliceHodoscopeProducer::DoConfigure() {
@@ -224,6 +236,94 @@ void CaliceHodoscopeProducer::update_counter_modulo(unsigned int &counter, const
       newvalue += (1 << modulo_bits);
    }
    counter = (newvalue & (~mask)) | (newvalue_modulo & mask);
+}
+
+void CaliceHodoscopeProducer::openConnections()
+{
+	//----------- initialize -----------------
+	m_exchanger = new Exchanger(m_ip.c_str(), m_tcpport, m_udpport);
+	m_exchanger->CreateTCPSock();
+	m_exchanger->CreateUDPSock();
+	m_exchanger->SetTCPTimeOut(m_tcptimeout, 0);
+	//   DebugFPGA(exchange);
+	//   std::cout << "ASIS Initialize : Done" << std::endl;
+	//   std::cout << std::endl;
+	//   usleep(10000);
+	//
+	//   exchange->WriteData(37888);
+	//   PrepareSC(1);
+	//   TransmitSC(exchange);
+	//   std::cout << "Slow Control chip1 : Done" << std::endl;
+	//   std::cout << std::endl;
+	//   PrepareReadSC(1);
+	//   TransmitReadSC(exchange);
+	//   std::cout << "Read Slow Control chip1 : Done" << std::endl;
+	//   std::cout << std::endl;
+	//   exchange->WriteData(21504);
+	//   PrepareSC(2);
+	//   TransmitSC(exchange);
+	//   std::cout << "Slow Control chip2 : Done" << std::endl;
+	//   std::cout << std::endl;
+	//   PrepareReadSC(2);
+	//   TransmitReadSC(exchange);
+	//   std::cout << "Read Slow Control chip2: Done" << std::endl;
+	//   std::cout << std::endl;
+
+	m_exchanger->WriteData(5120); // TODO no idea what it does
+	{
+		unsigned int sidata = 31;
+		sidata = sidata << 16;
+		unsigned int data = m_daq_mode;
+		data = data << 8;
+		sidata += data;
+		if (-1 == m_exchanger->WriteData(sidata)) {
+			EUDAQ_THROW("failed to set the daqmode.");
+		}
+		std::cout << "#D : DAQ mode is " << m_daq_mode << std::endl;
+		std::cout << std::endl;
+	}
+	
+	//UDP Initialize-------------------------------------------------------
+	std::cout << "Debug UDP 1" << std::endl;
+	m_udpper = new Udpsetper();
+	std::cout << "Debug UDP 2" << std::endl;
+	//Windows has some instability issues with sending over UDP
+	m_exchanger->udp_send(0x00000012, 248); //Set ADC rate to 50Hz
+	m_exchanger->udp_send(0x0000001f, 0);
+
+	rampHV(m_exchanger, m_udpper, m_HV);
+}
+
+void CaliceHodoscopeProducer::closeConnections()
+{
+	if (m_redirectedInputFileName.empty()) {
+		ADCStop(m_exchanger);
+		EndADC = 1;
+		int abort = 0;
+		while (0 == ADCOneCycle_wHeader(m_exchanger, m_rawFile)) {
+			std::this_thread::sleep_for(std::chrono::microseconds(10000));
+			if (abort == 50) {
+				ADCStop(m_exchanger);
+				abort = 0;
+			}
+			std::cout << "dummy data" << std::endl;
+			++abort;
+		}
+		EndADC = 0;
+		//ForceStop = 0;
+		std::cout << "End ADC" << std::endl;
+
+#ifndef _WIN32
+		if (m_redirectedInputFileName.empty()) exchange->CloseUDPSock();
+#endif // !_WIN32
+		if (m_redirectedInputFileName.empty()) exchange->CloseTCPSock();
+		std::cout << "All :: Connection Close" << std::endl;
+		std::cout << "DEBUG: Terminate 1" << std::endl;
+		delete exchange;
+		std::cout << "DEBUG: Terminate 2" << std::endl;
+		delete udpper;
+		std::cout << "DEBUG: Terminate 3" << std::endl;
+	}
 }
 
 int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstream& file) {
@@ -620,9 +720,51 @@ void CaliceHodoscopeProducer::OpenRawFile() {
    m_rawFile.open(_rawFilename, std::ios::binary);
 }
 
+void CaliceHodoscopeProducer::hvset(Exchanger* exchange, Udpsetper* udpper, const double HV) {
+	int HVDAC = 0;
+	if (HV > 90) {
+		std::cout << "errer" << std::endl;
+		return;
+	}
+	HVDAC = udpper->HVC_1 * HV + udpper->HVC_2;        //change HV to DAC bit
+	exchange->udp_send(0x00000010, HVDAC / 256);//Set higher 8bit to FPGA reg
+	exchange->udp_send(0x00000011, HVDAC % 256);//lower 8bit
+	exchange->udp_send(0x0000001e, 1); //Start DAC control
+	return;
+};
+void CaliceHodoscopeProducer::hvstatus(Exchanger* exchange, Udpsetper* udpper) {
+	double rd_data = 0;
+	std::cout << "Bias voltage";
+	rd_data = exchange->read_madc(3);//Read ADC data
+									 //std::cout <<"MADC_data = "<< rd_data;
+	rd_data = udpper->ADC2HV * rd_data; //convert ADC bit to HV
+	printf(" : %.2lfV\n", rd_data);
+	rd_data = exchange->read_madc(4);//Read ADC data
+									 //std::cout <<"MADC_data = "<< rd_data;
+	rd_data = udpper->ADC2uA * rd_data;   //convert ADC bit to HVcurrent
+	printf("Bias current : %.2lfuA", rd_data);
+	std::cout << std::endl;
+	return;
+}
+void CaliceHodoscopeProducer::rampHV(Exchanger* exchange, Udpsetper* udpper, const double HV) {
+	if (HV > 65.0) EUDAQ_THROW("HV is bigger than 65 V. This is a hard-coded limit, you have to recompile to get over it.");
+	std::cout << "Ramping to " << HV << " V." << std::endl;
+	double curHV = 0.0;
+	while (HV>curHV) {
+		hvset(exchange, udpper, curHV);
+		std::cout << "current HV :" << curHV << "V" << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+		hvstatus(exchange, udpper);
+		curHV += 10.0;
+	}
+	hvset(exchange, udpper, HV);
+	std::cout << "Now HV is set to:" << HV << "V" << std::endl;
+	std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+
+	hvstatus(exchange, udpper);
+}
+
 void CaliceHodoscopeProducer::Mainloop() {
-   Exchanger* exchange;
-   Udpsetper* udpper;
    unsigned int data = 0;
    int EventNum = 0;
 
@@ -638,58 +780,7 @@ void CaliceHodoscopeProducer::Mainloop() {
          return;
       }
    } else {
-      //----------- initialize -----------------
-      exchange = new Exchanger(m_ip.c_str(), m_tcpport, m_udpport);
-      exchange->CreateTCPSock();
-      exchange->CreateUDPSock();
-      exchange->SetTCPTimeOut(m_tcptimeout, 0);
-      //   DebugFPGA(exchange);
-      //   std::cout << "ASIS Initialize : Done" << std::endl;
-      //   std::cout << std::endl;
-      //   usleep(10000);
-      //
-      //   exchange->WriteData(37888);
-      //   PrepareSC(1);
-      //   TransmitSC(exchange);
-      //   std::cout << "Slow Control chip1 : Done" << std::endl;
-      //   std::cout << std::endl;
-      //   PrepareReadSC(1);
-      //   TransmitReadSC(exchange);
-      //   std::cout << "Read Slow Control chip1 : Done" << std::endl;
-      //   std::cout << std::endl;
-
-      //   exchange->WriteData(21504);
-      //   PrepareSC(2);
-      //   TransmitSC(exchange);
-      //   std::cout << "Slow Control chip2 : Done" << std::endl;
-      //   std::cout << std::endl;
-      //   PrepareReadSC(2);
-      //   TransmitReadSC(exchange);
-      //   std::cout << "Read Slow Control chip2: Done" << std::endl;
-      //   std::cout << std::endl;
-
-      exchange->WriteData(5120); //
-      {
-         unsigned int sidata = 31;
-         sidata = sidata << 16;
-         unsigned int data = m_daq_mode;
-         data = data << 8;
-         sidata += data;
-         if (-1 == exchange->WriteData(sidata)) {
-            exit(-1);
-         }
-         std::cout << "#D : DAQ mode is " << m_daq_mode << std::endl;
-         std::cout << std::endl;
-      }
-      //UDP Initialize-------------------------------------------------------
-      std::cout << "Debug 1" << std::endl;
-      //Udpsetper* udpper = new Udpsetper();
-      std::cout << "Debug 2" << std::endl;
-#ifndef _WIN32
-      //Windows has some instability issues with sending over UDP
-	  exchange->udp_send(0x00000012, 248); //Set ADC rate to 50Hz
-      exchange->udp_send(0x0000001f, 0);
-#endif // !_WIN32
+      //data taking related
       std::cout << "Debug 3" << std::endl;
       //------------- end of configuration ----------------------
       //setuplog(exchange, udpper);
@@ -698,48 +789,20 @@ void CaliceHodoscopeProducer::Mainloop() {
       std::cout << "Debug 4" << std::endl;
       data += 32 << 24;
       data += 100 << 16;
-      exchange->tcp_send(data);
+	  m_exchanger->tcp_send(data);
       std::cout << "Debug 5" << std::endl;
    };
    if (m_writeRaw) {
       OpenRawFile();
    }
    while (!m_exit_of_run) {   //run until runcontrol decides to stop
-      ADCOneCycle_wHeader(exchange, m_rawFile);
+      ADCOneCycle_wHeader(m_exchanger, m_rawFile);
       if (0 == m_lastEventN % 1000) {
          std::cout << "Event # " << std::dec << m_lastEventN << std::endl;
       }
    }
 
-   if (m_redirectedInputFileName.empty()) {
-      ADCStop(exchange);
-      EndADC = 1;
-      int abort = 0;
-      while (0 == ADCOneCycle_wHeader(exchange, m_rawFile)) {
-		  std::this_thread::sleep_for(std::chrono::microseconds(10000));
-		  //usleep(10000);
-         if (abort == 50) {
-            ADCStop(exchange);
-            abort = 0;
-         }
-         std::cout << "dummy data" << std::endl;
-         ++abort;
-      }
-      EndADC = 0;
-//ForceStop = 0;
-      std::cout << "End ADC" << std::endl;
-
-#ifndef _WIN32
-      if (m_redirectedInputFileName.empty()) exchange->CloseUDPSock();
-#endif // !_WIN32
-      if (m_redirectedInputFileName.empty()) exchange->CloseTCPSock();
-      std::cout << "All :: Connection Close" << std::endl;
-	  std::cout << "DEBUG: Terminate 1" << std::endl;
-      delete exchange;
-	  std::cout << "DEBUG: Terminate 2" << std::endl; 
-	 // delete udpper;
-	  std::cout << "DEBUG: Terminate 3" << std::endl;
-   }
+  
    if (m_writeRaw) {
       m_rawFile.close();
    }
