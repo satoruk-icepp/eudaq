@@ -83,6 +83,8 @@ class CaliceHodoscopeProducer: public eudaq::Producer {
       std::string m_redirectedInputFileName; // if set, this filename will be used as input
       std::ifstream m_redirectedInput;
 
+	  int m_printEvents;// level of event prints. 1=event info, 2= eudaq_events
+
       int m_AHCALBXIDWidth;
       int m_AHCALBXID0Offset;
       //easiroc old module variables
@@ -123,6 +125,7 @@ void CaliceHodoscopeProducer::DoConfigure() {
       m_flag_ts = false;
       m_flag_tg = true;
    }
+   m_printEvents = conf->Get("PrintEvents", 0);
    m_writeRaw = conf->Get("WriteRawOutput", 0);
    m_rawFilename = conf->Get("RawFileName", "hodoscope_run%d");
    m_writerawfilename_timestamp = conf->Get("WriteRawFileNameTimestamp", 0);
@@ -351,7 +354,10 @@ int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstr
       update_counter_modulo(m_lastTrigN, trig, 12, 1);
       update_counter_modulo(m_lastCycleN, cycle, 20, 1);
       update_counter_modulo(m_lastTDCVal, tdc_val, 20, 1);
-      std::cout << "TRG=" << m_lastTrigN << "\tcycle=" << m_lastCycleN << "\ttdc_val=" << m_lastTDCVal << "\tbit=" << (int) tdc_bit << std::endl;
+	  if (m_printEvents) {
+		  if ((trig % 30) == 0)   std::cout << "#trig\ttrg_mod\tcycle\tcyc_mod\ttdc\ttdc_mod\tcyc_bit" << std::endl;
+		  std::cout << m_lastTrigN << "\t" << trig << "\t" << m_lastCycleN << "\t" << cycle << "\t" << m_lastTDCVal << "\t" << tdc_val << "\t" << tdc_bit << std::endl;
+	  }
 
       eudaq::EventUP ev = eudaq::Event::MakeUnique("HodoscopeRaw");
       ev->SetTriggerN(m_lastTrigN);
@@ -367,7 +373,7 @@ int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstr
       ev->AddBlock(0, unixtime, sizeof(unixtime));
       ev->AddBlock(1, DataBuffer, TotalRecvByte);
       if (m_lastTrigN == 0) ev->SetBORE();
-//      ev->Print(std::cout);
+	  if (m_printEvents > 1) ev->Print(std::cout);
 //      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       SendEvent(std::move(ev));
 
