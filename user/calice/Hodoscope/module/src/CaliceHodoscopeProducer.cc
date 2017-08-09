@@ -103,7 +103,7 @@ class CaliceHodoscopeProducer: public eudaq::Producer {
       unsigned int m_lastEventN;
 	  Exchanger* m_exchanger;//TCP communication library
 	  Udpsetper* m_udpper;//UDP stuff??
-	  bool m_skipConOpen;//skips opening of the connection
+	  int m_skipConOpen;//skips opening of the connection
 };
 namespace {
 auto dummy0 = eudaq::Factory<eudaq::Producer>::
@@ -123,7 +123,7 @@ void CaliceHodoscopeProducer::DoInitialise() {
    m_udpport = ini->Get("UDP_Port", 4660);
    m_daq_mode = ini->Get("DAQ_Mode", 6);
    m_HV = ini->Get("HV", 10.0);
-   m_skipConOpen = ini->Get("SkipConnectionOpen", false);
+   m_skipConOpen = ini->Get("SkipConnectionOpen", 0);
    if (!m_skipConOpen) openConnections();
 }
 
@@ -316,12 +316,12 @@ void CaliceHodoscopeProducer::closeConnections()
 #ifndef _WIN32
 		if (m_redirectedInputFileName.empty()) exchange->CloseUDPSock();
 #endif // !_WIN32
-		if (m_redirectedInputFileName.empty()) exchange->CloseTCPSock();
+		if (m_redirectedInputFileName.empty()) m_exchanger->CloseTCPSock();
 		std::cout << "All :: Connection Close" << std::endl;
 		std::cout << "DEBUG: Terminate 1" << std::endl;
-		delete exchange;
+		delete m_exchanger;
 		std::cout << "DEBUG: Terminate 2" << std::endl;
-		delete udpper;
+		delete m_udpper;
 		std::cout << "DEBUG: Terminate 3" << std::endl;
 	}
 }
