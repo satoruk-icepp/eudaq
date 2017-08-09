@@ -685,8 +685,11 @@ void CaliceHodoscopeProducer::Mainloop() {
       std::cout << "Debug 1" << std::endl;
       //Udpsetper* udpper = new Udpsetper();
       std::cout << "Debug 2" << std::endl;
-      exchange->udp_send(0x00000012, 248); //Set ADC rate to 50Hz
+#ifndef _WIN32
+      //Windows has some instability issues with sending over UDP
+	  exchange->udp_send(0x00000012, 248); //Set ADC rate to 50Hz
       exchange->udp_send(0x0000001f, 0);
+#endif // !_WIN32
       std::cout << "Debug 3" << std::endl;
       //------------- end of configuration ----------------------
       //setuplog(exchange, udpper);
