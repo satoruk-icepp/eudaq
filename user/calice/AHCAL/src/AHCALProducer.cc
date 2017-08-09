@@ -396,7 +396,7 @@ void AHCALProducer::Exec() {
    while (!_terminated) {
       if (_reader) {
          SetStatusTag("lastROC", std::to_string(dynamic_cast<ScReader*>(_reader)->getCycleNo()));
-         SetStatusTag("lastTrigN", std::to_string(dynamic_cast<ScReader*>(_reader)->getTrigId()));
+		 SetStatusTag("lastTrigN", std::to_string(dynamic_cast<ScReader*>(_reader)->getTrigId() - getLdaTrigidOffset()));
       }
       // wait until configured and connected
       std::unique_lock<std::mutex> myLock(_mufd);
