@@ -6,12 +6,19 @@
 #include <string.h>
 #include <iostream>
 #include <errno.h>
+
+#ifdef _WIN32
+#pragma comment(lib, "Ws2_32.lib")
+#include <winsock.h>
+#include <io.h>
+#else
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <arpa/inet.h>
+#endif
+
 
 #define ADDR_CLR            0x00
 #define ADDR_SET_CCRLCR     0x04
@@ -59,7 +66,12 @@ public:
   struct sockaddr_in tcpAddr;
   struct sockaddr_in udpAddr;
   fd_set             rmask, wmask, readfds;
+#ifdef _WIN32
+  char      sndBuf[2048]; 
+#else
   unsigned char      sndBuf[2048];
+#endif // _WIN32
+
   unsigned char      sndData[256];
   struct timeval     timeout;
 

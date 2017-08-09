@@ -1,5 +1,7 @@
 #include "SiTCP.h"
 //#include "SiTCP_utl.h"
+#include <chrono> //for sleep 
+#include <thread> //for sleep
 
 SiTCP::SiTCP(){
   std::cout<<"#SiTCP control --> Start."<<std::endl;
@@ -154,6 +156,7 @@ int SiTCP::rcvRBCP_ACK(int output){
   fd_set setSelect;
   int rcvdBytes;
   unsigned char rcvdBuf[1024];
+
   int rd_data;
 
   //  puts("\nWait to receive the ACK packet...");
@@ -177,7 +180,7 @@ int SiTCP::rcvRBCP_ACK(int output){
     else {
       /* receive packet */
       if(FD_ISSET(udpsock,&setSelect)){
-        rcvdBytes=recvfrom(udpsock, rcvdBuf, 2048, 0, NULL, NULL);
+        rcvdBytes=recvfrom(udpsock, (char *)rcvdBuf, 2048, 0, NULL, NULL);
         rcvdBuf[rcvdBytes]=0;
         if(output == 1){
           //puts("\n***** A pacekt is received ! *****.");
@@ -220,7 +223,7 @@ void SiTCP::SetReg8(int address,int num){
   //dump_sndBuf(sndBuf,16);
 
   int len = 0;
-  len = sendto(GetUDPSock(), sndBuf, 1 + sizeof(GetsndHeader()), 0, (struct sockaddr *)&udpAddr, sizeof(udpAddr));
+  len = sendto(GetUDPSock(), (char *)sndBuf, 1 + sizeof(GetsndHeader()), 0, (struct sockaddr *)&udpAddr, sizeof(udpAddr));
   if(len < 0){
     perror("Test CLK");
     exit(1);
@@ -298,7 +301,12 @@ int SiTCP::RecvClear(void){
     } else if(FD_ISSET(sitcp_fd,&fds)) {
       ntimeout = 0;
       //rlen = recv(sitcp_fd, data, sizeof(data), MSG_WAITALL);
-      rlen = recv(sitcp_fd, data, sizeof(data), MSG_DONTWAIT);
+#ifdef _WIN32
+	  rlen = recv(sitcp_fd, (char*)data, sizeof(data), NULL);
+#else
+	  rlen = recv(sitcp_fd, (char*)data, sizeof(data), MSG_DONTWAIT);
+#endif // _WIN32
+
       if(rlen < 0){
         perror("Receive data.");
         return 1;
@@ -355,7 +363,13 @@ int SiTCP::RecvFrame(void){
       ntimeout = 0;
       //rlen = recv(sitcp_fd, data, sizeof(data), MSG_WAITALL);
       //rlen = recv(sitcp_fd, data, sizeof(data), MSG_DONTWAIT);
-      recx.rlen = recv(sitcp_fd, recx.data, sizeof(recx.data), MSG_DONTWAIT);
+#ifdef _WIN32
+	  recx.rlen = recv(sitcp_fd, (char *) recx.data, sizeof(recx.data), NULL);
+#else
+	  recx.rlen = recv(sitcp_fd, recx.data, sizeof(recx.data), MSG_DONTWAIT);
+#endif // _WIN32
+
+
       //if(rlen < 0){
       if(recx.rlen < 0){
         perror("Receive data.");
@@ -404,7 +418,8 @@ void SiTCP::SetDCTP(unsigned int dctp_val){
   unsigned int dac_param;
   dac_param = 0x1000 | (dctp_val&0x0fff); // 0001_xxxx_xxxx_xxxx
   SiTCP::SetReg32(ADDR_SET_DAC,dac_param);
-  usleep(100000);                          //wait 100msec
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //usleep(100000);                          //wait 100msec
 
   ain_value = dctp_val; //for debug purpose
   printf("#dctp_val=%04x\n",dctp_val);
@@ -415,7 +430,8 @@ void SiTCP::SetVREF1(unsigned int vref1_val){
   unsigned int dac_param;
   dac_param = 0x5000 | (vref1_val&0x0fff); // 0101_xxxx_xxxx_xxxx
   SiTCP::SetReg32(ADDR_SET_DAC,dac_param);
-  usleep(100000);                          //wait 100msec
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //usleep(100000);                          //wait 100msec
 
   printf("#vref1_val=%04x\n",vref1_val);
 
@@ -425,7 +441,8 @@ void SiTCP::SetVREF2(unsigned int vref2_val){
   unsigned int dac_param;
   dac_param = 0x9000 | (vref2_val&0x0fff); // 1001_xxxx_xxxx_xxxx
   SiTCP::SetReg32(ADDR_SET_DAC,dac_param);
-  usleep(100000);                          //wait 100msec
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //usleep(100000);                          //wait 100msec
 
   printf("#vref2_val=%04x\n",vref2_val);
 

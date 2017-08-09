@@ -1,5 +1,7 @@
 #include "class_Exchanger.h"
 //#define binary(bit) strtol(bit,NULL,2)
+#include <chrono> //for sleep 
+#include <thread> //for sleep
 
 Exchanger::Exchanger(const char* IpAddr, unsigned int tcp, unsigned int udp){
   SetIPPort(IpAddr,tcp,udp);
@@ -258,8 +260,8 @@ int Exchanger::read_madc(int data){// data: send only 1 data length
     exit(1);
   }
   rcvRBCP_ACK(1);
-  
-  usleep(20000);//wait ADC ch change
+  std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  //usleep(20000);//wait ADC ch change
   
   //start Read ADC
   RBCPskeleton(0xff, 0x80, 0x00000012, 0x1, 0x00000012);

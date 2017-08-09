@@ -201,7 +201,8 @@ void CaliceHodoscopeProducer::ADCStop(Exchanger* exchange) {
    data += 16 << 24;
    data += 100 << 16;
    if (m_redirectedInputFileName.empty()) exchange->tcp_send(data);
-   sleep(1);
+   std::this_thread::sleep_for(std::chrono::seconds(1));
+
 
    //data = 0;
    //data += 100 << 16;
@@ -297,8 +298,8 @@ int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstr
       exit(-1);
    } else {
       unsigned int sizeData = (sizeof(int) * header2[0] & 0xffff);
-      unsigned int NofWord = (header2[0] & 0xffff);
-      unsigned int OneData[NofWord];
+      const unsigned int NofWord = (header2[0] & 0xffff);//doesn't work on win
+      unsigned int OneData[1024];
       if (m_redirectedInputFileName.empty()) {
          ret = exchange->tcp_multi_recv((char*) OneData, &sizeData);
       } else {
@@ -395,7 +396,8 @@ int CaliceHodoscopeProducer::DebugFPGA(Exchanger* exchange) {
       if (-1 == exchange->WriteData(buffer)) {
          exit(-1);
       }
-      usleep(1);
+	  std::this_thread::sleep_for(std::chrono::microseconds(1));
+	  //usleep(1);
    }
    return 0;
 }
@@ -426,7 +428,8 @@ int CaliceHodoscopeProducer::TransmitSC(Exchanger* exchange) {
          if (-1 == exchange->WriteData(data)) {
             exit(-1);
          }
-         usleep(1);
+		 std::this_thread::sleep_for(std::chrono::microseconds(1));
+		 //usleep(1);
       }
    }
 
@@ -473,7 +476,8 @@ int CaliceHodoscopeProducer::TransmitReadSC(Exchanger* exchange) {
       if (-1 == exchange->WriteData(data)) {
          exit(-1);
       }
-      usleep(1);
+	  std::this_thread::sleep_for(std::chrono::microseconds(1));
+		// usleep(1);
    }
 
 //StartCycle ------------------------------------------------------------
@@ -507,7 +511,11 @@ void CaliceHodoscopeProducer::setuplog(Exchanger* exchange, Udpsetper* udpper) {
 
    os << pnow->tm_year + 1900 << pnow->tm_mon + 1 << pnow->tm_mday << "_" << pnow->tm_hour << pnow->tm_min << "_sulog";
    ofntemp = "./sulog/" + os.str();
+#ifdef _WIN32
+   CreateDirectory(ofntemp.c_str(), NULL);
+#else
    mkdir(ofntemp.c_str(), 0775);
+#endif // _WIN32
 
    for (int i = 0; i < rdsufile.size(); ++i)
          {
@@ -563,7 +571,9 @@ void CaliceHodoscopeProducer::udplog(Exchanger* exchange, Udpsetper* udpper, std
                      MUX = 0;
                   }
       exchange->udp_send(0x00000013, MUX);
-      usleep(2000);
+	  std::this_thread::sleep_for(std::chrono::microseconds(2000));
+      //usleep(2000);
+
       ofs << std::left;
       if (i < 32) {
          rd_data = exchange->read_madc(1);     //Read ADC data
@@ -696,7 +706,8 @@ void CaliceHodoscopeProducer::Mainloop() {
       EndADC = 1;
       int abort = 0;
       while (0 == ADCOneCycle_wHeader(exchange, m_rawFile)) {
-         usleep(10000);
+		  std::this_thread::sleep_for(std::chrono::microseconds(10000));
+		  //usleep(10000);
          if (abort == 50) {
             ADCStop(exchange);
             abort = 0;
