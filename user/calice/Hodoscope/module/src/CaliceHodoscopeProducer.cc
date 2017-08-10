@@ -770,7 +770,7 @@ void CaliceHodoscopeProducer::rampHV(Exchanger* exchange, Udpsetper* udpper, con
 void CaliceHodoscopeProducer::Mainloop() {
    unsigned int data = 0;
    int EventNum = 0;
-
+   
    if (!m_redirectedInputFileName.empty()) {
       m_redirectedInput = std::ifstream(m_redirectedInputFileName, std::ifstream::binary);
       if (m_redirectedInput) {
@@ -783,6 +783,10 @@ void CaliceHodoscopeProducer::Mainloop() {
          return;
       }
    } else {
+	   //maybe this has an efect on the counter values (?) TODO to be checke                             d.
+	   //m_exchanger->udp_send(0x00000012, 248); //Set ADC rate to 50Hz
+	   //m_exchanger->udp_send(0x0000001f, 0);
+	   
       //data taking related
       std::cout << "Debug 3" << std::endl;
       //------------- end of configuration ----------------------
