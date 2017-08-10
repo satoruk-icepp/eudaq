@@ -177,7 +177,7 @@ void AHCALProducer::OpenRawFile(unsigned param, bool _writerawfilename_timestamp
    char _rawFilename[256];
    sprintf(_rawFilename, _rawFilenameTimeStamp.c_str(), (int) param);
 
-   _rawFile.open(_rawFilename);
+   _rawFile.open(_rawFilename,std::ofstream::binary);
 }
 
 void AHCALProducer::DoStopRun() {
