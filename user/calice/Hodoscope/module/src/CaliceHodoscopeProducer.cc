@@ -318,7 +318,7 @@ void CaliceHodoscopeProducer::closeConnections()
 		std::cout << "End ADC" << std::endl;
 
 #ifndef _WIN32
-		if (m_redirectedInputFileName.empty()) exchange->CloseUDPSock();
+		if (m_redirectedInputFileName.empty()) m_exchanger->CloseUDPSock();
 #endif // !_WIN32
 		if (m_redirectedInputFileName.empty()) m_exchanger->CloseTCPSock();
 		std::cout << "All :: Connection Close" << std::endl;
