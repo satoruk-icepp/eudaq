@@ -177,7 +177,7 @@ void AHCALProducer::OpenRawFile(unsigned param, bool _writerawfilename_timestamp
    char _rawFilename[256];
    sprintf(_rawFilename, _rawFilenameTimeStamp.c_str(), (int) param);
 
-   _rawFile.open(_rawFilename,std::ofstream::binary);
+   _rawFile.open(_rawFilename, std::ofstream::binary);
 }
 
 void AHCALProducer::DoStopRun() {
@@ -205,44 +205,44 @@ void AHCALProducer::DoStopRun() {
 bool AHCALProducer::OpenConnection()
 {
 #ifdef _WIN32
-	if (_redirectedInputFileName.empty()) {
-		WSADATA wsaData;
-		int wsaRet=WSAStartup(MAKEWORD(2, 2), &wsaData); //initialize winsocks 2.2
-		if (wsaRet) { cout << "ERROR: WSA init failed with code " << wsaRet << endl; return false; }
-		cout << "DEBUG: WSAinit OK" << endl;
+   if (_redirectedInputFileName.empty()) {
+      WSADATA wsaData;
+      int wsaRet=WSAStartup(MAKEWORD(2, 2), &wsaData); //initialize winsocks 2.2
+      if (wsaRet) {cout << "ERROR: WSA init failed with code " << wsaRet << endl; return false;}
+      cout << "DEBUG: WSAinit OK" << endl;
 
-		std::unique_lock<std::mutex> myLock(_mufd);
-		_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (_fd == INVALID_SOCKET) {
-			cout << "ERROR: invalid socket" << endl;
-			WSACleanup;
-			return false;
-		}
-		cout << "DEBUG: Socket OK" << endl;
+      std::unique_lock<std::mutex> myLock(_mufd);
+      _fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+      if (_fd == INVALID_SOCKET) {
+         cout << "ERROR: invalid socket" << endl;
+         WSACleanup;
+         return false;
+      }
+      cout << "DEBUG: Socket OK" << endl;
 
-		struct sockaddr_in dstAddr;//win ok
-		//??		memset(&dstAddr, 0, sizeof(dstAddr));
-		dstAddr.sin_family = AF_INET;
-		dstAddr.sin_port = htons(_port);
-		dstAddr.sin_addr.s_addr = inet_addr(_ipAddress.c_str());
+      struct sockaddr_in dstAddr; //win ok
+      //??		memset(&dstAddr, 0, sizeof(dstAddr));
+      dstAddr.sin_family = AF_INET;
+      dstAddr.sin_port = htons(_port);
+      dstAddr.sin_addr.s_addr = inet_addr(_ipAddress.c_str());
 
-		int ret = connect(_fd, (struct sockaddr *) &dstAddr, sizeof(dstAddr));
-		if (ret != 0) {
-			cout << "DEBUG: Connect failed" << endl;
-			return 0;
-		}
-		cout << "DEBUG: Connect OK" << endl;
-		return 1;
-	}
-	else {
-		std::cout << "Redirecting intput from file: " << _redirectedInputFileName << std::endl;
-		_fd = open(_redirectedInputFileName.c_str(), O_RDONLY);
-		if (_fd < 0) {
-			cout << "open redirected file failed from this path:" << _redirectedInputFileName << endl;
-			return false;
-		}
-		return true;
-	}
+      int ret = connect(_fd, (struct sockaddr *) &dstAddr, sizeof(dstAddr));
+      if (ret != 0) {
+         cout << "DEBUG: Connect failed" << endl;
+         return 0;
+      }
+      cout << "DEBUG: Connect OK" << endl;
+      return 1;
+   }
+   else {
+      std::cout << "Redirecting intput from file: " << _redirectedInputFileName << std::endl;
+      _fd = open(_redirectedInputFileName.c_str(), O_RDONLY);
+      if (_fd < 0) {
+         cout << "open redirected file failed from this path:" << _redirectedInputFileName << endl;
+         return false;
+      }
+      return true;
+   }
 #else
    if (_redirectedInputFileName.empty()) {
       struct sockaddr_in dstAddr;
@@ -339,10 +339,9 @@ void AHCALProducer::sendallevents(std::deque<eudaq::EventUP> & deqEvent, int min
 //            }
          _eventNo = deqEvent.front()->GetEventN();
          SendEvent(std::move(deqEvent.front()));
-	 deqEvent.pop_front();
+         deqEvent.pop_front();
       }
 
-     
    }
 
 //      eudaq::EventUP ev = deqEvent.front();
@@ -396,7 +395,7 @@ void AHCALProducer::Exec() {
    while (!_terminated) {
       if (_reader) {
          SetStatusTag("lastROC", std::to_string(dynamic_cast<ScReader*>(_reader)->getCycleNo()));
-		 SetStatusTag("lastTrigN", std::to_string(dynamic_cast<ScReader*>(_reader)->getTrigId() - getLdaTrigidOffset()));
+         SetStatusTag("lastTrigN", std::to_string(dynamic_cast<ScReader*>(_reader)->getTrigId() - getLdaTrigidOffset()));
       }
       // wait until configured and connected
       std::unique_lock<std::mutex> myLock(_mufd);
@@ -409,7 +408,7 @@ void AHCALProducer::Exec() {
          continue;
       }
 #ifdef _WIN32
-	  size = recv(_fd, buf, bufsize, 0);
+      size = recv(_fd, buf, bufsize, 0);
 #else
       size = ::read(_fd, buf, bufsize);
 #endif // _WIN32
