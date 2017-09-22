@@ -814,6 +814,25 @@ void CaliceHodoscopeProducer::Mainloop() {
       }
    }
 
+   if (m_redirectedInputFileName.empty()) {
+	   ADCStop(m_exchanger);
+	   EndADC = 1;
+	   int abort = 0;
+	   while (0 == ADCOneCycle_wHeader(m_exchanger, m_rawFile)) {
+		   std::this_thread::sleep_for(std::chrono::microseconds(10000));
+		   if (abort == 50) {
+			   ADCStop(m_exchanger);
+			   abort = 0;
+		   }
+		   std::cout << "dummy data" << std::endl;
+		   ++abort;
+	   }
+	   EndADC = 0;
+	   //ForceStop = 0;
+	   std::cout << "End ADC" << std::endl;
+	}
+
+
    if (m_writeRaw) {
       m_rawFile.close();
    }
