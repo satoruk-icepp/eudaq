@@ -236,12 +236,18 @@ bool AHCALProducer::OpenConnection()
    }
    else {
       std::cout << "Redirecting intput from file: " << _redirectedInputFileName << std::endl;
-      _fd = open(_redirectedInputFileName.c_str(), O_RDONLY);
-      if (_fd < 0) {
+	  _redirectedInputFstream = std::ifstream(_redirectedInputFileName.c_str(),ios::in|ios::binary);
+	  //_fd = open(_redirectedInputFileName.c_str(), O_RDONLY);
+      if (_redirectedInputFstream) {
+		  _redirectedInputFstream.seekg(0, _redirectedInputFstream.end);
+		  int length = _redirectedInputFstream.tellg();
+		  _redirectedInputFstream.seekg(0, _redirectedInputFstream.beg);
+		  std::cout << "Redirected file is " << length << " bytes long" << std::endl;
+		  return true;
+	  } else {
          cout << "open redirected file failed from this path:" << _redirectedInputFileName << endl;
          return false;
-      }
-      return true;
+	  }
    }
 #else
    if (_redirectedInputFileName.empty()) {
@@ -271,7 +277,11 @@ bool AHCALProducer::OpenConnection()
 void AHCALProducer::CloseConnection() {
    std::unique_lock<std::mutex> myLock(_mufd);
 #ifdef _WIN32
-   closesocket(_fd);
+   if (_redirectedInputFileName.empty()) {
+      closesocket(_fd);
+   } else {
+	   _redirectedInputFstream.close();
+   }
    WSACleanup;
 #else
    close(_fd);
@@ -284,32 +294,30 @@ void AHCALProducer::SendCommand(const char *command, int size) {
    cout << "DEBUG: in AHCALProducer::SendCommand(const char *command, int size)" << endl;
    if (size == 0) size = strlen(command);
    cout << "DEBUG: size: " << size << " message:" << command << endl;
-   if (_fd <= 0)
-      cout << "AHCALProducer::SendCommand(): cannot send command because connection is not open." << endl;
-   else {
-      if (_redirectedInputFileName.empty()) {
-         cout << "DEBUG: sending command over TCP" << endl;
+   if (_redirectedInputFileName.empty()) {
+	   if (_fd <= 0) {
+		   cout << "AHCALProducer::SendCommand(): cannot send command because connection is not open." << endl;
+	   }
+	   cout << "DEBUG: sending command over TCP" << endl;
 #ifdef _WIN32
-         size_t bytesWritten = send(_fd, command, size,0);
+	   size_t bytesWritten = send(_fd, command, size, 0);
 #else
-         size_t bytesWritten = write(_fd, command, size);
+	   size_t bytesWritten = write(_fd, command, size);
 #endif
-         if (bytesWritten < 0) {
-            cout << "There was an error writing to the TCP socket" << endl;
-         } else {
-            cout << bytesWritten << " out of " << size << " bytes is  written to the TCP socket" << endl;
-         }
-      } else {
-         std::cout << "input overriden from file. No command is send." << std::endl;
-         std::cout << "sending " << size << " bytes:";
-         for (int i = 0; i < size; ++i) {
-            std::cout << " " << to_hex(command[i], 2);
-         }
-         std::cout << std::endl;
+	   if (bytesWritten < 0) {
+		   cout << "There was an error writing to the TCP socket" << endl;
+	   } else {
+		   cout << bytesWritten << " out of " << size << " bytes is  written to the TCP socket" << endl;
+	   }
+   } else {
+	   std::cout << "input overriden from file. No command is send." << std::endl;
+	   std::cout << "sending " << size << " bytes:";
+	   for (int i = 0; i < size; ++i) {
+		   std::cout << " " << to_hex(command[i], 2);
+	   }
+	   std::cout << std::endl;
 
-      }
    }
-
 }
 
 //   int AHCALProducer::SendBuiltEvents(eudaq::RawDataEvent * ReadoutCycleEvent) {
@@ -402,13 +410,18 @@ void AHCALProducer::Exec() {
 
       int size = 0;
 
-      if (_fd <= 0 || _stopped) {
+      if (((_fd <= 0) && _redirectedInputFileName.empty() )|| _stopped) {
          myLock.unlock();
          std::this_thread::sleep_for(std::chrono::milliseconds(100));
          continue;
       }
 #ifdef _WIN32
-      size = recv(_fd, buf, bufsize, 0);
+	  if (_redirectedInputFileName.empty()) {
+		 size = recv(_fd, buf, bufsize, 0);
+	  } else {
+		  size = _redirectedInputFstream.read(buf, bufsize).gcount();
+		  //std::cout << "DEBUG: read " << size << " Bytes" << std::endl;
+	  }
 #else
       size = ::read(_fd, buf, bufsize);
 #endif // _WIN32

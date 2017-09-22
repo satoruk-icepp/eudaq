@@ -121,6 +121,8 @@ namespace eudaq {
          bool _writerawfilename_timestamp;
          std::ofstream _rawFile;
 
+		 std::ifstream _redirectedInputFstream;
+
          //run type:
          //std::string _runtype;
          std::string _fileLEDsettings;
