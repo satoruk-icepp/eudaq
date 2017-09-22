@@ -7,7 +7,8 @@ start bin\euLog.exe
 timeout /t 1
 
 rem "Starting Data collector"
-start bin\euCliCollector.exe -n DirectSaveDataCollector -t dc1
+rem start bin\euCliCollector.exe -n DirectSaveDataCollector -t dc1
+start bin\euCliCollector.exe -n AhcalHodoscopeDataCollector -t dc1
 timeout /t 1
 
 rem "Starting AHCAL producer"
