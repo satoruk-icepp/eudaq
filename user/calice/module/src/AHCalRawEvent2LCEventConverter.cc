@@ -68,7 +68,7 @@ bool AHCalRawEvent2LCEventConverter::Converting(EventSPC d1, LCEventSP d2, Confi
    }
 
    // no contents -ignore
-   if (rawev->NumBlocks() < 5) return true;
+   if (rawev->NumBlocks() < 2) return true;
 
    unsigned int nblock = 0;
 
@@ -90,6 +90,16 @@ bool AHCalRawEvent2LCEventConverter::Converting(EventSPC d1, LCEventSP d2, Confi
 
       //	IMPL::LCEventImpl  & lcevent = dynamic_cast<IMPL::LCEventImpl&>(result);
       //	lcevent.setTimeStamp((long int)&bl2[0]);
+
+      if (colName == "EudaqDataHodoscope") {
+//         auto bl3 = rawev->GetBlock(nblock++);
+//         if (bl3.size() > 0) cout << "Error, block 3 is filled in the BIF raw data" << endl;
+         LCCollectionVec *col = 0;
+         //for individual collection per hodoscope:
+         string colName = rawev->GetTag("SRC", string("UnidentifiedHodoscope"));
+         col = createCollectionVec(result, colName, dataDesc, timestamp, DAQquality);
+         getDataLCIOGenericObject(rawev, col, nblock);
+      }
 
       if (colName == "EUDAQDataBIF") {
          //-------------------

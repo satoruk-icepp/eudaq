@@ -463,7 +463,18 @@ int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstr
                << std::endl;
       }
 
-      eudaq::EventUP ev = eudaq::Event::MakeUnique("HodoscopeRaw");
+      eudaq::EventUP ev = eudaq::Event::MakeUnique("CaliceObject");      //"HodoscopeRaw";
+      std::string s = "EudaqDataHodoscope"; //"EudaqDataHodoscope";
+      ev->AddBlock(0, s.c_str(), s.length());
+      s = "i:header,i:size,i:trigNx65536,i:cycle_num,i:tdc_and_bit,i:data[64]";
+      ev->AddBlock(1, s.c_str(), s.length());
+
+      unsigned int unixtime[1];
+//      auto since_epoch = std::chrono::system_clock::now().time_since_epoch();
+//      unixtime[0] = std::chrono::duration_cast<std::chrono::seconds>(since_epoch).count();
+      unixtime[0] = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      ev->AddBlock(2, unixtime, sizeof(unixtime));
+
       ev->SetTriggerN(m_lastTrigN);
       ev->SetTag("ROC", m_lastCycleN);
       ev->SetTag("BXID", ((int) m_lastTDCVal - m_AHCALBXID0Offset) / m_AHCALBXIDWidth);
@@ -474,12 +485,7 @@ int CaliceHodoscopeProducer::ADCOneCycle_wHeader(Exchanger* exchange, std::ofstr
          std::cout << "#too big BXID: ROC=" << m_lastCycleN << ", BXID=" << (m_lastTDCVal - m_AHCALBXID0Offset) / m_AHCALBXIDWidth << std::endl;
       }
       //TODO ev->SetDeviceN(1);
-      unsigned int unixtime[1];
-//      auto since_epoch = std::chrono::system_clock::now().time_since_epoch();
-//      unixtime[0] = std::chrono::duration_cast<std::chrono::seconds>(since_epoch).count();
-      unixtime[0] = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-      ev->AddBlock(0, unixtime, sizeof(unixtime));
-      ev->AddBlock(1, DataBuffer, TotalRecvByte);
+      ev->AddBlock(3, DataBuffer, TotalRecvByte);
       if (m_lastTrigN == 0) ev->SetBORE();
       if (m_printEvents > 1) ev->Print(std::cout);
 //      std::this_thread::sleep_for(std::chrono::milliseconds(100));

@@ -145,6 +145,7 @@ void AhcalHodoscopeDataCollector::BuildEvent() {
          bxid_ahcal = conn_evque.second.front()->GetTag("BXID", -1);
          if ((roc_ahcal == -1) || (bxid_ahcal == -1) || (bxid_ahcal == 0)) {
             conn_evque.second.pop_front(); //untagged event. impossible to synchronize. dropping.
+            std::cout << "#dropping ROC=" << roc_ahcal << " BXID=" << bxid_ahcal << std::endl;
             everybodyHasEvent = false; //a new check is required, because another event is now in front
             break; //no reason to continue looking
          }
@@ -193,11 +194,12 @@ void AhcalHodoscopeDataCollector::BuildEvent() {
 //      std::cout << "5" << std::flush;
       if (!matchFound) {
          for (auto & conn_evque : m_ahcal_conn_evts) {
+            tdc_ahcal = conn_evque.second.front()->GetTag("TrigBxidTdc", -1);
             tdc_hist_ahcal[conn_evque.second.front()->GetTag("TrigBxidTdc", -1)]++;
             conn_evque.second.pop_front();
          }
          debug_unmatched++;
-         std::cout << "no matching trigger from Hodoscope. ROC=" << roc_ahcal << " BXID=" << bxid_ahcal << ".";
+         std::cout << "#no matching trigger from Hodoscope. ROC=" << roc_ahcal << " BXID=" << bxid_ahcal << " TDC_a=" << tdc_ahcal << ".";
          std::cout << " queue: ROC=" << roc_hodoscope << ", BXID=" << bxid_hodoscope << std::endl;
          continue;
       }
